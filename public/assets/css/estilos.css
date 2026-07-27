@@ -1,0 +1,46 @@
+/*
+ * Becajo — estilos propios
+ *
+ * Tailwind cubre casi toda la maquetación. Aquí van solo los detalles que
+ * no se resuelven con clases utilitarias.
+ */
+
+:root {
+    --marina-950: #080f26;
+    --acento-500: #16bdd6;
+}
+
+/* Compensa el encabezado fijo al navegar con anclas (#servicios, #equipo...) */
+[id] {
+    scroll-margin-top: 5rem;
+}
+
+/* Respeta a quien configuró su sistema para reducir el movimiento */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Contorno de foco visible y consistente para navegación con teclado */
+:focus-visible {
+    outline: 2px solid var(--acento-500);
+    outline-offset: 3px;
+}
+
+::selection {
+    background-color: var(--acento-500);
+    color: var(--marina-950);
+}
+
+/* Evita el desbordamiento horizontal en pantallas angostas */
+body {
+    overflow-x: hidden;
+}

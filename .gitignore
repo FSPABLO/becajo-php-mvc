@@ -1,0 +1,29 @@
+# Credenciales y configuración local — NUNCA se suben al repositorio
+.env
+.env.local
+config/base_datos.php
+
+# Dependencias
+/vendor/
+/node_modules/
+
+# Basura del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.idea/
+.vscode/
+*.swp
+*.sublime-*
+
+# Registros y temporales
+*.log
+/logs/
+/tmp/
+/cache/
+
+# Respaldos de base de datos
+*.dmp
+*.sql.gz

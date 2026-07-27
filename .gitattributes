@@ -1,0 +1,15 @@
+# Normaliza los fines de línea en todo el equipo.
+# Sin esto, quien trabaje en Windows (WAMP) y quien trabaje en macOS/Linux
+# verán archivos completos marcados como modificados aunque nadie los tocó.
+* text=auto eol=lf
+
+# Archivos binarios: Git no debe tocarlos
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary

@@ -1,0 +1,13 @@
+# Redirige la raíz del proyecto hacia /public.
+#
+# Esto permite copiar la carpeta completa dentro de www/ o htdocs/ y que
+# funcione, sin tener que configurar un VirtualHost. En un servidor real lo
+# correcto es apuntar el DocumentRoot directamente a /public y borrar este
+# archivo.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+Options -Indexes

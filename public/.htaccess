@@ -1,0 +1,20 @@
+# Envía toda petición al front controller (public/index.php),
+# excepto cuando el archivo solicitado existe de verdad (CSS, JS, imágenes).
+#
+# Requiere mod_rewrite. En WAMP se activa desde el menú:
+#   Apache > Apache modules > rewrite_module
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # No reescribir archivos ni carpetas que existen
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Todo lo demás va al front controller
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# No listar el contenido de las carpetas
+Options -Indexes
