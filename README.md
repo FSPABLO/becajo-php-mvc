@@ -179,6 +179,15 @@ Después se sustituye el `<script>` de `app/Views/partials/head.php` por un
 
 ---
 
+## Licencia
+
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).
+
+Puede usar, estudiar, modificar y redistribuir este código libremente para
+cualquier **propósito no comercial**: estudio personal, docencia, investigación
+y proyectos de instituciones educativas o sin fines de lucro. El uso comercial
+requiere permiso de los autores.
+
 ## Aviso
 
 Becajo es una **empresa ficticia**. Las métricas, el caso de éxito y los datos de

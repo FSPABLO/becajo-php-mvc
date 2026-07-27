@@ -18,7 +18,7 @@ declare(strict_types=1);
 <!DOCTYPE html>
 <html lang="es-MX" class="scroll-smooth">
 <head>
-    <?= $vista->renderizar('partials/head', compact('meta', 'empresa', 'vista')) ?>
+    <?= $vista->renderizar('partials/head', compact('meta', 'empresa')) ?>
 </head>
 <body class="bg-white font-sans antialiased">
 

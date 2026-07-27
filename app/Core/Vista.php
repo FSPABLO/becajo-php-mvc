@@ -25,24 +25,31 @@ final class Vista
     /**
      * Renderiza una vista suelta (sin diseño envolvente).
      *
-     * @param array<string, mixed> $datos
+     * Las variables internas van con prefijo __ a propósito. extract() vuelca
+     * las claves de $datos como variables locales, así que cualquier nombre
+     * "normal" usado aquí (como $ruta o $vista) chocaría con un dato de la
+     * vista. Ese choque ya causó un error real: el parámetro se llamaba $vista
+     * y, por EXTR_SKIP, impedía inyectar el objeto Vista en las plantillas.
+     *
+     * @param array<string, mixed> $__datos
      */
-    public function renderizar(string $vista, array $datos = []): string
+    public function renderizar(string $__vista, array $__datos = []): string
     {
-        $ruta = $this->directorioVistas . '/' . $vista . '.php';
+        $__archivo = $this->directorioVistas . '/' . $__vista . '.php';
 
-        if (!is_file($ruta)) {
-            throw new \RuntimeException("Vista no encontrada: {$vista} ({$ruta})");
+        if (!is_file($__archivo)) {
+            throw new \RuntimeException("Vista no encontrada: {$__vista} ({$__archivo})");
         }
 
-        // Disponible en toda vista para construir enlaces y rutas de recursos.
-        $datos['rutaBase'] = $this->rutaBase;
-        $datos['vista'] = $this;
+        extract($__datos, EXTR_SKIP);
 
-        extract($datos, EXTR_SKIP);
+        // Se asignan DESPUÉS de extract() para garantizar que siempre existan
+        // y que ningún dato de la vista pueda suplantarlas.
+        $vista = $this;
+        $rutaBase = $this->rutaBase;
 
         ob_start();
-        require $ruta;
+        require $__archivo;
 
         return (string) ob_get_clean();
     }
@@ -52,9 +59,9 @@ final class Vista
      *
      * @param array<string, mixed> $datos
      */
-    public function renderizarConPlantilla(string $vista, array $datos, string $plantilla): string
+    public function renderizarConPlantilla(string $nombreVista, array $datos, string $plantilla): string
     {
-        $datos['contenido'] = $this->renderizar($vista, $datos);
+        $datos['contenido'] = $this->renderizar($nombreVista, $datos);
 
         return $this->renderizar('layouts/' . $plantilla, $datos);
     }
