@@ -11,6 +11,26 @@ PHP 8 con arquitectura **MVC**, Tailwind CSS y Apache.
 
 ## Cómo ejecutarlo
 
+### Docker (recomendado — LAMP: Linux + Apache + MySQL/MariaDB + PHP)
+
+Es el equivalente funcional de WAMP: mismo Apache, mismo PHP, mismo resultado
+en el navegador, corriendo sobre Linux en lugar de Windows. Toda la
+configuración vive en `Dockerfile` y `docker-compose.yml`, así que cualquier
+integrante del equipo levanta exactamente el mismo entorno con un comando.
+
+```bash
+cd becajo
+docker compose up --build
+```
+
+La primera vez tarda unos minutos (descarga la imagen de PHP). Las siguientes
+veces arranca en segundos. Abra `http://localhost:8080`.
+
+Para detenerlo: `Ctrl + C`, o en otra terminal `docker compose down`.
+
+Los archivos del proyecto están montados como volumen: cualquier cambio que
+haga en su editor se refleja de inmediato, sin reconstruir la imagen.
+
 ### Opción rápida — servidor embebido de PHP
 
 ```bash

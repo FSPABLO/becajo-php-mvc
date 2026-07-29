@@ -1,0 +1,21 @@
+# Becajo — LAMP en Docker
+#
+# Levanta Apache + PHP sirviendo el proyecto. Es el equivalente funcional
+# de instalar WAMP: mismo Apache, mismo PHP, mismo resultado en el navegador.
+# La diferencia es que corre sobre Linux (LAMP) y queda descrito en un
+# archivo que cualquier compañero del equipo puede reproducir igual con
+# "docker compose up", sin instalar nada más en su máquina.
+
+services:
+  web:
+    build: .
+    container_name: becajo-web
+    ports:
+      # http://localhost:8080 en la Mac -> puerto 80 dentro del contenedor
+      - "8080:80"
+    volumes:
+      # Monta el proyecto dentro del contenedor. Cualquier cambio que hagas
+      # en tu editor se refleja al instante, sin reconstruir la imagen.
+      - .:/var/www/html
+    environment:
+      APP_ENV: desarrollo
