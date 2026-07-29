@@ -25,7 +25,18 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' \
 #    Por defecto Apache lo ignora salvo que se le autorice explícitamente.
 RUN sed -ri -e 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf
 
-# 4. Puerto dinámico.
+# 4. Copiar el proyecto dentro de la imagen.
+#
+#    En tu máquina, docker-compose.yml monta la carpeta del proyecto como
+#    volumen, así que este paso "no se nota": el contenido del volumen tapa
+#    lo que sea que haya aquí dentro. Pero un servicio de hosting como Render
+#    NO monta ningún volumen: solo construye la imagen y la ejecuta tal cual.
+#    Sin este COPY, el contenedor arranca con /var/www/html/public vacío
+#    (el error "DocumentRoot does not exist" que se vio en el log de Render).
+#    .dockerignore excluye lo que no debe viajar dentro de la imagen (.git, etc).
+COPY . /var/www/html
+
+# 5. Puerto dinámico.
 #
 #    Localmente Apache siempre usa el 80 (docker-compose.yml lo publica en
 #    8080). En un servicio de hosting como Render, la plataforma asigna el
