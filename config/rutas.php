@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Core\Enrutador;
 
@@ -15,4 +16,7 @@ use App\Core\Enrutador;
  */
 return static function (Enrutador $enrutador): void {
     $enrutador->get('/', [HomeController::class, 'index']);
+
+    // Herramientas internas (menú "Herramientas" del encabezado).
+    $enrutador->get('/herramientas/instrumento-bd', [HerramientasController::class, 'instrumentoBd']);
 };

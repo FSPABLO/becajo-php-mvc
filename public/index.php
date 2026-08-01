@@ -21,6 +21,7 @@ use App\Core\Enrutador;
 use App\Core\Peticion;
 use App\Core\Vista;
 use App\Models\RepositorioArreglo;
+use App\Models\RepositorioInstrumentoArreglo;
 
 const RAIZ = __DIR__ . '/..';
 
@@ -44,9 +45,12 @@ $vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase());
 //     $repositorio = new RepositorioPdo(require RAIZ . '/config/base_datos.php');
 // Ni el controlador ni las vistas cambian.
 $repositorio = new RepositorioArreglo(RAIZ . '/config/contenido.php');
+
+// Catálogo del instrumento de consultoría (7 dominios, 25 procesos, 75 controles).
+$instrumento = new RepositorioInstrumentoArreglo(RAIZ . '/config/instrumento-bd.php');
 // ─────────────────────────────────────────────────────────────────────────────
 
-$contenedor = new Contenedor($peticion, $vista, $repositorio);
+$contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento);
 
 // 4. Rutas.
 $enrutador = new Enrutador();

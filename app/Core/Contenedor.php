@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Models\Contratos\RepositorioContenido;
+use App\Models\Contratos\RepositorioInstrumento;
 
 /**
  * Contenedor de dependencias.
@@ -22,6 +23,7 @@ final class Contenedor
         private readonly Peticion $peticion,
         private readonly Vista $vista,
         private readonly RepositorioContenido $repositorio,
+        private readonly RepositorioInstrumento $instrumento,
     ) {
     }
 
@@ -38,5 +40,10 @@ final class Contenedor
     public function repositorio(): RepositorioContenido
     {
         return $this->repositorio;
+    }
+
+    public function instrumento(): RepositorioInstrumento
+    {
+        return $this->instrumento;
     }
 }

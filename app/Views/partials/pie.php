@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 /**
+ * @var \App\Core\Vista      $vista
  * @var array<string, mixed> $empresa
  * @var list<array{etiqueta: string, destino: string}> $navegacion
+ * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
  */
+$herramientas = $herramientas ?? [];
 ?>
 <footer class="border-t border-white/10 bg-marina-950">
     <div class="mx-auto max-w-7xl px-6 py-14 lg:px-8">
@@ -28,9 +31,17 @@ declare(strict_types=1);
                 <ul class="mt-4 space-y-2.5">
                     <?php foreach ($navegacion as $enlace): ?>
                         <li>
-                            <a href="<?= e($enlace['destino']) ?>"
+                            <a href="<?= e($vista->destino($enlace['destino'])) ?>"
                                class="text-marina-300 transition hover:text-acento-400">
                                 <?= e($enlace['etiqueta']) ?>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                    <?php foreach ($herramientas as $herramienta): ?>
+                        <li>
+                            <a href="<?= e($vista->destino($herramienta['destino'])) ?>"
+                               class="text-marina-300 transition hover:text-acento-400">
+                                <?= e($herramienta['etiqueta']) ?>
                             </a>
                         </li>
                     <?php endforeach; ?>

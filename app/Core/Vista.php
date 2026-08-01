@@ -81,4 +81,19 @@ final class Vista
     {
         return $this->rutaBase . '/' . ltrim($ruta, '/');
     }
+
+    /**
+     * Resuelve un destino de navegación, venga de la portada o de otra página.
+     *
+     * El menú del sitio mezcla anclas de la portada ("#servicios") con rutas
+     * propias ("/herramientas/..."). Un ancla suelta solo funciona si el
+     * visitante ya está en la portada; anteponerle la raíz la vuelve válida
+     * desde cualquier página sin recargar cuando ya se está en ella.
+     */
+    public function destino(string $ruta): string
+    {
+        return str_starts_with($ruta, '#')
+            ? $this->url() . $ruta
+            : $this->url($ruta);
+    }
 }

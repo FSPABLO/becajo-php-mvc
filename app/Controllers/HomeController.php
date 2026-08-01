@@ -28,6 +28,7 @@ final class HomeController extends Controlador
             'empresa'             => $repositorio->empresa(),
             'meta'                => $repositorio->meta(),
             'navegacion'          => $repositorio->navegacion(),
+            'herramientas'        => $repositorio->herramientas(),
             'hero'                => $repositorio->hero(),
             'retos'               => $repositorio->retos(),
             'encabezadoServicios' => $repositorio->encabezadoServicios(),

@@ -1,0 +1,82 @@
+/*
+ * Becajo — instrumento de consultoría
+ *
+ * Solo lo que Tailwind no resuelve con clases utilitarias: el comportamiento
+ * de impresión y dos ajustes de captura. Ningún color literal: los colores
+ * salen de los tokens declarados en la configuración de Tailwind.
+ */
+
+/*
+ * El guion oculta paneles, secciones y tarjetas con el atributo [hidden]. La
+ * regla por omisión del navegador la gana cualquier utilidad de display de
+ * Tailwind (flex, grid), así que aquí se le devuelve la última palabra.
+ */
+[hidden] {
+    display: none !important;
+}
+
+/* La barra de pestañas se adhiere bajo el encabezado fijo del sitio (4 rem). */
+[data-panel] {
+    scroll-margin-top: 8rem;
+}
+
+/* El área de hallazgo crece con el texto sin obligar a arrastrar la esquina. */
+[data-campo="hallazgo"],
+[data-campo="recomendacion"],
+[data-campo="notas"] {
+    resize: vertical;
+    min-height: 3.5rem;
+}
+
+/*
+ * Informe impreso.
+ *
+ * Se retira todo lo que solo sirve para operar la herramienta —encabezado del
+ * sitio, pestañas, buscador, filtros, botones de acción y navegación entre
+ * dominios— y queda el contenido: identificación, controles evaluados y
+ * tablero. La clase .no-imprimir marca esos elementos en las plantillas.
+ */
+@media print {
+    .no-imprimir,
+    body > header,
+    body > footer {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    /* Sin el encabezado fijo, el relleno superior que lo compensaba sobra. */
+    main > div {
+        padding-top: 0 !important;
+    }
+
+    /* Ni sombras ni fondos de pantalla: tinta desperdiciada. */
+    * {
+        box-shadow: none !important;
+    }
+
+    /* Una tarjeta o una fila partida entre dos hojas es ilegible. */
+    article,
+    tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    h2,
+    h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    /* La tabla del tablero cabe en la hoja en lugar de desplazarse. */
+    table {
+        min-width: 0 !important;
+        font-size: 0.7rem;
+    }
+
+    @page {
+        margin: 1.5cm;
+    }
+}

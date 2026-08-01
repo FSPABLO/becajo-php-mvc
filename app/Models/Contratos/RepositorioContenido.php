@@ -28,6 +28,9 @@ interface RepositorioContenido
     /** @return list<array{etiqueta: string, destino: string}> */
     public function navegacion(): array;
 
+    /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
+    public function herramientas(): array;
+
     /** @return array<string, mixed> */
     public function hero(): array;
 

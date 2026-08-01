@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Models\Contratos\RepositorioContenido;
+use App\Models\Contratos\RepositorioInstrumento;
 
 /**
  * Clase base de todos los controladores.
@@ -22,6 +23,11 @@ abstract class Controlador
     protected function repositorio(): RepositorioContenido
     {
         return $this->contenedor->repositorio();
+    }
+
+    protected function instrumento(): RepositorioInstrumento
+    {
+        return $this->contenedor->instrumento();
     }
 
     /**

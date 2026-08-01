@@ -51,6 +51,12 @@ final class RepositorioArreglo implements RepositorioContenido
         return $this->datos['navegacion'];
     }
 
+    /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
+    public function herramientas(): array
+    {
+        return $this->datos['herramientas'];
+    }
+
     /** @return array<string, mixed> */
     public function hero(): array
     {
