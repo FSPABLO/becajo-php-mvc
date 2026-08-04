@@ -38,6 +38,29 @@ interface RepositorioAuditorias
     /** @return list<Usuario> */
     public function usuariosPorRol(string $rol): array;
 
+    /**
+     * ¿Hay ya una cuenta con ese correo? Sin distinguir mayúsculas.
+     *
+     * Sirve para dar un mensaje claro en el formulario de registro. No
+     * sustituye a la restricción uq_usuario_correo: entre esta comprobación y
+     * el INSERT cabe otra petición con el mismo correo.
+     */
+    public function correoRegistrado(string $correo): bool;
+
+    /**
+     * Crea una cuenta y devuelve su identificador.
+     *
+     * Recibe el hash ya calculado, no la contraseña: el repositorio guarda lo
+     * que le dan y nunca ve una contraseña en claro.
+     */
+    public function registrarUsuario(
+        string $nombre,
+        string $correo,
+        string $hash,
+        string $rol,
+        string $organizacion,
+    ): int;
+
     // ── Auditorías ───────────────────────────────────────────────────────────
 
     /**

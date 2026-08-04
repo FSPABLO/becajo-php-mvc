@@ -134,16 +134,28 @@ INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidenci
 -- Datos de PRUEBA — usuarios (con organización), auditoría y evaluaciones
 -- ============================================================================
 
--- Contraseña de ambos usuarios de prueba: "cambiar123" (hash de ejemplo,
--- NO usar en producción — Persona 3 debe generarlo con password_hash()).
+-- Hashes reales generados con password_hash($clave, PASSWORD_DEFAULT) de PHP.
+-- Los de la versión anterior eran texto de relleno y no correspondían a
+-- ninguna contraseña: password_verify() siempre devolvía false contra ellos.
+--
+--   ana.alfaro@consultora.example  ->  auditor2026
+--   luis.rojas@empresa.example     ->  adminbd2026
+--
+-- Son credenciales de DESARROLLO, publicadas aquí a propósito para que
+-- cualquiera del equipo pueda entrar tras cargar la semilla. Antes de mostrar
+-- el sistema fuera del equipo hay que cambiarlas.
+--
+-- La cuenta ADMIN_BD se crea aquí y no desde el formulario de registro: el
+-- alta pública siempre produce cuentas AUDITOR, porque ADMIN_BD administra el
+-- catálogo maestro que evalúan todos los demás.
 INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
     ('Ana Alfaro', 'ana.alfaro@consultora.example',
-     '$2y$10$X8yZ0h1qFh8yYQeQABCDEuQ9m1r8T2p6v3n5j7k9l1M2n3O4p5Q6R', 'AUDITOR',
+     '$2y$10$bABCcFk3HofIa..igYjdf.mdtdg4i.QUhGm4k6ivu0RWMPRFblbUi', 'AUDITOR',
      'Consultora de Auditoría Ejemplo S.A.');
 
 INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
     ('Luis Rojas', 'luis.rojas@empresa.example',
-     '$2y$10$X8yZ0h1qFh8yYQeQABCDEuQ9m1r8T2p6v3n5j7k9l1M2n3O4p5Q6R', 'ADMIN_BD',
+     '$2y$10$etR..zhP36VNYYNoxWzmF.XaV3gtc5y5k8Qs4TzWK6Zw9FpjXioMu', 'ADMIN_BD',
      'Cooperativa de Ejemplo R.L.');
 
 -- id_auditor = 1 (Ana), id_administrador_bd = 2 (Luis) -> organización

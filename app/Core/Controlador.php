@@ -7,6 +7,7 @@ namespace App\Core;
 use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Contratos\RepositorioInstrumento;
+use App\Models\Entidades\Usuario;
 
 /**
  * Clase base de todos los controladores.
@@ -44,6 +45,49 @@ abstract class Controlador
     protected function sesion(): Sesion
     {
         return $this->contenedor->sesion();
+    }
+
+    protected function autenticacion(): Autenticacion
+    {
+        return $this->contenedor->autenticacion();
+    }
+
+    /**
+     * Exige que haya alguien autenticado y devuelve quién es.
+     *
+     * Primera línea de toda acción del módulo de auditorías. Si no hay sesión,
+     * corta aquí y manda al formulario de ingreso: la acción protegida ni
+     * siquiera empieza a ejecutarse.
+     */
+    protected function exigirUsuario(): Usuario
+    {
+        $usuario = $this->autenticacion()->usuario();
+
+        if ($usuario === null) {
+            $this->sesion()->destello('error', 'Inicie sesión para continuar.');
+            $this->redirigir('/ingresar');
+        }
+
+        return $usuario;
+    }
+
+    /**
+     * Exige además el rol de administrador de base de datos.
+     *
+     * Lo usará el CRUD del catálogo maestro: que un auditor pueda responder
+     * cuestionarios no significa que pueda reescribir los controles que todos
+     * los demás evalúan.
+     */
+    protected function exigirAdministrador(): Usuario
+    {
+        $usuario = $this->exigirUsuario();
+
+        if (!$usuario->esAdministrador()) {
+            $this->sesion()->destello('error', 'No tiene permisos para esa sección.');
+            $this->redirigir('/evaluacion');
+        }
+
+        return $usuario;
     }
 
     /** Atajo para leer un parámetro de la URL: /auditorias/{id} -> parametro('id'). */

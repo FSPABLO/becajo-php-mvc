@@ -107,7 +107,12 @@ final class Sesion
     {
         $this->iniciar();
 
-        session_regenerate_id(true);
+        // Solo tiene sentido si la sesión llegó a abrirse de verdad. Sin esta
+        // guarda, un contexto donde session_start() no prosperó (CLI, cabeceras
+        // ya enviadas) genera un aviso en vez de no hacer nada.
+        if (session_status() === \PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 
     /** Cierra la sesión y descarta su contenido. */
@@ -116,7 +121,10 @@ final class Sesion
         $this->iniciar();
 
         $_SESSION = [];
-        session_destroy();
+
+        if (session_status() === \PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
 
         $this->iniciada = false;
     }

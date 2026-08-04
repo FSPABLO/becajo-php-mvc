@@ -124,6 +124,37 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
         );
     }
 
+    public function correoRegistrado(string $correo): bool
+    {
+        $fila = $this->bd->consultarUna(
+            'SELECT COUNT(*) AS n FROM usuario WHERE LOWER(correo) = LOWER(:correo)',
+            ['correo' => $correo],
+        );
+
+        return (int) ($fila['n'] ?? 0) > 0;
+    }
+
+    public function registrarUsuario(
+        string $nombre,
+        string $correo,
+        string $hash,
+        string $rol,
+        string $organizacion,
+    ): int {
+        return $this->bd->insertar(
+            'INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion, activo)
+             VALUES (:nombre, :correo, :hash, :rol, :organizacion, 1)
+             RETURNING id_usuario INTO :id',
+            [
+                'nombre'       => $nombre,
+                'correo'       => $correo,
+                'hash'         => $hash,
+                'rol'          => $rol,
+                'organizacion' => $organizacion,
+            ],
+        );
+    }
+
     // ── Auditorías ───────────────────────────────────────────────────────────
 
     /** @return list<Auditoria> */

@@ -37,6 +37,12 @@ final class Contenedor
     ) {
     }
 
+    /**
+     * Se construye al pedirla y no en el constructor porque depende del
+     * repositorio de auditorías, que puede no existir.
+     */
+    private ?Autenticacion $autenticacion = null;
+
     public function peticion(): Peticion
     {
         return $this->peticion;
@@ -80,6 +86,11 @@ final class Contenedor
         }
 
         return $this->auditorias;
+    }
+
+    public function autenticacion(): Autenticacion
+    {
+        return $this->autenticacion ??= new Autenticacion($this->sesion, $this->auditorias());
     }
 
     /** ¿Hay base de datos configurada? Lo usan las vistas para ocultar el menú. */
