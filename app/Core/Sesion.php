@@ -47,6 +47,20 @@ final class Sesion
         $this->iniciada = true;
     }
 
+    /**
+     * ¿Este visitante ya traía una sesión?
+     *
+     * Permite leer mensajes pendientes sin abrir sesión a quien nunca la tuvo.
+     * Sin esta comprobación, mostrar avisos en el diseño principal obligaría a
+     * llamar a iniciar() en toda página, y el sitio público —que no necesita
+     * sesión para nada— acabaría enviando una cookie a cada visitante.
+     */
+    public function existePrevia(): bool
+    {
+        return session_status() === \PHP_SESSION_ACTIVE
+            || isset($_COOKIE[session_name()]);
+    }
+
     public function poner(string $clave, mixed $valor): void
     {
         $this->iniciar();

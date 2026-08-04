@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Autenticacion;
 use App\Core\Controlador;
 
 /**
  * Entrada, salida y alta de cuentas.
  *
- * Solo hay acciones POST. Los formularios (GET /ingresar y GET /registrarse)
- * los construirá Persona 4; hasta entonces no se declaran esas rutas, porque
- * una ruta que apunta a una vista inexistente falla en cuanto alguien la abre.
- *
- * Toda acción termina en un redireccionamiento y deja el resultado en un
+ * Toda acción POST termina en un redireccionamiento y deja el resultado en un
  * mensaje de sesión (destello). Es el patrón PRG: si el usuario recarga
  * después de enviar, el navegador repite el GET del destino y no el POST, así
  * que no se reintenta el alta ni el ingreso.
@@ -26,6 +23,39 @@ final class AutenticacionController extends Controlador
 {
     /** Destino tras entrar o registrarse. Provisional hasta que exista el panel. */
     private const DESTINO = '/evaluacion';
+
+    public function ingresarFormulario(): void
+    {
+        $this->rechazarSiYaEntro();
+
+        $this->ver('auth/ingresar', [
+            ...$this->contexto(),
+            'meta' => $this->meta('Iniciar sesión'),
+            // Se devuelve el correo del intento fallido para no obligar a
+            // reescribirlo. La contraseña nunca se repuebla.
+            'correo' => $this->sesion()->destello('correo'),
+        ]);
+    }
+
+    public function registrarseFormulario(): void
+    {
+        $this->rechazarSiYaEntro();
+
+        // A diferencia de los destellos, estos se leen y se borran a mano
+        // porque son arreglos y destello() solo maneja cadenas.
+        $errores = $this->sesion()->obtener('registro.errores', []);
+        $valores = $this->sesion()->obtener('registro.valores', []);
+        $this->sesion()->olvidar('registro.errores');
+        $this->sesion()->olvidar('registro.valores');
+
+        $this->ver('auth/registrarse', [
+            ...$this->contexto(),
+            'meta'        => $this->meta('Crear cuenta'),
+            'errores'     => is_array($errores) ? $errores : [],
+            'valores'     => is_array($valores) ? $valores : [],
+            'minimoClave' => Autenticacion::MINIMO_CLAVE,
+        ]);
+    }
 
     public function ingresar(): void
     {
@@ -108,4 +138,20 @@ final class AutenticacionController extends Controlador
 
         $this->redirigir('/');
     }
+
+    // ── Apoyo ────────────────────────────────────────────────────────────────
+
+    /**
+     * Quien ya entró no tiene nada que hacer en el formulario de ingreso.
+     *
+     * Sin esto, volver atrás en el navegador tras autenticarse muestra otra vez
+     * la pantalla de login, que es desconcertante.
+     */
+    private function rechazarSiYaEntro(): void
+    {
+        if ($this->autenticacion()->hayUsuario()) {
+            $this->redirigir(self::DESTINO);
+        }
+    }
+
 }

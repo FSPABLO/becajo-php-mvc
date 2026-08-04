@@ -103,7 +103,59 @@ abstract class Controlador
      */
     protected function ver(string $vista, array $datos = [], string $plantilla = 'principal'): void
     {
+        $datos['mensajes'] = $datos['mensajes'] ?? $this->mensajesPendientes();
+
         echo $this->contenedor->vista()->renderizarConPlantilla($vista, $datos, $plantilla);
+    }
+
+    /**
+     * Datos que el diseño principal necesita en toda página.
+     *
+     * @return array<string, mixed>
+     */
+    protected function contexto(): array
+    {
+        return [
+            'empresa'      => $this->repositorio()->empresa(),
+            'navegacion'   => $this->repositorio()->navegacion(),
+            'herramientas' => $this->repositorio()->herramientas(),
+        ];
+    }
+
+    /** @return array{titulo: string, descripcion: string} */
+    protected function meta(string $titulo, string $descripcion = ''): array
+    {
+        return [
+            'titulo'      => $titulo . ' | ' . $this->repositorio()->empresa()['nombre'],
+            'descripcion' => $descripcion !== '' ? $descripcion
+                : 'Módulo de evaluación de riesgo en la administración de bases '
+                . 'de datos según ISO/IEC 27002.',
+        ];
+    }
+
+    /**
+     * Recoge los avisos que dejó la petición anterior antes de redirigir.
+     *
+     * Se leen aquí, en un solo sitio, para que toda vista los reciba sin que
+     * cada controlador tenga que acordarse de pasarlos. Leerlos los consume:
+     * es justo lo que se busca, porque ya se están mostrando.
+     *
+     * Si el visitante no traía sesión no puede haber nada pendiente, así que
+     * ni siquiera se abre una. Es lo que evita que la portada mande una cookie
+     * a quien solo pasaba por ahí.
+     *
+     * @return array{aviso: string|null, error: string|null}
+     */
+    private function mensajesPendientes(): array
+    {
+        if (!$this->sesion()->existePrevia()) {
+            return ['aviso' => null, 'error' => null];
+        }
+
+        return [
+            'aviso' => $this->sesion()->destello('aviso'),
+            'error' => $this->sesion()->destello('error'),
+        ];
     }
 
     /**

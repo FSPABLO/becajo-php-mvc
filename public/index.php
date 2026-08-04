@@ -82,6 +82,13 @@ if (is_file($archivoBaseDatos)) {
 
 $contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento, $sesion, $auditorias);
 
+// Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a
+// Vista la forma de obtenerlo, no el valor: pedirlo abre la sesión, y las
+// páginas sin formulario no tienen por qué abrir ninguna.
+if ($auditorias !== null) {
+    $vista->proveerToken(static fn (): string => $contenedor->autenticacion()->token());
+}
+
 // 4. Rutas.
 $enrutador = new Enrutador();
 (require RAIZ . '/config/rutas.php')($enrutador);

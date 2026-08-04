@@ -23,6 +23,46 @@ final class Vista
     }
 
     /**
+     * Cómo obtener el token contra CSRF, si el módulo de auditorías existe.
+     *
+     * Se guarda la FORMA de conseguirlo y no el token: pedirlo abre la sesión,
+     * y el sitio público no tiene por qué abrir ninguna. Así solo las páginas
+     * que de verdad pintan un formulario pagan ese coste.
+     *
+     * @var (\Closure(): string)|null
+     */
+    private ?\Closure $generadorToken = null;
+
+    /** La llama public/index.php cuando hay base de datos configurada. */
+    public function proveerToken(\Closure $generador): void
+    {
+        $this->generadorToken = $generador;
+    }
+
+    /**
+     * Campo oculto que debe llevar TODO formulario que envíe por POST.
+     *
+     *     <form method="post" action="...">
+     *         <?= $vista->campoToken() ?>
+     *
+     * Sin él, el controlador rechaza el envío. Falla ruidosamente si nadie
+     * proveyó el generador, porque un formulario que se pinta sin token es un
+     * formulario que el usuario rellenará para nada.
+     */
+    public function campoToken(): string
+    {
+        if ($this->generadorToken === null) {
+            throw new \RuntimeException(
+                'No hay token disponible: esta página necesita el módulo de '
+                . 'auditorías (config/base_datos.php).'
+            );
+        }
+
+        return '<input type="hidden" name="_token" value="'
+             . e(($this->generadorToken)()) . '">';
+    }
+
+    /**
      * Renderiza una vista suelta (sin diseño envolvente).
      *
      * Las variables internas van con prefijo __ a propósito. extract() vuelca

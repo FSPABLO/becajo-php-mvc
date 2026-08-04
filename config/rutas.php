@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AuditoriaController;
 use App\Controllers\AutenticacionController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
@@ -23,10 +24,37 @@ return static function (Enrutador $enrutador): void {
 
     // ── Autenticación (Bloque 3) ─────────────────────────────────────────────
     //
-    // Solo las acciones POST. Los formularios GET /ingresar y GET /registrarse
-    // se declararán cuando existan sus vistas; declararlos ahora daría un error
-    // de "vista no encontrada" en vez de un 404 honesto.
+    // Cada formulario es un par GET/POST sobre la misma URL: el GET la pinta y
+    // el POST la procesa. Al fallar, el POST redirige a su propio GET, así que
+    // recargar nunca reenvía el formulario.
+    $enrutador->get('/ingresar', [AutenticacionController::class, 'ingresarFormulario']);
     $enrutador->post('/ingresar', [AutenticacionController::class, 'ingresar']);
+
+    $enrutador->get('/registrarse', [AutenticacionController::class, 'registrarseFormulario']);
     $enrutador->post('/registrarse', [AutenticacionController::class, 'registrar']);
+
+    // Cerrar sesión es POST y no GET a propósito: una acción que cambia estado
+    // no debe poder dispararse con un simple enlace o una etiqueta <img>.
     $enrutador->post('/salir', [AutenticacionController::class, 'salir']);
+
+    // ── Módulo de evaluación de riesgo (Bloque 4) ────────────────────────────
+    //
+    // El orden de declaración no importa: el enrutador resuelve siempre la
+    // coincidencia exacta antes de probar los patrones con {llaves}, así que
+    // "/evaluacion/nueva" nunca se lo queda "/evaluacion/{id}".
+    $enrutador->get('/evaluacion', [AuditoriaController::class, 'panel']);
+
+    $enrutador->get('/evaluacion/nueva', [AuditoriaController::class, 'nuevaFormulario']);
+    $enrutador->post('/evaluacion/nueva', [AuditoriaController::class, 'crear']);
+
+    $enrutador->get('/evaluacion/{id}', [AuditoriaController::class, 'mostrar']);
+    $enrutador->post('/evaluacion/{id}', [AuditoriaController::class, 'actualizar']);
+
+    $enrutador->get('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'plantillaControl']);
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'guardarControl']);
+
+    $enrutador->post('/evaluacion/{id}/finalizar', [AuditoriaController::class, 'finalizar']);
+    $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
+
+    $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
 };
