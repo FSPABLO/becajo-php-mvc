@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Models\Contratos\RepositorioAuditorias;
+use App\Models\Contratos\RepositorioCatalogo;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Contratos\RepositorioInstrumento;
 
@@ -91,6 +92,31 @@ final class Contenedor
     public function autenticacion(): Autenticacion
     {
         return $this->autenticacion ??= new Autenticacion($this->sesion, $this->auditorias());
+    }
+
+    /**
+     * El catálogo, con sus operaciones de escritura.
+     *
+     * Es el mismo objeto que devuelve instrumento(), pero visto por su otra
+     * cara: solo la implementación sobre Oracle sabe escribir, y la que lee
+     * config/instrumento-bd.php no. De ahí la comprobación en vez de un
+     * conversor de tipo a secas.
+     */
+    public function catalogo(): RepositorioCatalogo
+    {
+        if (!$this->instrumento instanceof RepositorioCatalogo) {
+            throw new \RuntimeException(
+                'El catálogo solo se puede administrar con el instrumento en Oracle. '
+                . 'Revise "instrumento_en_oracle" en config/base_datos.php.'
+            );
+        }
+
+        return $this->instrumento;
+    }
+
+    public function hayCatalogo(): bool
+    {
+        return $this->instrumento instanceof RepositorioCatalogo;
     }
 
     /** ¿Hay base de datos configurada? Lo usan las vistas para ocultar el menú. */

@@ -45,21 +45,32 @@ CREATE TABLE usuario (
 -- ── DOMINIO ──────────────────────────────────────────────────────────────
 -- clave: identificador natural corto, el mismo que usa el frontend
 -- (config/instrumento-bd.php) para las pestañas: 'gobierno', 'accesos', etc.
+--
+-- orden: posición en que se presenta el dominio (Fase 5 — CRUD del catálogo).
+-- Hace falta una columna propia porque ningún otro dato la contiene: ordenar
+-- por 'clave' daría un listado alfabético (accesos, almacenamiento,
+-- configuración...) que no es el del instrumento. Antes se deducía del menor
+-- código de control que colgaba de cada dominio, pero eso deja de valer en
+-- cuanto el catálogo se edita desde pantalla: un control nuevo con código alto
+-- movería de sitio a todo su dominio.
 CREATE TABLE dominio (
     clave         VARCHAR2(20)   PRIMARY KEY,
     nombre        VARCHAR2(100)  NOT NULL,
     nombre_corto  VARCHAR2(30)   NOT NULL,
-    descripcion   VARCHAR2(500)
+    descripcion   VARCHAR2(500),
+    orden         NUMBER(3)      DEFAULT 0 NOT NULL
 );
 
 -- ── PROCESO ──────────────────────────────────────────────────────────────
 -- numero: se conserva el número original del catálogo (1-25), no el orden
 -- de presentación, para trazabilidad con el marco de referencia de Persona 1.
+-- Por eso 'orden' es una columna aparte, igual que en DOMINIO.
 CREATE TABLE proceso (
     numero         NUMBER(3)      PRIMARY KEY,
     clave_dominio  VARCHAR2(20)   NOT NULL,
     nombre         VARCHAR2(200)  NOT NULL,
     ancla          VARCHAR2(300),
+    orden          NUMBER(3)      DEFAULT 0 NOT NULL,
     CONSTRAINT fk_proceso_dominio
         FOREIGN KEY (clave_dominio) REFERENCES dominio (clave)
 );

@@ -17,6 +17,12 @@ final class Dominio
         public readonly string $nombre,
         public readonly string $corto,
         public readonly string $descripcion,
+        /**
+         * Posición en que se presenta el dominio. No se deduce de ningún otro
+         * dato: ordenar por 'clave' daría un listado alfabético que no es el
+         * del instrumento. Ver el comentario de la tabla en 01_esquema.sql.
+         */
+        public readonly int $orden = 0,
     ) {
     }
 
@@ -32,6 +38,7 @@ final class Dominio
             // fila; si falta, se cae al nombre completo sin romper nada.
             corto:       (string) ($fila['corto'] ?? $nombre),
             descripcion: (string) ($fila['descripcion'] ?? ''),
+            orden:       (int) ($fila['orden'] ?? 0),
         );
     }
 }

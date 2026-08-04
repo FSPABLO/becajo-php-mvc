@@ -41,11 +41,18 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
         return $this->datos['meta'];
     }
 
-    /** @return list<Dominio> */
+    /**
+     * @return list<Dominio>
+     *
+     * En el archivo PHP el orden de presentación es el orden en que están
+     * escritos, así que se numera por posición. En Oracle, en cambio, no hay
+     * "orden del archivo" y la columna 'orden' existe justo para suplirlo.
+     */
     public function dominios(): array
     {
         return array_map(
-            static fn (array $fila): Dominio => Dominio::desdeArreglo($fila),
+            static fn (int $i, array $fila): Dominio => Dominio::desdeArreglo($fila + ['orden' => $i + 1]),
+            array_keys($this->datos['dominios']),
             $this->datos['dominios'],
         );
     }
@@ -54,7 +61,8 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
     public function procesos(): array
     {
         return array_map(
-            static fn (array $fila): Proceso => Proceso::desdeArreglo($fila),
+            static fn (int $i, array $fila): Proceso => Proceso::desdeArreglo($fila + ['orden' => $i + 1]),
+            array_keys($this->datos['procesos']),
             $this->datos['procesos'],
         );
     }

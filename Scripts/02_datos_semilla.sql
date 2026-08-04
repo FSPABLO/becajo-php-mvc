@@ -130,6 +130,40 @@ INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidenci
 INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidencia_esperada, pregunta) VALUES ('C-074', 24, 'ISO/IEC 27002:2022 A.5.22; ISO/IEC 27011:2016', 'El desempeño y el cumplimiento de seguridad del proveedor se supervisan con evidencia periódica y con validación por parte de la organización.', 'Informes de servicio recibidos y minutas de seguimiento del último año.', '¿Con qué frecuencia se revisa el cumplimiento del proveedor, qué evidencia entrega y quién la valida dentro de la organización?');
 INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidencia_esperada, pregunta) VALUES ('C-075', 24, 'ISO/IEC 27002:2022 A.5.23, A.5.21', 'Para los servicios de base de datos en la nube están definidas la matriz de responsabilidad compartida, la ubicación de los datos y el mecanismo de recuperación al terminar el servicio.', 'Matriz de responsabilidad compartida firmada y cláusula contractual de portabilidad o salida.', '¿En qué país residen los datos alojados en la nube, qué tareas de seguridad ejecuta el proveedor y cómo se recuperan los datos si termina el contrato?');
 
+-- ==========================================================================
+-- Orden de presentación inicial (columna 'orden' de DOMINIO y PROCESO)
+--
+-- Se deduce una sola vez del catálogo recién cargado, en lugar de repetirlo a
+-- mano en 32 INSERT donde un número mal tecleado pasaría inadvertido. Los
+-- códigos C-001..C-075 sí siguen el orden del instrumento, así que ordenar
+-- cada dominio y cada proceso por el menor código que le cuelga reconstruye
+-- la secuencia correcta.
+--
+-- A partir de aquí manda la columna: el CRUD del catálogo la edita y ya no se
+-- vuelve a derivar de los códigos.
+-- ==========================================================================
+
+MERGE INTO dominio d
+USING (
+    SELECT p.clave_dominio AS clave,
+           ROW_NUMBER() OVER (ORDER BY MIN(c.codigo)) AS posicion
+      FROM proceso p
+      JOIN control c ON c.numero_proceso = p.numero
+     GROUP BY p.clave_dominio
+) o ON (d.clave = o.clave)
+WHEN MATCHED THEN UPDATE SET d.orden = o.posicion;
+
+MERGE INTO proceso p
+USING (
+    SELECT c.numero_proceso AS numero,
+           ROW_NUMBER() OVER (ORDER BY MIN(c.codigo)) AS posicion
+      FROM control c
+     GROUP BY c.numero_proceso
+) o ON (p.numero = o.numero)
+WHEN MATCHED THEN UPDATE SET p.orden = o.posicion;
+
+COMMIT;
+
 -- ============================================================================
 -- Datos de PRUEBA — usuarios (con organización), auditoría y evaluaciones
 -- ============================================================================

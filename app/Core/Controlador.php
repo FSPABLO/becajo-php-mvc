@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Models\Contratos\RepositorioAuditorias;
+use App\Models\Contratos\RepositorioCatalogo;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Contratos\RepositorioInstrumento;
 use App\Models\Entidades\Usuario;
@@ -35,6 +36,11 @@ abstract class Controlador
     protected function auditorias(): RepositorioAuditorias
     {
         return $this->contenedor->auditorias();
+    }
+
+    protected function catalogo(): RepositorioCatalogo
+    {
+        return $this->contenedor->catalogo();
     }
 
     protected function peticion(): Peticion

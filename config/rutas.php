@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AuditoriaController;
 use App\Controllers\AutenticacionController;
+use App\Controllers\CatalogoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Core\Enrutador;
@@ -57,4 +58,32 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
 
     $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
+
+    // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
+    //
+    // Reservado al rol ADMIN_BD; lo comprueba el propio controlador.
+    //
+    // Cada entidad usa la misma acción para crear y para editar: la ruta
+    // ".../nuevo" no lleva parámetro y ".../{clave}" sí, y el controlador
+    // decide según lo reciba o no. La coincidencia exacta se resuelve antes
+    // que el patrón, así que "nuevo" nunca se interpreta como una clave.
+    $enrutador->get('/catalogo', [CatalogoController::class, 'indice']);
+
+    $enrutador->get('/catalogo/dominios/nuevo', [CatalogoController::class, 'dominioFormulario']);
+    $enrutador->post('/catalogo/dominios/nuevo', [CatalogoController::class, 'guardarDominio']);
+    $enrutador->get('/catalogo/dominios/{clave}', [CatalogoController::class, 'dominioFormulario']);
+    $enrutador->post('/catalogo/dominios/{clave}', [CatalogoController::class, 'guardarDominio']);
+    $enrutador->post('/catalogo/dominios/{clave}/eliminar', [CatalogoController::class, 'eliminarDominio']);
+
+    $enrutador->get('/catalogo/procesos/nuevo', [CatalogoController::class, 'procesoFormulario']);
+    $enrutador->post('/catalogo/procesos/nuevo', [CatalogoController::class, 'guardarProceso']);
+    $enrutador->get('/catalogo/procesos/{numero}', [CatalogoController::class, 'procesoFormulario']);
+    $enrutador->post('/catalogo/procesos/{numero}', [CatalogoController::class, 'guardarProceso']);
+    $enrutador->post('/catalogo/procesos/{numero}/eliminar', [CatalogoController::class, 'eliminarProceso']);
+
+    $enrutador->get('/catalogo/controles/nuevo', [CatalogoController::class, 'controlFormulario']);
+    $enrutador->post('/catalogo/controles/nuevo', [CatalogoController::class, 'guardarControl']);
+    $enrutador->get('/catalogo/controles/{codigo}', [CatalogoController::class, 'controlFormulario']);
+    $enrutador->post('/catalogo/controles/{codigo}', [CatalogoController::class, 'guardarControl']);
+    $enrutador->post('/catalogo/controles/{codigo}/eliminar', [CatalogoController::class, 'eliminarControl']);
 };

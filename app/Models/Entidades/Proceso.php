@@ -19,6 +19,8 @@ final class Proceso
         public readonly string $dominio,
         public readonly string $nombre,
         public readonly string $ancla,
+        /** Posición de presentación, distinta del número de catálogo. */
+        public readonly int $orden = 0,
     ) {
     }
 
@@ -30,6 +32,7 @@ final class Proceso
             dominio: (string) ($fila['dominio'] ?? ''),
             nombre:  (string) ($fila['nombre'] ?? ''),
             ancla:   (string) ($fila['ancla'] ?? ''),
+            orden:   (int) ($fila['orden'] ?? 0),
         );
     }
 }
