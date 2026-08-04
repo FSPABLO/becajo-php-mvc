@@ -22,6 +22,24 @@ if (!function_exists('e')) {
     }
 }
 
+if (!function_exists('env')) {
+    /**
+     * Lee una variable de entorno con un valor por defecto.
+     *
+     * La usa config/base_datos.php para que las credenciales vivan en el
+     * entorno (docker-compose.yml, panel del hosting) y no en el código.
+     * getenv() devuelve false cuando la variable no existe y '' cuando existe
+     * pero está vacía: ambos casos se tratan igual, porque una credencial en
+     * blanco no es una credencial.
+     */
+    function env(string $clave, ?string $porDefecto = null): ?string
+    {
+        $valor = getenv($clave);
+
+        return ($valor === false || $valor === '') ? $porDefecto : $valor;
+    }
+}
+
 if (!function_exists('icono')) {
     /**
      * Devuelve el SVG de un ícono del catálogo interno.

@@ -1,10 +1,13 @@
-# Becajo — LAMP en Docker
+# Becajo — LAMP en Docker + Oracle
 #
 # Levanta Apache + PHP sirviendo el proyecto. Es el equivalente funcional
 # de instalar WAMP: mismo Apache, mismo PHP, mismo resultado en el navegador.
 # La diferencia es que corre sobre Linux (LAMP) y queda descrito en un
 # archivo que cualquier compañero del equipo puede reproducir igual con
 # "docker compose up", sin instalar nada más en su máquina.
+#
+# El servicio "oracle" agrega la base de datos del proyecto integrador.
+# Nadie tiene que instalar Oracle en su máquina: el contenedor la trae.
 
 services:
   web:
@@ -19,3 +22,54 @@ services:
       - .:/var/www/html
     environment:
       APP_ENV: desarrollo
+      # Datos de conexión que lee config/base_datos.php. Se declaran aquí
+      # (y no dentro del PHP) para que las credenciales no vivan en el
+      # código; en producción las inyecta el servicio de hosting.
+      #
+      # "oracle" es el nombre del servicio de abajo: dentro de la red de
+      # Docker funciona como nombre de host, no hace falta ninguna IP.
+      BD_CADENA: oracle:1521/FREEPDB1
+      BD_USUARIO: becajo
+      BD_CLAVE: becajo
+    depends_on:
+      oracle:
+        # No basta con que el contenedor exista: Oracle tarda un par de
+        # minutos en abrir la base la primera vez. "service_healthy" hace
+        # que web espere hasta que el healthcheck de abajo pase.
+        condition: service_healthy
+
+  oracle:
+    # Oracle Database 23ai Free: gratuita para desarrollo y docencia.
+    # La variante "slim" ocupa bastante menos y alcanza de sobra para el
+    # tamaño de datos del proyecto.
+    image: gvenzl/oracle-free:23-slim
+    container_name: becajo-oracle
+    ports:
+      # Por si se quiere conectar SQL Developer o DBeaver desde el anfitrión:
+      # localhost:1522/FREEPDB1.
+      #
+      # Se publica en el 1522 y no en el 1521 porque quien ya tenga Oracle
+      # instalado en su equipo tiene el listener (tnslsnr) ocupando el 1521, y
+      # el contenedor no arrancaría. La aplicación no usa este puerto: web se
+      # conecta a "oracle:1521" por la red interna de Docker, así que cambiarlo
+      # aquí no afecta a nada más.
+      - "1522:1521"
+    environment:
+      ORACLE_PASSWORD: oracle          # clave de SYS / SYSTEM
+      APP_USER: becajo                 # usuario de la aplicación
+      APP_USER_PASSWORD: becajo
+    volumes:
+      # Los datos sobreviven a "docker compose down": sin este volumen,
+      # cada reinicio obligaría a volver a cargar el esquema.
+      - oracle-datos:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      # La primera creación de la base tarda; sin este margen, Docker daría
+      # el contenedor por fallido antes de que termine de arrancar.
+      start_period: 300s
+
+volumes:
+  oracle-datos:

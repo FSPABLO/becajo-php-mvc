@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Contratos\RepositorioInstrumento;
 
 /**
  * Contenedor de dependencias.
  *
- * Guarda los objetos compartidos (la petición, el motor de vistas, el
- * repositorio) y se los entrega a quien los necesite. Su valor real está en el
- * método repositorio(): el resto del sistema pide "el repositorio" sin saber si
- * detrás hay un arreglo de PHP o una consulta a Oracle.
+ * Guarda los objetos compartidos (la petición, el motor de vistas, los
+ * repositorios) y se los entrega a quien los necesite. Su valor real está en
+ * los métodos repositorio() e instrumento(): el resto del sistema pide "el
+ * repositorio" sin saber si detrás hay un arreglo de PHP o una consulta a
+ * Oracle.
  *
- * Cambiar la fuente de datos es cambiar UNA línea en public/index.php.
+ * Cambiar la fuente de datos es cambiar public/index.php, y nada más.
  */
 final class Contenedor
 {
@@ -24,6 +26,14 @@ final class Contenedor
         private readonly Vista $vista,
         private readonly RepositorioContenido $repositorio,
         private readonly RepositorioInstrumento $instrumento,
+        private readonly Sesion $sesion,
+        /**
+         * Opcional a propósito: el módulo de auditorías es el único que exige
+         * una base de datos real. Cuando no hay config/base_datos.php llega
+         * como null, y el sitio público (portada, instrumento) sigue
+         * funcionando igual. Ver el mensaje de auditorias() más abajo.
+         */
+        private readonly ?RepositorioAuditorias $auditorias = null,
     ) {
     }
 
@@ -45,5 +55,36 @@ final class Contenedor
     public function instrumento(): RepositorioInstrumento
     {
         return $this->instrumento;
+    }
+
+    public function sesion(): Sesion
+    {
+        return $this->sesion;
+    }
+
+    /**
+     * Repositorio de auditorías, usuarios e indicadores.
+     *
+     * Falla con un mensaje explícito en vez de devolver null: si alguien llega
+     * al módulo de auditorías sin base de datos configurada, es mejor leer qué
+     * falta que perseguir un "call to a member function on null".
+     */
+    public function auditorias(): RepositorioAuditorias
+    {
+        if ($this->auditorias === null) {
+            throw new \RuntimeException(
+                'El módulo de auditorías necesita una conexión a Oracle. Copie '
+                . 'config/base_datos.ejemplo.php a config/base_datos.php y ejecute '
+                . 'los scripts de la carpeta Scripts/.'
+            );
+        }
+
+        return $this->auditorias;
+    }
+
+    /** ¿Hay base de datos configurada? Lo usan las vistas para ocultar el menú. */
+    public function hayAuditorias(): bool
+    {
+        return $this->auditorias !== null;
     }
 }
