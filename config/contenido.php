@@ -19,9 +19,9 @@ return [
     'empresa' => [
         'nombre'   => 'Becajo',
         'eslogan'  => 'Consultoría en Administración de Bases de Datos',
-        'correo'   => 'contacto@becajo.mx',
-        'telefono' => '+52 55 0000 0000',
-        'ciudad'   => 'México',
+        'correo'   => 'contacto@becajo.cr',
+        'telefono' => '+506 0000 0000',
+        'ciudad'   => 'San José, Costa Rica',
         'anio'     => 2026,
     ],
 
@@ -37,6 +37,22 @@ return [
         ['etiqueta' => 'Resultados', 'destino' => '#resultados'],
         ['etiqueta' => 'Equipo',     'destino' => '#equipo'],
         ['etiqueta' => 'Contacto',   'destino' => '#contacto'],
+    ],
+
+    /**
+     * Herramientas internas del sitio.
+     *
+     * Alimentan el menú desplegable "Herramientas" del encabezado. Agregar una
+     * herramienta nueva es añadir una línea aquí y su ruta en config/rutas.php.
+     */
+    'herramientas' => [
+        [
+            'etiqueta'    => 'Instrumento de Consultoría',
+            'descripcion' => 'Evaluación de 75 controles de administración de bases de datos '
+                           . 'conforme a la familia ISO/IEC 27000.',
+            'destino'     => '/herramientas/instrumento-bd',
+            'icono'       => 'documento',
+        ],
     ],
 
     'hero' => [
@@ -162,6 +178,12 @@ return [
             'rol'         => 'Consultor líder',
             'iniciales'   => 'JF',
             'descripcion' => 'Arquitectura de datos y relación con el cliente.',
+        ],
+        [
+            'nombre'      => 'Minor Brenes',
+            'rol'         => 'Migración y monitoreo',
+            'iniciales'   => 'MB',
+            'descripcion' => 'Modernización de motores y vigilancia continua de la operación.',
         ],
     ],
 

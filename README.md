@@ -78,24 +78,33 @@ becajo/
 │   │
 │   ├── Models/                 ← M — los DATOS
 │   │   ├── Contratos/
-│   │   │   └── RepositorioContenido.php   Interfaz: qué datos se ofrecen
+│   │   │   ├── RepositorioContenido.php    Interfaz: qué datos ofrece el sitio
+│   │   │   └── RepositorioInstrumento.php  Interfaz: catálogo del instrumento
 │   │   ├── Entidades/
 │   │   │   ├── Servicio.php
-│   │   │   └── Integrante.php
-│   │   └── RepositorioArreglo.php         Implementación actual
+│   │   │   ├── Integrante.php
+│   │   │   ├── Dominio.php     ┐
+│   │   │   ├── Proceso.php     ├ Instrumento de consultoría
+│   │   │   └── Control.php     ┘
+│   │   ├── RepositorioArreglo.php             Implementación actual del sitio
+│   │   └── RepositorioInstrumentoArreglo.php  Implementación del instrumento
 │   │
 │   ├── Controllers/            ← C — la COORDINACIÓN
-│   │   └── HomeController.php
+│   │   ├── HomeController.php
+│   │   └── HerramientasController.php
 │   │
 │   └── Views/                  ← V — la PRESENTACIÓN
 │       ├── layouts/principal.php
 │       ├── partials/           head, encabezado, pie
-│       ├── components/         tarjeta-servicio
+│       ├── components/         tarjeta-servicio, tarjeta-control, tarjeta-pregunta
 │       ├── home/               index + secciones/
+│       ├── herramientas/       instrumento-bd + parciales/
 │       └── errores/404.php
 │
 ├── config/
 │   ├── contenido.php           TODO el texto editable del sitio
+│   ├── instrumento-bd.php      Catálogo del instrumento: 7 dominios, 25 procesos,
+│   │                           75 controles con su pregunta de auditoría
 │   └── rutas.php               Tabla de rutas
 │
 ├── .htaccess                   Redirige la raíz a /public
@@ -122,6 +131,39 @@ del patrón.
 
 ---
 
+## Herramientas
+
+El menú **Herramientas** del encabezado agrupa las utilidades internas del sitio.
+Para agregar una se añaden dos líneas: una entrada en `herramientas` dentro de
+`config/contenido.php` y su ruta en `config/rutas.php`.
+
+### Instrumento de consultoría — `/herramientas/instrumento-bd`
+
+Evaluación de la administración de bases de datos con anclaje en la familia
+ISO/IEC 27000 a 27011: **7 dominios, 25 procesos y 75 controles**, cada uno con su
+referencia a ISO/IEC 27002:2022, la evidencia que debe solicitarse y una pregunta
+de auditoría redactada conforme a ISO/IEC 27007:2020.
+
+Cinco pestañas: Instrumento · Cuestionario · Tablero · Marco ISO · Referencias.
+
+**Reglas de cálculo** (implementadas en `public/assets/js/instrumento.js`):
+
+| Medida | Fórmula | Nota |
+|---|---|---|
+| Cumplimiento | `sí ÷ (sí + no)` | «No aplica» sale del denominador, como una exclusión justificada en la Declaración de Aplicabilidad (ISO/IEC 27001, cl. 6.1.3). Los controles sin evaluar no cuentan en ningún lado. |
+| Denominador cero | `—` | Nunca `NaN`, `0 %` ni `Infinity`. |
+| Madurez promedio | `Σ madurez ÷ n calificados` | Un control sin calificar no vale cero: queda fuera del promedio. |
+
+Marcar un control como «no aplica» sin escribir la justificación en el campo de
+hallazgo levanta un aviso visible en la tarjeta. Sin esa fricción, «no aplica»
+se convierte en la salida fácil que infla el resultado.
+
+El avance se guarda solo en `localStorage`; además se puede exportar a CSV
+(delimitador `;` y BOM UTF-8, para que Excel en español lo abra bien) o guardar y
+recargar como JSON.
+
+---
+
 ## El punto importante: cambiar a Oracle
 
 `app/Models/Contratos/RepositorioContenido.php` es una **interfaz**: define qué
@@ -142,8 +184,10 @@ $repositorio = new RepositorioArreglo(RAIZ . '/config/contenido.php');
 $repositorio = new RepositorioPdo(require RAIZ . '/config/base_datos.php');
 ```
 
-El controlador y las 14 vistas no se tocan. Eso es lo que se gana al programar
-contra una interfaz en lugar de contra una implementación concreta.
+Ni el controlador ni las vistas se tocan. Eso es lo que se gana al programar
+contra una interfaz en lugar de contra una implementación concreta. El
+instrumento de consultoría sigue el mismo esquema con
+`RepositorioInstrumento`.
 
 ---
 
@@ -196,6 +240,7 @@ Después se sustituye el `<script>` de `app/Views/partials/head.php` por un
 | Benjamín Alexander Solano Ortega | Seguridad y cumplimiento |
 | Camila Fallas Jiménez | Rendimiento y continuidad |
 | José Pablo Fernández Sandoval | Consultor líder |
+| Minor Brenes | Migración y monitoreo |
 
 ---
 

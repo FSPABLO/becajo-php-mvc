@@ -13,12 +13,18 @@ declare(strict_types=1);
  * @var array<string, mixed>   $empresa
  * @var array<string, string>  $meta
  * @var list<array{etiqueta: string, destino: string}> $navegacion
+ * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
+ * @var list<string>|null     $hojas    Hojas de estilo propias de la página.
+ * @var list<string>|null     $guiones  Guiones (scripts) propios de la página.
  */
+$hojas = $hojas ?? [];
+$guiones = $guiones ?? [];
+$herramientas = $herramientas ?? [];
 ?>
 <!DOCTYPE html>
-<html lang="es-MX" class="scroll-smooth">
+<html lang="es-CR" class="scroll-smooth">
 <head>
-    <?= $vista->renderizar('partials/head', compact('meta', 'empresa')) ?>
+    <?= $vista->renderizar('partials/head', compact('meta', 'empresa', 'hojas')) ?>
 </head>
 <body class="bg-white font-sans antialiased">
 
@@ -27,12 +33,15 @@ declare(strict_types=1);
         Saltar al contenido
     </a>
 
-    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion')) ?>
+    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas')) ?>
 
     <main id="contenido"><?= $contenido ?></main>
 
-    <?= $vista->renderizar('partials/pie', compact('empresa', 'navegacion')) ?>
+    <?= $vista->renderizar('partials/pie', compact('empresa', 'navegacion', 'herramientas')) ?>
 
     <script src="<?= e($vista->url('assets/js/principal.js')) ?>" defer></script>
+    <?php foreach ($guiones as $guion): ?>
+    <script src="<?= e($vista->url($guion)) ?>" defer></script>
+    <?php endforeach; ?>
 </body>
 </html>

@@ -20,7 +20,11 @@ declare(strict_types=1);
             </p>
         </div>
 
-        <ul class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <!--
+            Cuatro columnas en pantalla ancha y dos en tableta: con cuatro
+            integrantes, una rejilla de tres dejaba a uno solo en la segunda fila.
+        -->
+        <ul class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <?php foreach ($equipo as $integrante): ?>
                 <li class="rounded-xl border border-slate-200 p-7 transition hover:border-acento-400">
                     <span class="grid h-14 w-14 place-items-center rounded-full bg-marina-950 text-lg font-bold text-acento-400">

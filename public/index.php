@@ -16,11 +16,16 @@ declare(strict_types=1);
  */
 
 use App\Core\Autoloader;
+use App\Core\BaseDatos;
 use App\Core\Contenedor;
 use App\Core\Enrutador;
 use App\Core\Peticion;
+use App\Core\Sesion;
 use App\Core\Vista;
 use App\Models\RepositorioArreglo;
+use App\Models\RepositorioAuditoriasOracle;
+use App\Models\RepositorioInstrumentoArreglo;
+use App\Models\RepositorioInstrumentoOracle;
 
 const RAIZ = __DIR__ . '/..';
 
@@ -37,16 +42,52 @@ require RAIZ . '/app/Core/funciones.php';
 // 3. Servicios compartidos.
 $peticion = new Peticion();
 $vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase());
+$sesion = new Sesion();
 
 // ── Fuente de datos ──────────────────────────────────────────────────────────
-// Hoy: un arreglo de PHP.
-// Para conectar Oracle, se sustituye ÚNICAMENTE esta línea por:
-//     $repositorio = new RepositorioPdo(require RAIZ . '/config/base_datos.php');
-// Ni el controlador ni las vistas cambian.
+//
+// El contenido del sitio (portada, servicios, equipo) vive en un arreglo de
+// PHP y ahí se queda: es texto de la página, no datos de auditoría.
 $repositorio = new RepositorioArreglo(RAIZ . '/config/contenido.php');
+
+// El catálogo del instrumento (7 dominios, 25 procesos, 75 controles) y las
+// auditorías sí vienen de Oracle... cuando hay Oracle.
+//
+// La presencia de config/base_datos.php es el interruptor. Sin ese archivo el
+// sitio arranca igual, con el catálogo leído del arreglo y sin módulo de
+// auditorías: así nadie del equipo queda bloqueado por no tener la base
+// levantada para trabajar en una vista. Ver config/base_datos.ejemplo.php.
+$instrumento = new RepositorioInstrumentoArreglo(RAIZ . '/config/instrumento-bd.php');
+$auditorias = null;
+
+$archivoBaseDatos = RAIZ . '/config/base_datos.php';
+
+if (is_file($archivoBaseDatos)) {
+    /** @var array<string, mixed> $configuracionBd */
+    $configuracionBd = require $archivoBaseDatos;
+
+    // La conexión es perezosa: construir estos objetos no abre ningún socket.
+    // Oracle solo se contacta cuando alguien pide datos de verdad.
+    $bd = new BaseDatos($configuracionBd);
+    $auditorias = new RepositorioAuditoriasOracle($bd);
+
+    if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
+        // El repositorio de arreglo pasa como complemento: sigue sirviendo la
+        // escala de madurez, el marco normativo y las referencias, que no
+        // tienen tabla en el esquema.
+        $instrumento = new RepositorioInstrumentoOracle($bd, $instrumento);
+    }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
-$contenedor = new Contenedor($peticion, $vista, $repositorio);
+$contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento, $sesion, $auditorias);
+
+// Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a
+// Vista la forma de obtenerlo, no el valor: pedirlo abre la sesión, y las
+// páginas sin formulario no tienen por qué abrir ninguna.
+if ($auditorias !== null) {
+    $vista->proveerToken(static fn (): string => $contenedor->autenticacion()->token());
+}
 
 // 4. Rutas.
 $enrutador = new Enrutador();

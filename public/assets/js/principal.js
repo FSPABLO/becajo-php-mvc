@@ -1,9 +1,87 @@
 /**
  * Becajo — comportamiento del sitio
  *
- * Se mantiene al mínimo a propósito: solo el menú móvil. Todo lo demás
- * (desplazamiento suave, estados hover) se resuelve con CSS.
+ * Se mantiene al mínimo a propósito: el menú móvil y los menús desplegables del
+ * encabezado. Todo lo demás (desplazamiento suave, estados hover) es CSS.
  */
+
+/* Menús desplegables del encabezado (Herramientas). */
+(function () {
+    'use strict';
+
+    const desplegables = document.querySelectorAll('[data-desplegable]');
+
+    if (desplegables.length === 0) {
+        return;
+    }
+
+    const abiertos = [];
+
+    desplegables.forEach(function (contenedor) {
+        const boton = contenedor.querySelector('[data-desplegable-boton]');
+        const panel = contenedor.querySelector('[data-desplegable-panel]');
+        const flecha = contenedor.querySelector('[data-desplegable-flecha]');
+
+        if (!boton || !panel) {
+            return;
+        }
+
+        function alternar(abrir) {
+            panel.classList.toggle('hidden', !abrir);
+            boton.setAttribute('aria-expanded', String(abrir));
+
+            if (flecha) {
+                flecha.classList.toggle('rotate-180', abrir);
+            }
+        }
+
+        function estaAbierto() {
+            return !panel.classList.contains('hidden');
+        }
+
+        abiertos.push({ contenedor: contenedor, boton: boton, alternar: alternar, estaAbierto: estaAbierto });
+
+        boton.addEventListener('click', function () {
+            alternar(!estaAbierto());
+        });
+
+        // Cerrar al salir del menú con el tabulador.
+        contenedor.addEventListener('focusout', function (evento) {
+            if (!contenedor.contains(evento.relatedTarget)) {
+                alternar(false);
+            }
+        });
+
+        panel.querySelectorAll('a').forEach(function (enlace) {
+            enlace.addEventListener('click', function () {
+                alternar(false);
+            });
+        });
+    });
+
+    document.addEventListener('click', function (evento) {
+        abiertos.forEach(function (item) {
+            if (item.estaAbierto() && !item.contenedor.contains(evento.target)) {
+                item.alternar(false);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (evento) {
+        if (evento.key !== 'Escape') {
+            return;
+        }
+
+        abiertos.forEach(function (item) {
+            if (item.estaAbierto()) {
+                item.alternar(false);
+                item.boton.focus();
+            }
+        });
+    });
+})();
+
+/* Menú de navegación en pantallas angostas. */
 (function () {
     'use strict';
 
