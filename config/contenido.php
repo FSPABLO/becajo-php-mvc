@@ -135,6 +135,15 @@ return [
                 'texto'  => 'Un administrador de bases de datos certificado a cargo de su '
                           . 'operación, sin el costo de una plaza de tiempo completo.',
             ],
+            [
+                'icono'          => 'tablero',
+                'titulo'         => 'Evaluación de riesgo ISO/IEC 27002',
+                'texto'          => 'Auditamos la administración de sus bases de datos contra 75 '
+                                   . 'controles ISO/IEC 27002 y entregamos cumplimiento, madurez y '
+                                   . 'exposición al riesgo por dominio.',
+                'enlace'         => '/ingresar',
+                'etiquetaEnlace' => 'Iniciar evaluación',
+            ],
         ],
     ],
 

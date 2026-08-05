@@ -67,6 +67,10 @@ abstract class Controlador
      */
     protected function exigirUsuario(): Usuario
     {
+        // Sin esto, el botón Atrás del navegador puede mostrar una página con
+        // datos de auditoría desde su caché después de haber cerrado sesión.
+        header('Cache-Control: no-store, must-revalidate');
+
         $usuario = $this->autenticacion()->usuario();
 
         if ($usuario === null) {
@@ -122,9 +126,12 @@ abstract class Controlador
     protected function contexto(): array
     {
         return [
-            'empresa'      => $this->repositorio()->empresa(),
-            'navegacion'   => $this->repositorio()->navegacion(),
-            'herramientas' => $this->repositorio()->herramientas(),
+            'empresa'       => $this->repositorio()->empresa(),
+            'navegacion'    => $this->repositorio()->navegacion(),
+            'herramientas'  => $this->repositorio()->herramientas(),
+            // Null si no hay módulo de auditorías o si nadie inició sesión.
+            // Así el encabezado sabe si mostrar "Ingresar" o "Mis auditorías".
+            'usuarioActual' => $this->contenedor->hayAuditorias() ? $this->autenticacion()->usuario() : null,
         ];
     }
 

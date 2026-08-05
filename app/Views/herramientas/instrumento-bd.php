@@ -17,6 +17,7 @@ declare(strict_types=1);
  * @var list<array{nivel: int, nombre: string, descripcion: string}> $escala
  * @var list<array{norma: string, titulo: string, aporte: string}>   $marco
  * @var list<array{titulo: string, fuente: string, enlace: string}>  $referencias
+ * @var \App\Models\Entidades\Usuario|null $usuarioActual
  */
 
 /*
@@ -67,6 +68,25 @@ $pestanas = [
         'procesos'    => $procesos,
         'dominios'    => $dominios,
     ]) ?>
+
+    <?php if ($usuarioActual === null): ?>
+        <div class="mx-auto max-w-7xl px-6 pt-6 lg:px-8 no-imprimir">
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-acento-500/30 bg-acento-500/10 px-4 py-3 text-sm text-marina-950">
+                <span>
+                    Esto queda solo en este navegador y se puede perder. Si va a dar seguimiento a esta
+                    consultoría, cree una cuenta y guarde sus auditorías de verdad.
+                </span>
+                <span class="flex shrink-0 gap-3">
+                    <a href="<?= e($vista->url('ingresar')) ?>" class="font-semibold text-acento-700 hover:underline">
+                        Iniciar sesión
+                    </a>
+                    <a href="<?= e($vista->url('registrarse')) ?>" class="font-semibold text-acento-700 hover:underline">
+                        Crear cuenta
+                    </a>
+                </span>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Barra de pestañas: adherida bajo el encabezado fijo del sitio (h-16). -->
     <div class="sticky top-16 z-30 border-b border-slate-200 bg-white/95 backdrop-blur no-imprimir">

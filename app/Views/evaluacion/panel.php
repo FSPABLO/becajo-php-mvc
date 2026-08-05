@@ -15,7 +15,7 @@ declare(strict_types=1);
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 ?>
-<section class="mx-auto w-full max-w-5xl px-6 py-14">
+<section class="mx-auto w-full max-w-5xl px-6 pt-24 pb-14">
 
     <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -29,6 +29,10 @@ declare(strict_types=1);
         </div>
 
         <div class="flex items-center gap-3">
+            <a href="<?= e($vista->url('evaluacion/comparar')) ?>"
+               class="text-sm font-semibold text-slate-600 hover:text-marina-950">
+                Comparar histórico
+            </a>
             <a href="<?= e($vista->url('evaluacion/nueva')) ?>"
                class="rounded-lg bg-marina-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marina-900">
                 Nueva auditoría

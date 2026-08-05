@@ -16,10 +16,12 @@ declare(strict_types=1);
  * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
  * @var list<string>|null     $hojas    Hojas de estilo propias de la página.
  * @var list<string>|null     $guiones  Guiones (scripts) propios de la página.
+ * @var \App\Models\Entidades\Usuario|null $usuarioActual
  */
 $hojas = $hojas ?? [];
 $guiones = $guiones ?? [];
 $herramientas = $herramientas ?? [];
+$usuarioActual = $usuarioActual ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="es-CR" class="scroll-smooth">
@@ -33,7 +35,7 @@ $herramientas = $herramientas ?? [];
         Saltar al contenido
     </a>
 
-    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas')) ?>
+    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas', 'usuarioActual')) ?>
 
     <main id="contenido"><?= $contenido ?></main>
 

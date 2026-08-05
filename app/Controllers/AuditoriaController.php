@@ -274,6 +274,52 @@ final class AuditoriaController extends Controlador
         ]);
     }
 
+    // Reporte ejecutivo para imprimir o guardar como PDF desde el navegador.
+    public function reporte(): void
+    {
+        $usuario = $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $repositorio = $this->auditorias();
+
+        $this->ver('evaluacion/reporte', [
+            'empresa'     => $this->repositorio()->empresa(),
+            'meta'        => $this->meta('Reporte ejecutivo · Auditoría ' . $auditoria->id),
+            'usuario'     => $usuario,
+            'auditoria'   => $auditoria,
+            'resumen'     => $repositorio->resumen($auditoria->id),
+            'dominios'    => $repositorio->cumplimientoPorDominio($auditoria->id),
+            'exposicion'  => $repositorio->exposicionRiesgo($auditoria->id),
+            'menorMadurez' => $repositorio->menorMadurez($auditoria->id, 5),
+            'mayorRiesgo' => $repositorio->mayorRiesgo($auditoria->id, 5),
+        ], 'imprimir');
+    }
+
+    // Compara el histórico de auditorías del auditor, agrupado por organización.
+    public function comparar(): void
+    {
+        $usuario = $this->exigirUsuario();
+        $auditorias = $this->auditorias()->auditoriasDe($usuario->id);
+
+        $porOrganizacion = [];
+
+        foreach ($auditorias as $auditoria) {
+            $porOrganizacion[$auditoria->organizacion][] = $auditoria;
+        }
+
+        // Más antigua primero, así la tendencia se lee de izquierda a derecha.
+        foreach ($porOrganizacion as &$grupo) {
+            usort($grupo, static fn ($a, $b) => $a->fecha <=> $b->fecha);
+        }
+        unset($grupo);
+
+        $this->ver('evaluacion/comparar', [
+            ...$this->contexto(),
+            'meta'            => $this->meta('Comparación histórica'),
+            'usuario'         => $usuario,
+            'porOrganizacion' => $porOrganizacion,
+        ]);
+    }
+
     // ── Lectura del formulario ───────────────────────────────────────────────
 
     /** @return array{administrador: string, area: string, fecha: string} */

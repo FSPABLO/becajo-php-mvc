@@ -24,9 +24,7 @@ final class HerramientasController extends Controlador
         $meta = $instrumento->meta();
 
         $this->ver('herramientas/instrumento-bd', [
-            'empresa'      => $repositorio->empresa(),
-            'navegacion'   => $repositorio->navegacion(),
-            'herramientas' => $repositorio->herramientas(),
+            ...$this->contexto(),
             'meta'         => [
                 'titulo'      => $meta['titulo'] . ' | ' . $repositorio->empresa()['nombre'],
                 'descripcion' => $meta['descripcion'],

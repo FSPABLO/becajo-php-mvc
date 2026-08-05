@@ -20,6 +20,8 @@ final class Servicio
         public readonly string $icono,
         public readonly string $titulo,
         public readonly string $texto,
+        public readonly ?string $enlace = null,
+        public readonly ?string $etiquetaEnlace = null,
     ) {
     }
 
@@ -31,9 +33,11 @@ final class Servicio
     public static function desdeArreglo(array $fila): self
     {
         return new self(
-            icono:  (string) ($fila['icono'] ?? 'check'),
-            titulo: (string) ($fila['titulo'] ?? ''),
-            texto:  (string) ($fila['texto'] ?? ''),
+            icono:          (string) ($fila['icono'] ?? 'check'),
+            titulo:         (string) ($fila['titulo'] ?? ''),
+            texto:          (string) ($fila['texto'] ?? ''),
+            enlace:         isset($fila['enlace']) ? (string) $fila['enlace'] : null,
+            etiquetaEnlace: isset($fila['etiquetaEnlace']) ? (string) $fila['etiquetaEnlace'] : null,
         );
     }
 }

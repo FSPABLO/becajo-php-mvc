@@ -25,4 +25,12 @@ declare(strict_types=1);
     <p class="mt-2.5 leading-relaxed text-slate-600">
         <?= e($servicio->texto) ?>
     </p>
+
+    <?php if ($servicio->enlace !== null): ?>
+        <a href="<?= e($vista->url($servicio->enlace)) ?>"
+           class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-acento-600 transition group-hover:text-acento-700">
+            <?= e($servicio->etiquetaEnlace ?? 'Ver más') ?>
+            <?= icono('flecha', 'h-4 w-4') ?>
+        </a>
+    <?php endif; ?>
 </article>

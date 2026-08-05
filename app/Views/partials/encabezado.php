@@ -7,8 +7,10 @@ declare(strict_types=1);
  * @var array<string, mixed> $empresa
  * @var list<array{etiqueta: string, destino: string}> $navegacion
  * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
+ * @var \App\Models\Entidades\Usuario|null $usuarioActual
  */
 $herramientas = $herramientas ?? [];
+$usuarioActual = $usuarioActual ?? null;
 ?>
 <header class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-marina-950/80 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
@@ -71,6 +73,23 @@ $herramientas = $herramientas ?? [];
         </nav>
 
         <div class="flex items-center gap-3">
+            <?php if ($usuarioActual !== null): ?>
+                <a href="<?= e($vista->url('evaluacion')) ?>"
+                   class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                    Mis auditorías
+                </a>
+                <form method="post" action="<?= e($vista->url('salir')) ?>" class="hidden sm:block">
+                    <?= $vista->campoToken() ?>
+                    <button type="submit" class="text-sm font-medium text-marina-200 transition hover:text-white">
+                        Salir
+                    </button>
+                </form>
+            <?php else: ?>
+                <a href="<?= e($vista->url('ingresar')) ?>"
+                   class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                    Ingresar
+                </a>
+            <?php endif; ?>
             <a href="<?= e($vista->destino('#contacto')) ?>"
                class="hidden rounded-lg bg-acento-500 px-4 py-2 text-sm font-semibold text-marina-950 transition hover:bg-acento-400 sm:inline-block">
                 Contactar
@@ -106,6 +125,25 @@ $herramientas = $herramientas ?? [];
                         <?= e($herramienta['etiqueta']) ?>
                     </a>
                 <?php endforeach; ?>
+            <?php endif; ?>
+
+            <?php if ($usuarioActual !== null): ?>
+                <a href="<?= e($vista->url('evaluacion')) ?>"
+                   class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                    Mis auditorías
+                </a>
+                <form method="post" action="<?= e($vista->url('salir')) ?>">
+                    <?= $vista->campoToken() ?>
+                    <button type="submit"
+                            class="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                        Salir
+                    </button>
+                </form>
+            <?php else: ?>
+                <a href="<?= e($vista->url('ingresar')) ?>"
+                   class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                    Ingresar
+                </a>
             <?php endif; ?>
         </nav>
     </div>

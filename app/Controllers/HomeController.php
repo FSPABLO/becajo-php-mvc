@@ -25,10 +25,8 @@ final class HomeController extends Controlador
         $repositorio = $this->repositorio();
 
         $this->ver('home/index', [
-            'empresa'             => $repositorio->empresa(),
+            ...$this->contexto(),
             'meta'                => $repositorio->meta(),
-            'navegacion'          => $repositorio->navegacion(),
-            'herramientas'        => $repositorio->herramientas(),
             'hero'                => $repositorio->hero(),
             'retos'               => $repositorio->retos(),
             'encabezadoServicios' => $repositorio->encabezadoServicios(),

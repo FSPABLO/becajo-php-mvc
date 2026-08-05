@@ -33,7 +33,7 @@ $etiquetaEstado = [
     'NA' => ['N/A', 'bg-slate-200 text-slate-600'],
 ];
 ?>
-<section class="mx-auto w-full max-w-5xl px-6 py-14">
+<section class="mx-auto w-full max-w-5xl px-6 pt-24 pb-14">
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url('evaluacion')) ?>" class="text-acento-600 hover:underline">
