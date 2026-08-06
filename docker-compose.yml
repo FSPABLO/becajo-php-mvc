@@ -12,6 +12,7 @@
 services:
   web:
     build: .
+    platform: linux/amd64
     container_name: becajo-web
     ports:
       # http://localhost:8080 en la Mac -> puerto 80 dentro del contenedor

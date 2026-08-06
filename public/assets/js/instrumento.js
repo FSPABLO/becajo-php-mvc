@@ -78,6 +78,23 @@
         return dominio.clave;
     });
 
+    const controlesPorDominio = {};
+
+    catalogo.controles.forEach(function (control) {
+        const proceso = procesosPorNumero[control.proceso];
+        const clave = proceso ? proceso.dominio : null;
+
+        if (!clave) {
+            return;
+        }
+
+        if (!controlesPorDominio[clave]) {
+            controlesPorDominio[clave] = [];
+        }
+
+        controlesPorDominio[clave].push(control);
+    });
+
     // ── Estado ───────────────────────────────────────────────────────────────
 
     function registroVacio() {
@@ -511,6 +528,7 @@
 
             const aviso = tarjetaControl.querySelector('[data-aviso-na]');
             aviso.hidden = !(datos.estado === 'na' && datos.hallazgo.trim() === '');
+            pintarReferenciaCuestionario(tarjetaControl, datos);
         }
 
         const tarjetaPregunta = document.querySelector('[data-panel="cuestionario"] [data-tarjeta="' + id + '"]');
@@ -528,6 +546,40 @@
 
         tarjeta.classList.add(mapa[valor] !== undefined ? mapa[valor] : mapa['']);
     }
+
+    function pintarReferenciaCuestionario(tarjetaControl, datos) {
+        const referencia = tarjetaControl.querySelector('[data-referencia-cuestionario]');
+
+        if (!referencia) {
+            return;
+        }
+
+        const hayReferencia = datos.respuesta !== ''
+            || datos.entrevistado.trim() !== ''
+            || datos.evidenciaAportada.trim() !== ''
+            || datos.notas.trim() !== '';
+
+        referencia.hidden = !hayReferencia;
+
+        if (!hayReferencia) {
+            return;
+        }
+
+        asignarEn(referencia, '[data-ref="respuesta"]', ETIQUETA_RESPUESTA[datos.respuesta] || 'Sin responder');
+        asignarEn(referencia, '[data-ref="entrevistado"]', datos.entrevistado.trim() || '—');
+        asignarEn(referencia, '[data-ref="evidenciaAportada"]', datos.evidenciaAportada.trim() || '—');
+        asignarEn(referencia, '[data-ref="notas"]', datos.notas.trim() || '—');
+    }
+
+    /** Como asignar(), pero buscando dentro de un elemento y no en todo el documento. */
+    function asignarEn(elemento, selector, texto) {
+        const nodo = elemento.querySelector(selector);
+
+        if (nodo) {
+            nodo.textContent = texto;
+        }
+    }
+
 
     /** Vuelca el estado sobre los campos del formulario. */
     function pintarFormularios() {
@@ -599,6 +651,161 @@
         return resumen;
     }
 
+    /*
+     * (madurez promedio de los controles marcados con la dimensión, normalizada entre 0 y 1).
+     */
+    function exposicionRiesgo(controles, dimension) {
+        let suma = 0;
+        let calificados = 0;
+
+        controles.forEach(function (control) {
+            const datos = avance.controles[control.id] || registroVacio();
+
+            if (datos.riesgos.indexOf(dimension) !== -1 && datos.madurez !== '') {
+                suma += Number(datos.madurez);
+                calificados += 1;
+            }
+        });
+
+        return calificados === 0 ? null : (suma / calificados) / 5;
+    }
+
+    const ZONA_RIESGO = {
+        rojo:     { etiqueta: 'Zona roja',     fondo: 'bg-alerta-500', texto: 'text-white' },
+        amarillo: { etiqueta: 'Zona amarilla', fondo: 'bg-aviso-500',  texto: 'text-white' },
+        verde:    { etiqueta: 'Zona verde',    fondo: 'bg-exito-500',  texto: 'text-white' },
+        sin:      { etiqueta: 'Sin datos',     fondo: 'bg-slate-100',  texto: 'text-slate-400' }
+    };
+    
+    const CLASES_ZONA_RIESGO = Object.keys(ZONA_RIESGO).reduce(function (clases, clave) {
+        return clases.concat(ZONA_RIESGO[clave].fondo, ZONA_RIESGO[clave].texto);
+    }, []);
+
+    function pintarZonaRiesgo(elemento, promedio) {
+        const zona = ZONA_RIESGO[zonaDeRiesgo(promedio)];
+
+        elemento.classList.remove.apply(elemento.classList, CLASES_ZONA_RIESGO);
+        elemento.classList.add(zona.fondo, zona.texto);
+
+        return zona;
+    }
+
+    function zonaDeRiesgo(promedioNormalizado) {
+        if (promedioNormalizado === null) {
+            return 'sin';
+        }
+
+        if (promedioNormalizado < 0.5) {
+            return 'rojo';
+        }
+
+        return promedioNormalizado < 0.8 ? 'amarillo' : 'verde';
+    }
+
+    // ── E. Semáforos de riesgo por dimensión ────────────────────────────────
+
+    function pintarSemaforos() {
+        DIMENSIONES.forEach(function (dimension) {
+            const promedio = exposicionRiesgo(catalogo.controles, dimension);
+
+            const circulo = document.querySelector('[data-semaforo="' + dimension + '"]');
+            const etiquetaZona = document.querySelector('[data-semaforo-zona="' + dimension + '"]');
+
+            if (circulo) {
+                const zona = pintarZonaRiesgo(circulo, promedio);
+                circulo.textContent = porcentaje(promedio);
+
+                if (etiquetaZona) {
+                    etiquetaZona.textContent = zona.etiqueta;
+                }
+            }
+        });
+    }
+
+    // ── F. Mapa de calor: dominio × dimensión ───────────────────────────────
+
+    function pintarMapaCalor() {
+        catalogo.dominios.forEach(function (dominio) {
+            const fila = document.querySelector('[data-fila-mapa-calor="' + dominio.clave + '"]');
+
+            if (!fila) {
+                return;
+            }
+
+            const controles = controlesPorDominio[dominio.clave] || [];
+
+            DIMENSIONES.forEach(function (dimension) {
+                const celda = fila.querySelector('[data-celda-calor="' + dimension + '"]');
+
+                if (!celda) {
+                    return;
+                }
+
+                const promedio = exposicionRiesgo(controles, dimension);
+                pintarZonaRiesgo(celda, promedio);
+                celda.textContent = porcentaje(promedio);
+            });
+        });
+    }
+
+    // ── G. Ranking de controles con menor madurez ───────────────────────────
+
+    function pintarRankingDebiles() {
+        const lista = document.querySelector('[data-ranking-debiles]');
+
+        if (!lista) {
+            return;
+        }
+
+        const calificados = catalogo.controles
+            .map(function (control) {
+                const datos = avance.controles[control.id] || registroVacio();
+
+                return { control: control, madurez: datos.madurez };
+            })
+            .filter(function (item) {
+                return item.madurez !== '';
+            })
+            .sort(function (a, b) {
+                return Number(a.madurez) - Number(b.madurez);
+            })
+            .slice(0, 8);
+
+        lista.innerHTML = '';
+
+        if (calificados.length === 0) {
+            const vacio = document.createElement('li');
+            vacio.className = 'text-sm text-slate-400';
+            vacio.textContent = 'Todavía no hay controles con madurez registrada.';
+            lista.appendChild(vacio);
+
+            return;
+        }
+
+        calificados.forEach(function (item) {
+            const madurez = Number(item.madurez);
+            const elemento = document.createElement('li');
+            elemento.className = 'flex items-center gap-3';
+            elemento.innerHTML =
+                '<span class="w-14 shrink-0 font-mono text-xs font-bold text-marina-950"></span>' +
+                '<span class="min-w-0 flex-1 truncate text-sm text-slate-600" title=""></span>' +
+                '<div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-slate-100">' +
+                '<div class="h-full rounded-full bg-alerta-500" style="width: ' + (madurez / 5 * 100) + '%"></div>' +
+                '</div>' +
+                '<span class="w-6 shrink-0 text-right text-xs font-bold text-marina-950"></span>';
+
+            elemento.querySelector('span.font-mono').textContent = item.control.id;
+
+            const enunciado = elemento.querySelector('span.truncate');
+            enunciado.textContent = item.control.enunciado;
+            enunciado.title = item.control.enunciado;
+
+            elemento.querySelector('span.text-right').textContent = String(madurez);
+
+            lista.appendChild(elemento);
+        });
+    }
+
     function porcentaje(proporcion) {
         return proporcion === null ? '—' : Math.round(proporcion * 100) + ' %';
     }
@@ -649,6 +856,10 @@
         if (filaTotal) {
             pintarFila(filaTotal, global);
         }
+
+        pintarSemaforos();
+        pintarMapaCalor();
+        pintarRankingDebiles();
 
         const evaluados = global.si + global.no + global.na;
 

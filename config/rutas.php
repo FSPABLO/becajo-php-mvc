@@ -44,6 +44,7 @@ return static function (Enrutador $enrutador): void {
     // coincidencia exacta antes de probar los patrones con {llaves}, así que
     // "/evaluacion/nueva" nunca se lo queda "/evaluacion/{id}".
     $enrutador->get('/evaluacion', [AuditoriaController::class, 'panel']);
+    $enrutador->get('/evaluacion/comparar', [AuditoriaController::class, 'comparar']);
 
     $enrutador->get('/evaluacion/nueva', [AuditoriaController::class, 'nuevaFormulario']);
     $enrutador->post('/evaluacion/nueva', [AuditoriaController::class, 'crear']);
@@ -58,6 +59,7 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
 
     $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
+    $enrutador->get('/evaluacion/{id}/reporte', [AuditoriaController::class, 'reporte']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //

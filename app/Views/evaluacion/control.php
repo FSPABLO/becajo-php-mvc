@@ -31,7 +31,7 @@ $etiquetaCriterio = [
     'EVIDENCIA'   => 'Con evidencia',
 ];
 ?>
-<section class="mx-auto w-full max-w-3xl px-6 py-14">
+<section class="mx-auto w-full max-w-3xl px-6 pt-24 pb-14">
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url($base)) ?>" class="text-acento-600 hover:underline">

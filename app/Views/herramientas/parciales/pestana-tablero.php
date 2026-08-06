@@ -32,7 +32,14 @@ $proporciones = [
     ['clave' => 'na',  'etiqueta' => 'No aplica',   'fondo' => 'bg-marina-300'],
     ['clave' => 'sin', 'etiqueta' => 'Sin evaluar', 'fondo' => 'bg-slate-200'],
 ];
+
+$dimensionesRiesgo = [
+    ['clave' => 'confidencialidad', 'etiqueta' => 'Confidencialidad'],
+    ['clave' => 'integridad',       'etiqueta' => 'Integridad'],
+    ['clave' => 'disponibilidad',   'etiqueta' => 'Disponibilidad'],
+];
 ?>
+
 <!-- Tarjetas de resumen -->
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
     <?php foreach ($tarjetas as $tarjeta): ?>
@@ -46,6 +53,112 @@ $proporciones = [
         </div>
     <?php endforeach; ?>
 </div>
+
+<!--
+    E. Semáforos de exposición al riesgo por dimensión: (madurez promedio de los controles marcados con esa dimensión, normalizada entre 0 y 1)
+-->
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">
+        Exposición al riesgo por dimensión
+    </h2>
+    <p class="mt-1 text-xs leading-relaxed text-slate-500">
+        Madurez promedio normalizada de los controles marcados con cada dimensión.
+        Rojo por debajo de 50&nbsp;%, amarillo entre 50&nbsp;% y 80&nbsp;%, verde de 80&nbsp;% en adelante.
+    </p>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+        <?php foreach ($dimensionesRiesgo as $dimension): ?>
+            <div class="rounded-xl border border-slate-200 p-4 text-center">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-base font-extrabold text-slate-400 transition-colors duration-300"
+                     data-semaforo="<?= e($dimension['clave']) ?>">—</div>
+                <p class="mt-3 text-sm font-semibold text-marina-950"><?= e($dimension['etiqueta']) ?></p>
+                <p class="mt-0.5 text-xs uppercase tracking-wide text-slate-500"
+                   data-semaforo-zona="<?= e($dimension['clave']) ?>">Sin datos</p>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- F. Mapa de calor: dominio × dimensión de riesgo, misma fórmula que los semáforos, desagregada por dominio. -->
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">
+        Mapa de calor: dominio × dimensión de riesgo
+    </h2>
+    <p class="mt-1 text-xs leading-relaxed text-slate-500">
+        Cada celda es la madurez promedio normalizada de los controles de ese dominio marcados con esa dimensión.
+    </p>
+
+    <div class="mt-4 overflow-x-auto">
+        <table class="w-full min-w-[36rem] text-sm">
+            <caption class="sr-only">Mapa de calor de riesgo por dominio y dimensión</caption>
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th scope="col" class="px-3 py-2 font-semibold">Dominio</th>
+                    <th scope="col" class="px-3 py-2 text-center font-semibold">Confidencialidad</th>
+                    <th scope="col" class="px-3 py-2 text-center font-semibold">Integridad</th>
+                    <th scope="col" class="px-3 py-2 text-center font-semibold">Disponibilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($dominios as $dominio): ?>
+                    <tr data-fila-mapa-calor="<?= e($dominio->clave) ?>" class="border-t border-slate-100">
+                        <th scope="row" class="px-3 py-2 text-left font-medium text-marina-950">
+                            <?= e($dominio->nombre) ?>
+                        </th>
+                        <td class="px-3 py-3 text-center">
+                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-slate-400"
+                                  data-celda-calor="confidencialidad">—</span>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-slate-400"
+                                  data-celda-calor="integridad">—</span>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-slate-400"
+                                  data-celda-calor="disponibilidad">—</span>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <ul class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500">
+        <li class="inline-flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-alerta-500"></span> Menos de 50&nbsp;%
+        </li>
+        <li class="inline-flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-aviso-500"></span> Entre 50&nbsp;% y 80&nbsp;%
+        </li>
+        <li class="inline-flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-exito-500"></span> 80&nbsp;% o más
+        </li>
+        <li class="inline-flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-slate-200"></span> Sin controles calificados
+        </li>
+    </ul>
+</div>
+
+<!-- G. Ranking de los controles con menor madurez entre los ya calificados. -->
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">
+            Controles con menor madurez
+        </h2>
+        <span class="text-xs text-slate-400">Los más bajos entre los ya calificados, máximo 8</span>
+    </div>
+
+    <ol class="mt-4 space-y-3" data-ranking-debiles>
+        <li class="text-sm text-slate-400" data-ranking-vacio>
+            Todavía no hay controles con madurez registrada.
+        </li>
+    </ol>
+</div>
+
+
+
+
+
 
 <!-- Barra apilada de proporción entre estados -->
 <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">

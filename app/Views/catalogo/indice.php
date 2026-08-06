@@ -37,7 +37,7 @@ $botonBorrar = static function (\App\Core\Vista $vista, string $ruta, string $et
         . '</form>';
 };
 ?>
-<section class="mx-auto w-full max-w-6xl px-6 py-14">
+<section class="mx-auto w-full max-w-6xl px-6 pt-24 pb-14">
 
     <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>

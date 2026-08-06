@@ -56,6 +56,35 @@ $criterios = [
         <?= e($control->evidencia) ?>
     </p>
 
+    <div data-referencia-cuestionario hidden
+             class="mt-4 rounded-lg border border-marina-200 bg-marina-50/60 p-4">
+            <p class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-marina-700">
+                <?= icono('documento', 'h-3.5 w-3.5') ?>
+                Referencia del cuestionario
+            </p>
+
+            <div class="mt-2.5 grid gap-3 sm:grid-cols-3">
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Respuesta registrada</p>
+                    <p data-ref="respuesta" class="mt-0.5 text-sm font-semibold text-marina-950">—</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Persona entrevistada</p>
+                    <p data-ref="entrevistado" class="mt-0.5 text-sm text-marina-950">—</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">Evidencia aportada</p>
+                    <p data-ref="evidenciaAportada" class="mt-0.5 text-sm text-marina-950">—</p>
+                </div>
+            </div>
+
+            <div class="mt-3 border-t border-marina-200/70 pt-3">
+                <p class="text-xs font-medium text-slate-500">Notas de la entrevista</p>
+                <p data-ref="notas" class="mt-0.5 text-sm leading-relaxed text-marina-950">—</p>
+            </div>
+        </div>
+
+
     <!-- Fila de captura: se apila en pantallas angostas. -->
     <div class="mt-4 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2 xl:grid-cols-4">
 

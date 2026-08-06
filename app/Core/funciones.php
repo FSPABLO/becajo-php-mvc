@@ -80,7 +80,9 @@ if (!function_exists('icono')) {
 
         $trazo = $trazos[$nombre] ?? $trazos['check'];
 
-        return '<svg class="' . e($clases) . '" viewBox="0 0 24 24" fill="none" '
+        // width/height de respaldo: si el CDN de Tailwind no carga a tiempo,
+        // el ícono se queda en 24x24 en vez de estirarse a lo bruto.
+        return '<svg class="' . e($clases) . '" width="24" height="24" viewBox="0 0 24 24" fill="none" '
              . 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
              . 'stroke-linejoin="round" aria-hidden="true">' . $trazo . '</svg>';
     }
