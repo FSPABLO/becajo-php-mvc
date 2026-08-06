@@ -5,9 +5,8 @@ declare(strict_types=1);
 /**
  * La plantilla en pantalla: donde el auditor califica UN control.
  *
- * Vista funcional, no definitiva. Es la pantalla central del sistema, así que
- * conviene que Persona 4 conserve exactamente estos name=, que son los que lee
- * AuditoriaController::leerRespuesta().
+ * Es la pantalla central del sistema. Los name= de los campos son los que lee
+ * AuditoriaController::leerRespuesta(), no cambiarlos sin actualizar ese método.
  *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Auditoria $auditoria

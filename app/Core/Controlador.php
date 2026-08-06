@@ -202,8 +202,9 @@ abstract class Controlador
         // Sin plantilla envolvente: errores/404 ya es un documento HTML
         // completo, igual que cuando lo sirve el enrutador.
         echo $this->contenedor->vista()->renderizar('errores/404', [
-            'ruta'    => $this->peticion()->ruta(),
-            'empresa' => $this->repositorio()->empresa(),
+            'ruta'     => $this->peticion()->ruta(),
+            'empresa'  => $this->repositorio()->empresa(),
+            'rutaBase' => $this->peticion()->rutaBase(),
         ]);
 
         exit;

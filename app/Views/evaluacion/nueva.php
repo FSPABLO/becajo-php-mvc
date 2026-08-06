@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Alta de una auditoría. Vista funcional, no definitiva.
+ * Alta de una auditoría.
  *
  * @var \App\Core\Vista $vista
  * @var list<\App\Models\Entidades\Usuario> $administradores

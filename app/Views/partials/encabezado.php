@@ -78,6 +78,12 @@ $usuarioActual = $usuarioActual ?? null;
                    class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
                     Mis auditorías
                 </a>
+                <?php if ($usuarioActual->esAdministrador()): ?>
+                    <a href="<?= e($vista->url('catalogo')) ?>"
+                       class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                        Catálogo
+                    </a>
+                <?php endif; ?>
                 <form method="post" action="<?= e($vista->url('salir')) ?>" class="hidden sm:block">
                     <?= $vista->campoToken() ?>
                     <button type="submit" class="text-sm font-medium text-marina-200 transition hover:text-white">
@@ -132,6 +138,12 @@ $usuarioActual = $usuarioActual ?? null;
                    class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
                     Mis auditorías
                 </a>
+                <?php if ($usuarioActual->esAdministrador()): ?>
+                    <a href="<?= e($vista->url('catalogo')) ?>"
+                       class="block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                        Catálogo
+                    </a>
+                <?php endif; ?>
                 <form method="post" action="<?= e($vista->url('salir')) ?>">
                     <?= $vista->campoToken() ?>
                     <button type="submit"

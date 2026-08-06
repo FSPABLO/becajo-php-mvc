@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Alta y edición de un control. Vista funcional, no definitiva.
+ * Alta y edición de un control.
  *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Control|null $control  null = alta.

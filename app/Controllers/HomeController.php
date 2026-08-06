@@ -36,6 +36,17 @@ final class HomeController extends Controlador
             'caso'                => $repositorio->caso(),
             'equipo'              => $repositorio->equipo(),
             'contacto'            => $repositorio->contacto(),
+            'erroresContacto'     => $this->leerYOlvidar('contacto.errores'),
+            'valoresContacto'     => $this->leerYOlvidar('contacto.valores'),
         ]);
+    }
+
+    /** @return array<string, string> */
+    private function leerYOlvidar(string $clave): array
+    {
+        $valor = $this->sesion()->obtener($clave, []);
+        $this->sesion()->olvidar($clave);
+
+        return is_array($valor) ? $valor : [];
     }
 }

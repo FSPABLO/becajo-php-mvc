@@ -17,4 +17,6 @@ declare(strict_types=1);
 <?= $vista->renderizar('home/secciones/servicios',  ['encabezado' => $encabezadoServicios, 'servicios' => $servicios]) ?>
 <?= $vista->renderizar('home/secciones/resultados', compact('metricas', 'caso')) ?>
 <?= $vista->renderizar('home/secciones/equipo',     compact('equipo')) ?>
-<?= $vista->renderizar('home/secciones/contacto',   compact('contacto', 'empresa', 'motores')) ?>
+<?= $vista->renderizar('home/secciones/contacto',   compact(
+    'contacto', 'empresa', 'motores', 'mensajes', 'erroresContacto', 'valoresContacto'
+)) ?>

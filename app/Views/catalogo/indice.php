@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Índice del catálogo maestro. Vista funcional, no definitiva.
+ * Índice del catálogo maestro.
  *
  * @var \App\Core\Vista $vista
  * @var list<\App\Models\Entidades\Dominio> $dominios

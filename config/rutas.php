@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AuditoriaController;
 use App\Controllers\AutenticacionController;
 use App\Controllers\CatalogoController;
+use App\Controllers\ContactoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Core\Enrutador;
@@ -19,6 +20,7 @@ use App\Core\Enrutador;
  */
 return static function (Enrutador $enrutador): void {
     $enrutador->get('/', [HomeController::class, 'index']);
+    $enrutador->post('/contacto', [ContactoController::class, 'enviar']);
 
     // Herramientas internas (menú "Herramientas" del encabezado).
     $enrutador->get('/herramientas/instrumento-bd', [HerramientasController::class, 'instrumentoBd']);

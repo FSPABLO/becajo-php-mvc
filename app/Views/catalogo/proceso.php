@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Alta y edición de un proceso. Vista funcional, no definitiva.
+ * Alta y edición de un proceso.
  *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Proceso|null $proceso  null = alta.
