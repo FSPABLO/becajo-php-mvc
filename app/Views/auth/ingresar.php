@@ -5,18 +5,13 @@ declare(strict_types=1);
 /**
  * Formulario de ingreso al módulo de evaluación de riesgo.
  *
- * Vista funcional, no definitiva: cubre estructura, accesibilidad y el campo
- * contra CSRF para que el Bloque 3 quede cerrado de punta a punta. El acabado
- * visual es de Persona 4, que puede reescribir el marcado siempre que conserve
- * los name= de los campos y la llamada a $vista->campoToken().
- *
  * @var \App\Core\Vista       $vista
  * @var array<string, mixed>  $empresa
  * @var string|null           $correo    Correo del intento anterior.
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 ?>
-<section class="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-6 py-16">
+<section class="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-6 pt-24 pb-16">
 
     <header class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">

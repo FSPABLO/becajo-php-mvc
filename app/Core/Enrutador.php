@@ -59,9 +59,13 @@ final class Enrutador
 
         [$clase, $metodo] = $accion;
 
-        /** @var Controlador $controlador */
-        $controlador = new $clase($contenedor);
-        $controlador->{$metodo}();
+        try {
+            /** @var Controlador $controlador */
+            $controlador = new $clase($contenedor);
+            $controlador->{$metodo}();
+        } catch (\Throwable $error) {
+            $this->responder500($peticion, $contenedor, $error);
+        }
     }
 
     /**
@@ -122,8 +126,31 @@ final class Enrutador
 
         $vista = $contenedor->vista();
         echo $vista->renderizar('errores/404', [
-            'ruta'    => $peticion->ruta(),
-            'empresa' => $contenedor->repositorio()->empresa(),
+            'ruta'     => $peticion->ruta(),
+            'empresa'  => $contenedor->repositorio()->empresa(),
+            'rutaBase' => $peticion->rutaBase(),
+        ]);
+    }
+
+    /**
+     * Última red de seguridad: si algo revienta a medio renderizar una vista,
+     * limpia lo que alcanzó a imprimirse y muestra la 500 en vez de dejar al
+     * navegador con una página a medias o en blanco.
+     */
+    private function responder500(Peticion $peticion, Contenedor $contenedor, \Throwable $error): void
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        error_log($error->getMessage() . ' in ' . $error->getFile() . ':' . $error->getLine());
+
+        http_response_code(500);
+
+        $vista = $contenedor->vista();
+        echo $vista->renderizar('errores/500', [
+            'empresa'  => $contenedor->repositorio()->empresa(),
+            'rutaBase' => $peticion->rutaBase(),
         ]);
     }
 }

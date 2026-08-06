@@ -5,8 +5,6 @@ declare(strict_types=1);
 /**
  * Alta de cuenta de auditor.
  *
- * Vista funcional, no definitiva (ver la nota de auth/ingresar.php).
- *
  * Los errores llegan indexados por campo y se pintan junto a su casilla: una
  * lista de errores arriba obliga a buscar a cuál corresponde cada uno. Los
  * valores del intento anterior se devuelven para no obligar a reescribirlo
@@ -31,7 +29,7 @@ $clasesCampo = static fn (bool $conError): string =>
         ? 'border-alerta-500 focus:border-alerta-500 focus:ring-2 focus:ring-alerta-500/30'
         : 'border-slate-300 focus:border-acento-500 focus:ring-2 focus:ring-acento-500/30');
 ?>
-<section class="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-6 py-16">
+<section class="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-6 pt-24 pb-16">
 
     <header class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">

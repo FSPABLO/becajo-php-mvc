@@ -23,6 +23,7 @@ desktop.ini
 /logs/
 /tmp/
 /cache/
+/storage/
 
 # Respaldos de base de datos
 *.dmp

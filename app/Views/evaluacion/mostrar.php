@@ -5,8 +5,6 @@ declare(strict_types=1);
 /**
  * Detalle de una auditoría: encabezado, avance y los 75 controles.
  *
- * Vista funcional, no definitiva.
- *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Auditoria $auditoria
  * @var list<\App\Models\Entidades\Control> $controles
