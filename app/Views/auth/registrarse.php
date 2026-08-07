@@ -33,11 +33,11 @@ $clasesCampo = static fn (bool $conError): string =>
 
     <header class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">
-            Evaluación de riesgo ISO/IEC 27002
+            <?= e($vista->t('auth.eyebrow')) ?>
         </p>
-        <h1 class="mt-2 text-3xl font-extrabold text-marina-950">Crear cuenta</h1>
+        <h1 class="mt-2 text-3xl font-extrabold text-marina-950"><?= e($vista->t('auth.registrarse_titulo')) ?></h1>
         <p class="mt-2 text-sm text-slate-600">
-            La cuenta se crea con perfil de auditor.
+            <?= e($vista->t('auth.registrarse_texto')) ?>
         </p>
     </header>
 
@@ -49,7 +49,7 @@ $clasesCampo = static fn (bool $conError): string =>
 
         <div>
             <label for="nombre" class="block text-sm font-semibold text-marina-950">
-                Nombre completo
+                <?= e($vista->t('auth.nombre_completo')) ?>
             </label>
             <input type="text" id="nombre" name="nombre" required autofocus maxlength="150"
                    autocomplete="name"
@@ -63,7 +63,7 @@ $clasesCampo = static fn (bool $conError): string =>
 
         <div>
             <label for="correo" class="block text-sm font-semibold text-marina-950">
-                Correo electrónico
+                <?= e($vista->t('auth.correo')) ?>
             </label>
             <input type="email" id="correo" name="correo" required maxlength="150"
                    autocomplete="username"
@@ -77,7 +77,7 @@ $clasesCampo = static fn (bool $conError): string =>
 
         <div>
             <label for="organizacion" class="block text-sm font-semibold text-marina-950">
-                Organización
+                <?= e($vista->t('auth.organizacion')) ?>
             </label>
             <input type="text" id="organizacion" name="organizacion" required maxlength="200"
                    autocomplete="organization"
@@ -91,7 +91,7 @@ $clasesCampo = static fn (bool $conError): string =>
 
         <div>
             <label for="clave" class="block text-sm font-semibold text-marina-950">
-                Contraseña
+                <?= e($vista->t('auth.clave')) ?>
             </label>
             <input type="password" id="clave" name="clave" required
                    minlength="<?= e((string) $minimoClave) ?>"
@@ -102,14 +102,14 @@ $clasesCampo = static fn (bool $conError): string =>
                 <p id="error-clave" class="mt-1.5 text-sm text-alerta-600"><?= e($errores['clave']) ?></p>
             <?php else: ?>
                 <p class="mt-1.5 text-sm text-slate-500">
-                    Mínimo <?= e((string) $minimoClave) ?> caracteres.
+                    <?= e($vista->t('auth.minimo_caracteres', (string) $minimoClave)) ?>
                 </p>
             <?php endif; ?>
         </div>
 
         <div>
             <label for="confirmacion" class="block text-sm font-semibold text-marina-950">
-                Repetir contraseña
+                <?= e($vista->t('auth.confirmar_clave')) ?>
             </label>
             <input type="password" id="confirmacion" name="confirmacion" required
                    autocomplete="new-password"
@@ -122,15 +122,15 @@ $clasesCampo = static fn (bool $conError): string =>
 
         <button type="submit"
                 class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
-            Crear cuenta
+            <?= e($vista->t('auth.crear_cuenta')) ?>
         </button>
     </form>
 
     <p class="mt-6 text-center text-sm text-slate-600">
-        ¿Ya tiene cuenta?
+        <?= e($vista->t('auth.ya_tiene_cuenta')) ?>
         <a href="<?= e($vista->url('ingresar')) ?>"
            class="font-semibold text-acento-600 underline-offset-2 hover:underline">
-            Iniciar sesión
+            <?= e($vista->t('auth.iniciar_sesion')) ?>
         </a>
     </p>
 </section>

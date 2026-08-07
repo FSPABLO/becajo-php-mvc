@@ -13,6 +13,7 @@ declare(strict_types=1);
  * @var list<\App\Models\Entidades\ResultadoRiesgo> $exposicion
  * @var list<array<string, mixed>> $menorMadurez
  * @var list<array<string, mixed>> $mayorRiesgo
+ * @var list<\App\Models\Entidades\EvaluacionControl> $evaluaciones
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 $colorZona = [
@@ -47,18 +48,48 @@ $porcentaje = static fn (mixed $v): string =>
     $v === null ? '—' : number_format((float) $v * 100, 1) . '%';
 
 $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'ROJO') !== [];
+
+// $riesgo->etiqueta() devuelve el nombre en español (viene del dominio, no
+// de la BD); se traduce aquí por tipo para no tocar la entidad.
+$etiquetaTipo = [
+    \App\Models\Entidades\ResultadoRiesgo::CONFIDENCIALIDAD => $vista->t('eval.confidencialidad'),
+    \App\Models\Entidades\ResultadoRiesgo::INTEGRIDAD       => $vista->t('eval.integridad'),
+    \App\Models\Entidades\ResultadoRiesgo::DISPONIBILIDAD   => $vista->t('eval.disponibilidad'),
+];
+
+// Conteo de controles por celda impacto x probabilidad, para la matriz.
+$celdas = [];
+foreach ($evaluaciones as $ev) {
+    if ($ev->impacto === null || $ev->probabilidad === null) {
+        continue;
+    }
+    $clave = $ev->impacto . '-' . $ev->probabilidad;
+    $celdas[$clave] = ($celdas[$clave] ?? 0) + 1;
+}
+
+// Mismo promedio que EvaluacionControl::nivelRiesgoCalculado(), solo que
+// aquí es por posición de la celda y no por un control puntual.
+$colorCelda = static function (int $impacto, int $probabilidad) use ($fondoZona): string {
+    $nivel = ($impacto + $probabilidad) / 2;
+
+    return match (true) {
+        $nivel <= 2   => $fondoZona['VERDE'],
+        $nivel <= 3.5 => $fondoZona['AMARILLO'],
+        default       => $fondoZona['ROJO'],
+    };
+};
 ?>
 <section class="mx-auto w-full max-w-5xl px-6 pt-24 pb-14">
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url('evaluacion/' . $auditoria->id)) ?>" class="text-acento-600 hover:underline">
-            ← Auditoría <?= e((string) $auditoria->id) ?>
+            ← <?= e($vista->t('eval.auditoria_n', (string) $auditoria->id)) ?>
         </a>
     </nav>
 
     <header class="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-extrabold text-marina-950">Resultados</h1>
+            <h1 class="text-3xl font-extrabold text-marina-950"><?= e($vista->t('eval.resultados')) ?></h1>
             <p class="mt-1 text-slate-600">
                 <?= e($auditoria->organizacion) ?> · <?= e($auditoria->areaEvaluada) ?> · <?= e($auditoria->fecha) ?>
             </p>
@@ -66,7 +97,7 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
         <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/reporte')) ?>"
            class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-marina-950 transition hover:bg-slate-50">
             <?= icono('imprimir', 'h-4 w-4') ?>
-            Reporte ejecutivo (PDF)
+            <?= e($vista->t('eval.reporte_pdf')) ?>
         </a>
     </header>
 
@@ -76,7 +107,7 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
         <div role="alert"
              class="mb-8 flex items-start gap-3 rounded-xl border border-alerta-400/40 bg-alerta-400/10 px-4 py-3 text-sm text-alerta-600">
             <?= icono('alerta', 'h-5 w-5 shrink-0') ?>
-            <span>Esta auditoría tiene al menos una dimensión (C, I o D) en zona roja. Revise la exposición al riesgo antes de entregar el informe.</span>
+            <span><?= e($vista->t('eval.aviso_riesgo_critico')) ?></span>
         </div>
     <?php endif; ?>
 
@@ -84,10 +115,10 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
     <div class="mb-10 grid gap-4 sm:grid-cols-3">
         <?php
         $tarjetas = [
-            ['Cumplimiento general', $porcentaje($resumen['cumplimiento'] ?? null)],
-            ['Madurez promedio', $resumen['madurez_promedio'] ?? '—'],
-            ['Índice general de riesgo', $auditoria->indiceGeneralRiesgo === null
-                ? 'sin calcular' : number_format($auditoria->indiceGeneralRiesgo, 2)],
+            [$vista->t('eval.cumplimiento_general'), $porcentaje($resumen['cumplimiento'] ?? null)],
+            [$vista->t('eval.madurez_promedio'), $resumen['madurez_promedio'] ?? '—'],
+            [$vista->t('eval.indice_general_riesgo'), $auditoria->indiceGeneralRiesgo === null
+                ? $vista->t('eval.sin_calcular') : number_format($auditoria->indiceGeneralRiesgo, 2)],
         ];
         ?>
         <?php foreach ($tarjetas as [$etiqueta, $valor]): ?>
@@ -99,24 +130,24 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
     </div>
 
     <p class="mb-10 text-sm text-slate-600">
-        Controles respondidos:
-        <strong><?= e((string) ($resumen['controles_si'] ?? 0)) ?></strong> sí ·
-        <strong><?= e((string) ($resumen['controles_no'] ?? 0)) ?></strong> no ·
-        <strong><?= e((string) ($resumen['controles_na'] ?? 0)) ?></strong> no aplica
+        <?= e($vista->t('eval.controles_respondidos')) ?>
+        <strong><?= e((string) ($resumen['controles_si'] ?? 0)) ?></strong> <?= e($vista->t('eval.si_minuscula')) ?> ·
+        <strong><?= e((string) ($resumen['controles_no'] ?? 0)) ?></strong> <?= e($vista->t('eval.no_minuscula')) ?> ·
+        <strong><?= e((string) ($resumen['controles_na'] ?? 0)) ?></strong> <?= e($vista->t('eval.na_minuscula')) ?>
     </p>
 
     <!-- Exposición al riesgo C/I/D -->
-    <h2 class="mb-4 text-xl font-bold text-marina-950">Exposición al riesgo</h2>
+    <h2 class="mb-4 text-xl font-bold text-marina-950"><?= e($vista->t('eval.exposicion_riesgo')) ?></h2>
 
     <?php if ($exposicion === []): ?>
         <p class="mb-10 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Todavía no hay controles con dimensiones marcadas y madurez calificada.
+            <?= e($vista->t('eval.sin_dimensiones')) ?>
         </p>
     <?php else: ?>
         <div class="mb-10 grid gap-4 sm:grid-cols-3">
             <?php foreach ($exposicion as $riesgo): ?>
                 <div class="rounded-2xl border p-5 <?= e($colorZona[$riesgo->zona] ?? 'border-slate-200') ?>">
-                    <p class="text-sm font-semibold"><?= e($riesgo->etiqueta()) ?></p>
+                    <p class="text-sm font-semibold"><?= e($etiquetaTipo[$riesgo->tipo] ?? $riesgo->etiqueta()) ?></p>
                     <p class="mt-1 text-2xl font-extrabold tabular-nums">
                         <?= e($riesgo->porcentaje() === null ? '—' : $riesgo->porcentaje() . '%') ?>
                     </p>
@@ -126,11 +157,49 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
         </div>
     <?php endif; ?>
 
+    <!-- Matriz de riesgo impacto x probabilidad -->
+    <h2 class="mb-4 text-xl font-bold text-marina-950"><?= e($vista->t('eval.matriz_riesgo')) ?></h2>
+
+    <?php if ($celdas === []): ?>
+        <p class="mb-10 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <?= e($vista->t('eval.sin_impacto_prob')) ?>
+        </p>
+    <?php else: ?>
+        <div class="mb-10 overflow-x-auto rounded-2xl border border-slate-200 p-5">
+            <div class="flex gap-2">
+                <div class="flex w-8 shrink-0 flex-col-reverse justify-between py-1 text-xs font-semibold text-slate-500">
+                    <?php for ($p = 1; $p <= 5; $p++): ?>
+                        <span><?= $p ?></span>
+                    <?php endfor; ?>
+                </div>
+                <div class="flex-1">
+                    <div class="grid grid-cols-5 gap-1.5">
+                        <?php for ($p = 5; $p >= 1; $p--): ?>
+                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                <?php $conteo = $celdas[$i . '-' . $p] ?? 0; ?>
+                                <div class="flex aspect-square items-center justify-center rounded-lg text-sm font-bold text-white <?= e($colorCelda($i, $p)) ?> <?= $conteo === 0 ? 'opacity-25' : '' ?>"
+                                     title="Impacto <?= $i ?> · Probabilidad <?= $p ?>">
+                                    <?= $conteo > 0 ? e((string) $conteo) : '' ?>
+                                </div>
+                            <?php endfor; ?>
+                        <?php endfor; ?>
+                    </div>
+                    <div class="mt-2 grid grid-cols-5 gap-1.5 text-center text-xs font-semibold text-slate-500">
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <span><?= $i ?></span>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+            </div>
+            <p class="mt-3 text-center text-xs text-slate-500"><?= e($vista->t('eval.eje_matriz')) ?></p>
+        </div>
+    <?php endif; ?>
+
     <!-- Cumplimiento por dominio -->
-    <h2 class="mb-4 text-xl font-bold text-marina-950">Cumplimiento por dominio</h2>
+    <h2 class="mb-4 text-xl font-bold text-marina-950"><?= e($vista->t('eval.cumplimiento_dominio')) ?></h2>
 
     <?php if ($dominios === []): ?>
-        <p class="mb-10 text-sm text-slate-600">Sin controles evaluados todavía.</p>
+        <p class="mb-10 text-sm text-slate-600"><?= e($vista->t('eval.sin_controles_eval')) ?></p>
     <?php else: ?>
         <!-- Gráfico de barras -->
         <div class="mb-6 space-y-3 rounded-2xl border border-slate-200 p-5">
@@ -158,7 +227,7 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
                 <div class="rounded-xl border p-4 <?= e($colorZona[$zona] ?? 'border-slate-200 bg-slate-50 text-slate-500') ?>">
                     <p class="text-sm font-semibold"><?= e((string) $fila['nombre_dominio']) ?></p>
                     <p class="mt-1 text-xl font-extrabold tabular-nums"><?= e($porcentaje($fila['cumplimiento'] ?? null)) ?></p>
-                    <p class="mt-1 text-xs font-semibold uppercase tracking-wide"><?= e($zona ?? 'sin datos') ?></p>
+                    <p class="mt-1 text-xs font-semibold uppercase tracking-wide"><?= e($zona ?? $vista->t('eval.sin_datos')) ?></p>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -167,12 +236,12 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
             <table class="w-full min-w-[36rem] text-left text-sm">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
-                        <th class="px-4 py-3 font-semibold">Dominio</th>
-                        <th class="px-4 py-3 font-semibold">Sí</th>
-                        <th class="px-4 py-3 font-semibold">No</th>
-                        <th class="px-4 py-3 font-semibold">N/A</th>
-                        <th class="px-4 py-3 font-semibold">Cumplimiento</th>
-                        <th class="px-4 py-3 font-semibold">Madurez</th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_dominio')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.estado_si')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.estado_no')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.estado_na')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_cumplimiento')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_madurez')) ?></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -195,15 +264,15 @@ $hayRiesgoCritico = array_filter($exposicion, static fn ($r) => $r->zona === 'RO
     <div class="grid gap-8 lg:grid-cols-2">
         <?php
         $listas = [
-            ['Controles con menor madurez', $menorMadurez, 'madurez'],
-            ['Controles con mayor riesgo', $mayorRiesgo, 'nivel_riesgo'],
+            [$vista->t('eval.menor_madurez'), $menorMadurez, 'madurez'],
+            [$vista->t('eval.mayor_riesgo'), $mayorRiesgo, 'nivel_riesgo'],
         ];
         ?>
         <?php foreach ($listas as [$titulo, $filas, $columna]): ?>
             <div>
                 <h2 class="mb-4 text-xl font-bold text-marina-950"><?= e($titulo) ?></h2>
                 <?php if ($filas === []): ?>
-                    <p class="text-sm text-slate-600">Sin datos suficientes.</p>
+                    <p class="text-sm text-slate-600"><?= e($vista->t('eval.sin_datos_suficientes')) ?></p>
                 <?php else: ?>
                     <ul class="space-y-3">
                         <?php foreach ($filas as $fila): ?>

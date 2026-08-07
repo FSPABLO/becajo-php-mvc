@@ -16,11 +16,11 @@ declare(strict_types=1);
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url('evaluacion')) ?>" class="text-acento-600 hover:underline">
-            ← Mis auditorías
+            <?= e($vista->t('eval.volver_auditorias')) ?>
         </a>
     </nav>
 
-    <h1 class="mb-8 text-3xl font-extrabold text-marina-950">Nueva auditoría</h1>
+    <h1 class="mb-8 text-3xl font-extrabold text-marina-950"><?= e($vista->t('eval.nueva_auditoria')) ?></h1>
 
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
@@ -31,7 +31,7 @@ declare(strict_types=1);
 
         <button type="submit"
                 class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
-            Crear auditoría
+            <?= e($vista->t('eval.crear_auditoria')) ?>
         </button>
     </form>
 </section>

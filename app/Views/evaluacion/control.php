@@ -23,24 +23,24 @@ declare(strict_types=1);
 $abierta = !$auditoria->estaFinalizada();
 $base = 'evaluacion/' . $auditoria->id;
 
-$etiquetaEstado = ['SI' => 'Sí', 'NO' => 'No', 'NA' => 'No aplica'];
+$etiquetaEstado = ['SI' => $vista->t('eval.estado_si'), 'NO' => $vista->t('eval.estado_no'), 'NA' => $vista->t('eval.estado_na')];
 $etiquetaCriterio = [
-    'DOCUMENTADO' => 'Documentado',
-    'REPETIBLE'   => 'Repetible',
-    'EVIDENCIA'   => 'Con evidencia',
+    'DOCUMENTADO' => $vista->t('eval.criterio_documentado'),
+    'REPETIBLE'   => $vista->t('eval.criterio_repetible'),
+    'EVIDENCIA'   => $vista->t('eval.criterio_evidencia'),
 ];
 ?>
 <section class="mx-auto w-full max-w-3xl px-6 pt-24 pb-14">
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url($base)) ?>" class="text-acento-600 hover:underline">
-            ← Auditoría <?= e((string) $auditoria->id) ?>
+            ← <?= e($vista->t('eval.auditoria_n', (string) $auditoria->id)) ?>
         </a>
     </nav>
 
     <header class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">
-            <?= e($control->id) ?> · <?= e($proceso?->nombre ?? 'Sin proceso') ?>
+            <?= e($control->id) ?> · <?= e($proceso?->nombre ?? $vista->t('eval.sin_proceso')) ?>
         </p>
         <h1 class="mt-2 text-2xl font-extrabold leading-snug text-marina-950">
             <?= e($control->enunciado) ?>
@@ -51,11 +51,11 @@ $etiquetaCriterio = [
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <div class="mb-8 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <p class="text-sm font-semibold text-marina-950">Pregunta de auditoría</p>
+        <p class="text-sm font-semibold text-marina-950"><?= e($vista->t('eval.pregunta_auditoria')) ?></p>
         <p class="mt-1.5 text-slate-700"><?= e($evaluacion?->preguntaPersonalizada ?? $control->pregunta) ?></p>
 
         <?php if ($control->evidencia !== ''): ?>
-            <p class="mt-4 text-sm font-semibold text-marina-950">Evidencia esperada</p>
+            <p class="mt-4 text-sm font-semibold text-marina-950"><?= e($vista->t('eval.evidencia_esperada')) ?></p>
             <p class="mt-1 text-sm text-slate-600"><?= e($control->evidencia) ?></p>
         <?php endif; ?>
     </div>
@@ -66,7 +66,7 @@ $etiquetaCriterio = [
 
             <!-- Respuesta -->
             <div>
-                <span class="block text-sm font-semibold text-marina-950">Respuesta</span>
+                <span class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.respuesta')) ?></span>
                 <div class="mt-2 flex flex-wrap gap-2">
                     <?php foreach ($estados as $opcion): ?>
                         <label class="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-acento-500 has-[:checked]:border-acento-500 has-[:checked]:bg-acento-500/10">
@@ -84,11 +84,11 @@ $etiquetaCriterio = [
             <!-- Madurez -->
             <div>
                 <label for="madurez" class="block text-sm font-semibold text-marina-950">
-                    Nivel de madurez observado
+                    <?= e($vista->t('eval.nivel_madurez')) ?>
                 </label>
                 <select id="madurez" name="madurez"
                         class="mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-slate-900 outline-none transition <?= isset($errores['madurez']) ? 'border-alerta-500' : 'border-slate-300 focus:border-acento-500' ?>">
-                    <option value="">— Sin calificar —</option>
+                    <option value=""><?= e($vista->t('eval.sin_calificar')) ?></option>
                     <?php foreach ($escala as $nivel): ?>
                         <option value="<?= e((string) $nivel['nivel']) ?>"
                             <?= $evaluacion?->madurez === $nivel['nivel'] ? 'selected' : '' ?>>
@@ -104,11 +104,11 @@ $etiquetaCriterio = [
             <!-- Criterio -->
             <div>
                 <label for="criterio" class="block text-sm font-semibold text-marina-950">
-                    Criterio de comprobación
+                    <?= e($vista->t('eval.criterio_comprobacion')) ?>
                 </label>
                 <select id="criterio" name="criterio"
                         class="mt-1.5 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-acento-500">
-                    <option value="">— Ninguno —</option>
+                    <option value=""><?= e($vista->t('eval.ninguno')) ?></option>
                     <?php foreach ($criterios as $opcion): ?>
                         <option value="<?= e($opcion) ?>" <?= $evaluacion?->criterio === $opcion ? 'selected' : '' ?>>
                             <?= e($etiquetaCriterio[$opcion] ?? $opcion) ?>
@@ -120,14 +120,14 @@ $etiquetaCriterio = [
             <!-- Dimensiones CID -->
             <div>
                 <span class="block text-sm font-semibold text-marina-950">
-                    ¿Qué compromete si este control falla?
+                    <?= e($vista->t('eval.que_compromete')) ?>
                 </span>
                 <div class="mt-2 flex flex-wrap gap-2">
                     <?php
                     $dimensiones = [
-                        'confidencialidad' => ['Confidencialidad', $evaluacion?->afectaConfidencialidad],
-                        'integridad'       => ['Integridad',       $evaluacion?->afectaIntegridad],
-                        'disponibilidad'   => ['Disponibilidad',   $evaluacion?->afectaDisponibilidad],
+                        'confidencialidad' => [$vista->t('eval.confidencialidad'), $evaluacion?->afectaConfidencialidad],
+                        'integridad'       => [$vista->t('eval.integridad'),       $evaluacion?->afectaIntegridad],
+                        'disponibilidad'   => [$vista->t('eval.disponibilidad'),   $evaluacion?->afectaDisponibilidad],
                     ];
                     ?>
                     <?php foreach ($dimensiones as $campo => [$etiqueta, $marcada]): ?>
@@ -142,7 +142,7 @@ $etiquetaCriterio = [
 
             <!-- Impacto y probabilidad -->
             <div class="grid gap-5 sm:grid-cols-2">
-                <?php foreach (['impacto' => 'Impacto', 'probabilidad' => 'Probabilidad'] as $campo => $etiqueta): ?>
+                <?php foreach (['impacto' => $vista->t('eval.impacto'), 'probabilidad' => $vista->t('eval.probabilidad')] as $campo => $etiqueta): ?>
                     <div>
                         <label for="<?= e($campo) ?>" class="block text-sm font-semibold text-marina-950">
                             <?= e($etiqueta) ?> (1 a 5)
@@ -166,21 +166,21 @@ $etiquetaCriterio = [
 
             <?php if ($evaluacion?->nivelRiesgo !== null): ?>
                 <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    Nivel de riesgo registrado:
+                    <?= e($vista->t('eval.nivel_riesgo_reg')) ?>
                     <strong class="text-marina-950 tabular-nums"><?= e(number_format($evaluacion->nivelRiesgo, 2)) ?></strong>
-                    (promedio de impacto y probabilidad)
+                    <?= e($vista->t('eval.promedio_impacto')) ?>
                 </p>
             <?php endif; ?>
 
             <!-- Hallazgo y recomendación -->
             <div>
-                <label for="hallazgo" class="block text-sm font-semibold text-marina-950">Hallazgo</label>
+                <label for="hallazgo" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.hallazgo')) ?></label>
                 <textarea id="hallazgo" name="hallazgo" rows="4"
                           class="mt-1.5 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-acento-500"><?= e($evaluacion?->hallazgo ?? '') ?></textarea>
             </div>
 
             <div>
-                <label for="recomendacion" class="block text-sm font-semibold text-marina-950">Recomendación</label>
+                <label for="recomendacion" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.recomendacion')) ?></label>
                 <textarea id="recomendacion" name="recomendacion" rows="3"
                           class="mt-1.5 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-acento-500"><?= e($evaluacion?->recomendacion ?? '') ?></textarea>
             </div>
@@ -189,12 +189,12 @@ $etiquetaCriterio = [
             <div class="flex flex-wrap gap-3">
                 <button type="submit"
                         class="rounded-lg bg-marina-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-marina-900">
-                    Guardar
+                    <?= e($vista->t('eval.guardar')) ?>
                 </button>
                 <?php if ($vecinos['siguiente'] !== null): ?>
                     <button type="submit" name="siguiente" value="1"
                             class="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-marina-950 transition hover:bg-slate-50">
-                        Guardar y siguiente
+                        <?= e($vista->t('eval.guardar_siguiente')) ?>
                     </button>
                 <?php endif; ?>
             </div>

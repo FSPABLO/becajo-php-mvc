@@ -28,6 +28,7 @@ final class Contenedor
         private readonly RepositorioContenido $repositorio,
         private readonly RepositorioInstrumento $instrumento,
         private readonly Sesion $sesion,
+        private readonly Idioma $idioma,
         /**
          * Opcional a propósito: el módulo de auditorías es el único que exige
          * una base de datos real. Cuando no hay config/base_datos.php llega
@@ -67,6 +68,11 @@ final class Contenedor
     public function sesion(): Sesion
     {
         return $this->sesion;
+    }
+
+    public function idioma(): Idioma
+    {
+        return $this->idioma;
     }
 
     /**

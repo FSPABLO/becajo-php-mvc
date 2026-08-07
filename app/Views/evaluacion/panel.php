@@ -20,9 +20,9 @@ declare(strict_types=1);
     <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
             <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">
-                Evaluación de riesgo ISO/IEC 27002
+                <?= e($vista->t('auth.eyebrow')) ?>
             </p>
-            <h1 class="mt-2 text-3xl font-extrabold text-marina-950">Mis auditorías</h1>
+            <h1 class="mt-2 text-3xl font-extrabold text-marina-950"><?= e($vista->t('eval.mis_auditorias')) ?></h1>
             <p class="mt-1 text-sm text-slate-600">
                 <?= e($usuario->nombre) ?> · <?= e($usuario->organizacion) ?>
             </p>
@@ -31,16 +31,16 @@ declare(strict_types=1);
         <div class="flex items-center gap-3">
             <a href="<?= e($vista->url('evaluacion/comparar')) ?>"
                class="text-sm font-semibold text-slate-600 hover:text-marina-950">
-                Comparar histórico
+                <?= e($vista->t('eval.comparar_historico')) ?>
             </a>
             <a href="<?= e($vista->url('evaluacion/nueva')) ?>"
                class="rounded-lg bg-marina-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marina-900">
-                Nueva auditoría
+                <?= e($vista->t('eval.nueva_auditoria')) ?>
             </a>
             <form method="post" action="<?= e($vista->url('salir')) ?>">
                 <?= $vista->campoToken() ?>
                 <button type="submit" class="text-sm font-semibold text-slate-500 hover:text-marina-950">
-                    Salir
+                    <?= e($vista->t('nav.salir')) ?>
                 </button>
             </form>
         </div>
@@ -50,9 +50,9 @@ declare(strict_types=1);
 
     <?php if ($auditorias === []): ?>
         <div class="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center">
-            <p class="font-semibold text-marina-950">Todavía no hay auditorías.</p>
+            <p class="font-semibold text-marina-950"><?= e($vista->t('eval.sin_auditorias')) ?></p>
             <p class="mt-1 text-sm text-slate-600">
-                Cree la primera para empezar a evaluar los <?= e((string) $total) ?> controles del instrumento.
+                <?= e($vista->t('eval.crear_primera', (string) $total)) ?>
             </p>
         </div>
     <?php else: ?>
@@ -61,11 +61,11 @@ declare(strict_types=1);
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-4 py-3 font-semibold">#</th>
-                        <th class="px-4 py-3 font-semibold">Organización</th>
-                        <th class="px-4 py-3 font-semibold">Área evaluada</th>
-                        <th class="px-4 py-3 font-semibold">Fecha</th>
-                        <th class="px-4 py-3 font-semibold">Estado</th>
-                        <th class="px-4 py-3 font-semibold">Índice</th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_organizacion')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_area')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_fecha')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_estado')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_indice')) ?></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -83,17 +83,17 @@ declare(strict_types=1);
                         <td class="px-4 py-3">
                             <?php if ($auditoria->estaFinalizada()): ?>
                                 <span class="rounded-full bg-exito-400/15 px-2.5 py-1 text-xs font-semibold text-exito-600">
-                                    Finalizada
+                                    <?= e($vista->t('eval.finalizada')) ?>
                                 </span>
                             <?php else: ?>
                                 <span class="rounded-full bg-aviso-400/20 px-2.5 py-1 text-xs font-semibold text-aviso-600">
-                                    En progreso
+                                    <?= e($vista->t('eval.en_progreso')) ?>
                                 </span>
                             <?php endif; ?>
                         </td>
                         <td class="px-4 py-3 tabular-nums text-slate-700">
                             <?= $auditoria->indiceGeneralRiesgo === null
-                                ? '<span class="text-slate-400">sin calcular</span>'
+                                ? '<span class="text-slate-400">' . e($vista->t('eval.sin_calcular')) . '</span>'
                                 : e(number_format($auditoria->indiceGeneralRiesgo, 2)) ?>
                         </td>
                     </tr>

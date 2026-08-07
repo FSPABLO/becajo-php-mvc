@@ -37,7 +37,7 @@ $usuarioActual = $usuarioActual ?? null;
                             aria-expanded="false"
                             aria-haspopup="true"
                             aria-controls="menu-herramientas">
-                        Herramientas
+                        <?= e($vista->t('nav.herramientas')) ?>
                         <span data-desplegable-flecha class="transition-transform duration-200">
                             <?= icono('chevron', 'h-4 w-4') ?>
                         </span>
@@ -76,36 +76,47 @@ $usuarioActual = $usuarioActual ?? null;
             <?php if ($usuarioActual !== null): ?>
                 <a href="<?= e($vista->url('evaluacion')) ?>"
                    class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
-                    Mis auditorías
+                    <?= e($vista->t('nav.mis_auditorias')) ?>
                 </a>
                 <?php if ($usuarioActual->esAdministrador()): ?>
                     <a href="<?= e($vista->url('catalogo')) ?>"
                        class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
-                        Catálogo
+                        <?= e($vista->t('nav.catalogo')) ?>
                     </a>
                 <?php endif; ?>
                 <form method="post" action="<?= e($vista->url('salir')) ?>" class="hidden sm:block">
                     <?= $vista->campoToken() ?>
                     <button type="submit" class="text-sm font-medium text-marina-200 transition hover:text-white">
-                        Salir
+                        <?= e($vista->t('nav.salir')) ?>
                     </button>
                 </form>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
                    class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
-                    Ingresar
+                    <?= e($vista->t('nav.ingresar')) ?>
                 </a>
             <?php endif; ?>
+
             <a href="<?= e($vista->destino('#contacto')) ?>"
                class="hidden rounded-lg bg-acento-500 px-4 py-2 text-sm font-semibold text-marina-950 transition hover:bg-acento-400 sm:inline-block">
-                Contactar
+                <?= e($vista->t('nav.contactar')) ?>
             </a>
+
+            <select data-selector-idioma data-ruta-idioma="<?= e($vista->url('idioma')) ?>"
+                    aria-label="<?= e($vista->t('nav.idioma')) ?>"
+                    class="hidden rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-medium text-marina-200 outline-none transition hover:text-white sm:block">
+                <?php foreach (\App\Core\Idioma::DISPONIBLES as $codigo => $nombre): ?>
+                    <option value="<?= e($codigo) ?>" class="text-marina-950" <?= $vista->idiomaActual() === $codigo ? 'selected' : '' ?>>
+                        <?= e($nombre) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
             <button type="button"
                     id="boton-menu"
                     class="text-marina-200 transition hover:text-white md:hidden"
                     aria-expanded="false"
                     aria-controls="menu-movil"
-                    aria-label="Abrir menú de navegación">
+                    aria-label="<?= e($vista->t('nav.abrir_menu')) ?>">
                 <?= icono('menu', 'h-6 w-6') ?>
             </button>
         </div>
@@ -122,7 +133,7 @@ $usuarioActual = $usuarioActual ?? null;
 
             <?php if ($herramientas !== []): ?>
                 <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-marina-400">
-                    Herramientas
+                    <?= e($vista->t('nav.herramientas')) ?>
                 </p>
                 <?php foreach ($herramientas as $herramienta): ?>
                     <a href="<?= e($vista->destino($herramienta['destino'])) ?>"
@@ -136,27 +147,39 @@ $usuarioActual = $usuarioActual ?? null;
             <?php if ($usuarioActual !== null): ?>
                 <a href="<?= e($vista->url('evaluacion')) ?>"
                    class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
-                    Mis auditorías
+                    <?= e($vista->t('nav.mis_auditorias')) ?>
                 </a>
                 <?php if ($usuarioActual->esAdministrador()): ?>
                     <a href="<?= e($vista->url('catalogo')) ?>"
                        class="block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
-                        Catálogo
+                        <?= e($vista->t('nav.catalogo')) ?>
                     </a>
                 <?php endif; ?>
                 <form method="post" action="<?= e($vista->url('salir')) ?>">
                     <?= $vista->campoToken() ?>
                     <button type="submit"
                             class="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
-                        Salir
+                        <?= e($vista->t('nav.salir')) ?>
                     </button>
                 </form>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
                    class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
-                    Ingresar
+                    <?= e($vista->t('nav.ingresar')) ?>
                 </a>
             <?php endif; ?>
+
+            <label class="mt-4 block px-3 text-xs font-semibold uppercase tracking-wider text-marina-400">
+                <?= e($vista->t('nav.idioma')) ?>
+            </label>
+            <select data-selector-idioma data-ruta-idioma="<?= e($vista->url('idioma')) ?>"
+                    class="mx-3 mt-1.5 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-medium text-marina-200">
+                <?php foreach (\App\Core\Idioma::DISPONIBLES as $codigo => $nombre): ?>
+                    <option value="<?= e($codigo) ?>" class="text-marina-950" <?= $vista->idiomaActual() === $codigo ? 'selected' : '' ?>>
+                        <?= e($nombre) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </nav>
     </div>
 </header>

@@ -53,6 +53,11 @@ abstract class Controlador
         return $this->contenedor->sesion();
     }
 
+    protected function idioma(): Idioma
+    {
+        return $this->contenedor->idioma();
+    }
+
     protected function autenticacion(): Autenticacion
     {
         return $this->contenedor->autenticacion();

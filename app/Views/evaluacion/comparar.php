@@ -22,20 +22,20 @@ foreach ($porOrganizacion as $grupo) {
 
     <nav class="mb-6 text-sm">
         <a href="<?= e($vista->url('evaluacion')) ?>" class="text-acento-600 hover:underline">
-            ← Mis auditorías
+            <?= e($vista->t('eval.volver_auditorias')) ?>
         </a>
     </nav>
 
     <header class="mb-8">
-        <h1 class="text-3xl font-extrabold text-marina-950">Comparación histórica</h1>
-        <p class="mt-1 text-slate-600">Evolución del índice general de riesgo por organización.</p>
+        <h1 class="text-3xl font-extrabold text-marina-950"><?= e($vista->t('eval.comparacion_historica')) ?></h1>
+        <p class="mt-1 text-slate-600"><?= e($vista->t('eval.evolucion_indice')) ?></p>
     </header>
 
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <?php if ($porOrganizacion === []): ?>
         <div class="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center">
-            <p class="font-semibold text-marina-950">Todavía no hay auditorías para comparar.</p>
+            <p class="font-semibold text-marina-950"><?= e($vista->t('eval.sin_auditorias_comparar')) ?></p>
         </div>
     <?php else: ?>
         <div class="space-y-8">
@@ -45,7 +45,7 @@ foreach ($porOrganizacion as $grupo) {
 
                     <?php if (count($grupo) < 2): ?>
                         <p class="mt-2 text-sm text-slate-600">
-                            Solo hay una auditoría todavía. Se necesitan al menos dos para ver una tendencia.
+                            <?= e($vista->t('eval.solo_una_auditoria')) ?>
                         </p>
                     <?php endif; ?>
 

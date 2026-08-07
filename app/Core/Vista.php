@@ -19,7 +19,20 @@ final class Vista
     public function __construct(
         private readonly string $directorioVistas,
         private readonly string $rutaBase,
+        private readonly ?Idioma $idioma = null,
     ) {
+    }
+
+    public function t(string $clave, string ...$argumentos): string
+    {
+        $texto = $this->idioma?->t($clave) ?? $clave;
+
+        return $argumentos === [] ? $texto : vsprintf($texto, $argumentos);
+    }
+
+    public function idiomaActual(): string
+    {
+        return $this->idioma?->actual() ?? 'es';
     }
 
     /**

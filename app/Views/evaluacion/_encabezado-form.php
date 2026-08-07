@@ -9,6 +9,7 @@ declare(strict_types=1);
  * duplicados garantizaría que un día se añada un campo en uno y no en el otro.
  * El formulario que lo envuelve (action, token, botón) lo pone cada vista.
  *
+ * @var \App\Core\Vista $vista
  * @var array<string, string> $errores
  * @var array<string, mixed>  $valores
  * @var list<\App\Models\Entidades\Usuario> $administradores
@@ -24,11 +25,11 @@ $clases = static fn (bool $mal): string =>
 ?>
 <div>
     <label for="administrador" class="block text-sm font-semibold text-marina-950">
-        Administrador de base de datos entrevistado
+        <?= e($vista->t('eval.admin_entrevistado_label')) ?>
     </label>
     <select id="administrador" name="administrador" required
             class="<?= e($clases(isset($errores['administrador']))) ?>">
-        <option value="">— Seleccione —</option>
+        <option value=""><?= e($vista->t('eval.seleccione')) ?></option>
         <?php foreach ($administradores as $admin): ?>
             <option value="<?= e((string) $admin->id) ?>"
                 <?= (string) ($valores['administrador'] ?? '') === (string) $admin->id ? 'selected' : '' ?>>
@@ -40,13 +41,13 @@ $clases = static fn (bool $mal): string =>
         <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['administrador']) ?></p>
     <?php else: ?>
         <p class="mt-1.5 text-sm text-slate-500">
-            Su organización es la que queda registrada como entidad auditada.
+            <?= e($vista->t('eval.organizacion_registrada')) ?>
         </p>
     <?php endif; ?>
 </div>
 
 <div>
-    <label for="area" class="block text-sm font-semibold text-marina-950">Área evaluada</label>
+    <label for="area" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.area_evaluada')) ?></label>
     <input type="text" id="area" name="area" required maxlength="200"
            value="<?= e((string) ($valores['area'] ?? '')) ?>"
            class="<?= e($clases(isset($errores['area']))) ?>">
@@ -56,7 +57,7 @@ $clases = static fn (bool $mal): string =>
 </div>
 
 <div>
-    <label for="fecha" class="block text-sm font-semibold text-marina-950">Fecha de la auditoría</label>
+    <label for="fecha" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.fecha_auditoria')) ?></label>
     <input type="date" id="fecha" name="fecha" required
            value="<?= e((string) ($valores['fecha'] ?? date('Y-m-d'))) ?>"
            class="<?= e($clases(isset($errores['fecha']))) ?>">

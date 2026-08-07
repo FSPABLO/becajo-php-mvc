@@ -19,6 +19,7 @@ use App\Core\Autoloader;
 use App\Core\BaseDatos;
 use App\Core\Contenedor;
 use App\Core\Enrutador;
+use App\Core\Idioma;
 use App\Core\Peticion;
 use App\Core\Sesion;
 use App\Core\Vista;
@@ -41,14 +42,23 @@ require RAIZ . '/app/Core/funciones.php';
 
 // 3. Servicios compartidos.
 $peticion = new Peticion();
-$vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase());
+$idioma = new Idioma(RAIZ . '/config/idiomas');
+$vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase(), $idioma);
 $sesion = new Sesion();
 
 // ── Fuente de datos ──────────────────────────────────────────────────────────
 //
 // El contenido del sitio (portada, servicios, equipo) vive en un arreglo de
 // PHP y ahí se queda: es texto de la página, no datos de auditoría.
-$repositorio = new RepositorioArreglo(RAIZ . '/config/contenido.php');
+//
+// Hay una copia por idioma (contenido.php en español, contenido.en.php en
+// inglés). Se elige el archivo una sola vez, según la cookie de idioma ya
+// leída por $idioma; si la traducción no existe todavía se cae al español.
+$archivoContenido = RAIZ . '/config/contenido.' . ($idioma->actual() === 'en' ? 'en.' : '') . 'php';
+if (!is_file($archivoContenido)) {
+    $archivoContenido = RAIZ . '/config/contenido.php';
+}
+$repositorio = new RepositorioArreglo($archivoContenido);
 
 // El catálogo del instrumento (7 dominios, 25 procesos, 75 controles) y las
 // auditorías sí vienen de Oracle... cuando hay Oracle.
@@ -80,7 +90,7 @@ if (is_file($archivoBaseDatos)) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-$contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento, $sesion, $auditorias);
+$contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias);
 
 // Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a
 // Vista la forma de obtenerlo, no el valor: pedirlo abre la sesión, y las

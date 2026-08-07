@@ -127,3 +127,19 @@
         }
     });
 })();
+
+/* Selector de idioma del encabezado. */
+(function () {
+    'use strict';
+
+    document.querySelectorAll('[data-selector-idioma]').forEach(function (selector) {
+        selector.addEventListener('change', function () {
+            const destino = window.location.pathname + window.location.search;
+            const url = selector.getAttribute('data-ruta-idioma')
+                + '?codigo=' + encodeURIComponent(selector.value)
+                + '&destino=' + encodeURIComponent(destino);
+
+            window.location.href = url;
+        });
+    });
+})();

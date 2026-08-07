@@ -21,13 +21,12 @@ $herramientas = $herramientas ?? [];
                     <span class="text-lg font-bold text-white"><?= e($empresa['nombre']) ?></span>
                 </div>
                 <p class="mt-4 max-w-sm leading-relaxed text-marina-300">
-                    <?= e($empresa['eslogan']) ?>. Reducimos el riesgo operativo de la
-                    información crítica de su organización.
+                    <?= e($empresa['eslogan']) ?>. <?= e($vista->t('pie.eslogan_extra')) ?>
                 </p>
             </div>
 
             <div>
-                <h2 class="text-sm font-semibold uppercase tracking-wider text-white">Navegación</h2>
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-white"><?= e($vista->t('pie.navegacion')) ?></h2>
                 <ul class="mt-4 space-y-2.5">
                     <?php foreach ($navegacion as $enlace): ?>
                         <li>
@@ -49,7 +48,7 @@ $herramientas = $herramientas ?? [];
             </div>
 
             <div>
-                <h2 class="text-sm font-semibold uppercase tracking-wider text-white">Contacto</h2>
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-white"><?= e($vista->t('pie.contacto')) ?></h2>
                 <ul class="mt-4 space-y-2.5 text-marina-300">
                     <li>
                         <a class="transition hover:text-acento-400"
@@ -66,9 +65,9 @@ $herramientas = $herramientas ?? [];
         <div class="mt-12 flex flex-col gap-2 border-t border-white/10 pt-7 text-sm text-marina-400 sm:flex-row sm:items-center sm:justify-between">
             <p>
                 &copy; <?= e((string) $empresa['anio']) ?> <?= e($empresa['nombre']) ?>.
-                Proyecto académico &mdash; Administración de Bases de Datos.
+                <?= e($vista->t('pie.proyecto')) ?>
             </p>
-            <p>Arquitectura MVC en PHP <?= e(PHP_VERSION) ?></p>
+            <p><?= e($vista->t('pie.arquitectura')) ?> <?= e(PHP_VERSION) ?></p>
         </div>
     </div>
 </footer>

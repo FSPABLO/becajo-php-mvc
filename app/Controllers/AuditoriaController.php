@@ -271,6 +271,7 @@ final class AuditoriaController extends Controlador
             'exposicion'  => $repositorio->exposicionRiesgo($auditoria->id),
             'menorMadurez' => $repositorio->menorMadurez($auditoria->id, 5),
             'mayorRiesgo' => $repositorio->mayorRiesgo($auditoria->id, 5),
+            'evaluaciones' => $repositorio->evaluaciones($auditoria->id),
         ]);
     }
 
@@ -291,6 +292,7 @@ final class AuditoriaController extends Controlador
             'exposicion'  => $repositorio->exposicionRiesgo($auditoria->id),
             'menorMadurez' => $repositorio->menorMadurez($auditoria->id, 5),
             'mayorRiesgo' => $repositorio->mayorRiesgo($auditoria->id, 5),
+            'evaluaciones' => $repositorio->evaluaciones($auditoria->id),
         ], 'imprimir');
     }
 

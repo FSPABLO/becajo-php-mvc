@@ -15,11 +15,11 @@ declare(strict_types=1);
 
     <header class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-widest text-acento-500">
-            Evaluación de riesgo ISO/IEC 27002
+            <?= e($vista->t('auth.eyebrow')) ?>
         </p>
-        <h1 class="mt-2 text-3xl font-extrabold text-marina-950">Iniciar sesión</h1>
+        <h1 class="mt-2 text-3xl font-extrabold text-marina-950"><?= e($vista->t('auth.ingresar_titulo')) ?></h1>
         <p class="mt-2 text-sm text-slate-600">
-            Acceso para auditores de <?= e($empresa['nombre']) ?>.
+            <?= e($vista->t('auth.ingresar_texto', $empresa['nombre'])) ?>
         </p>
     </header>
 
@@ -31,7 +31,7 @@ declare(strict_types=1);
 
         <div>
             <label for="correo" class="block text-sm font-semibold text-marina-950">
-                Correo electrónico
+                <?= e($vista->t('auth.correo')) ?>
             </label>
             <input type="email" id="correo" name="correo" required autofocus
                    autocomplete="username"
@@ -41,7 +41,7 @@ declare(strict_types=1);
 
         <div>
             <label for="clave" class="block text-sm font-semibold text-marina-950">
-                Contraseña
+                <?= e($vista->t('auth.clave')) ?>
             </label>
             <input type="password" id="clave" name="clave" required
                    autocomplete="current-password"
@@ -50,15 +50,15 @@ declare(strict_types=1);
 
         <button type="submit"
                 class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
-            Entrar
+            <?= e($vista->t('auth.entrar')) ?>
         </button>
     </form>
 
     <p class="mt-6 text-center text-sm text-slate-600">
-        ¿No tiene cuenta?
+        <?= e($vista->t('auth.sin_cuenta')) ?>
         <a href="<?= e($vista->url('registrarse')) ?>"
            class="font-semibold text-acento-600 underline-offset-2 hover:underline">
-            Registrarse
+            <?= e($vista->t('auth.registrarse')) ?>
         </a>
     </p>
 </section>
