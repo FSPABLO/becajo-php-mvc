@@ -41,9 +41,9 @@ $usuarioActual = $usuarioActual ?? null;
 
     <?= $vista->renderizar('partials/pie', compact('empresa', 'navegacion', 'herramientas')) ?>
 
-    <script src="<?= e($vista->url('assets/js/principal.js')) ?>" defer></script>
+    <script src="<?= e($vista->recurso('assets/js/principal.js')) ?>" defer></script>
     <?php foreach ($guiones as $guion): ?>
-    <script src="<?= e($vista->url($guion)) ?>" defer></script>
+    <script src="<?= e($vista->recurso($guion)) ?>" defer></script>
     <?php endforeach; ?>
 </body>
 </html>

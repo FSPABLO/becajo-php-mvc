@@ -215,6 +215,69 @@ return [
         ],
     ],
 
+    /**
+     * Testimonios de clientes.
+     *
+     * DATOS DE PRUEBA: los cinco registros son de ejemplo mientras no exista la
+     * tabla correspondiente. 'puntaje' admite medios puntos (4, 4.5, 5); la
+     * entidad App\Models\Entidades\Testimonio lo acota al rango 0–5 y lo
+     * redondea al medio más cercano, así que un valor fuera de rango no rompe
+     * la maqueta.
+     */
+    'testimonios' => [
+        'etiqueta' => 'Testimonios',
+        'titulo'   => 'Lo que dicen nuestros clientes',
+        'texto'    => 'Opiniones de equipos de tecnología que confiaron la operación '
+                    . 'de sus bases de datos a nuestra consultoría.',
+        'lista'    => [
+            [
+                'nombre'      => 'Marcela Vindas Chaves',
+                'cargo'       => 'Directora de Tecnología',
+                'iniciales'   => 'MV',
+                'puntaje'     => 5,
+                'descripcion' => 'Migramos un Oracle 11g con quince años encima y no perdimos '
+                               . 'una sola transacción. El plan de reversión estaba escrito antes '
+                               . 'de tocar nada, y eso fue lo que nos dio tranquilidad.',
+            ],
+            [
+                'nombre'      => 'Andrés Quesada Mora',
+                'cargo'       => 'Jefe de Auditoría Interna',
+                'iniciales'   => 'AQ',
+                'puntaje'     => 4.5,
+                'descripcion' => 'El informe de auditoría fue directo al grano: hallazgos '
+                               . 'priorizados y con responsable. Solo nos habría gustado tener '
+                               . 'antes el tablero de seguimiento.',
+            ],
+            [
+                'nombre'      => 'Laura Céspedes Rojas',
+                'cargo'       => 'Coordinadora de Analítica',
+                'iniciales'   => 'LC',
+                'puntaje'     => 5,
+                'descripcion' => 'Los reportes mensuales pasaron de tardar cuarenta minutos a '
+                               . 'menos de dos. Fue trabajo de índices y de reescribir tres '
+                               . 'consultas, no de comprar hardware.',
+            ],
+            [
+                'nombre'      => 'Diego Hernández Alfaro',
+                'cargo'       => 'Jefe de Infraestructura',
+                'iniciales'   => 'DH',
+                'puntaje'     => 4,
+                'descripcion' => 'Nos ordenaron los respaldos y ahora la restauración se prueba '
+                               . 'cada trimestre. El acompañamiento fue bueno; la coordinación '
+                               . 'de las ventanas de mantenimiento tomó más de lo previsto.',
+            ],
+            [
+                'nombre'      => 'Sofía Ramírez Delgado',
+                'cargo'       => 'Oficial de Seguridad de la Información',
+                'iniciales'   => 'SR',
+                'puntaje'     => 4.5,
+                'descripcion' => 'Pasamos la revisión de ISO/IEC 27001 sin observaciones en el '
+                               . 'control de accesos. Documentaron cada permiso y nos enseñaron '
+                               . 'a mantenerlo.',
+            ],
+        ],
+    ],
+
     'equipo' => [
         [
             'nombre'      => 'Benjamín Alexander Solano Ortega',

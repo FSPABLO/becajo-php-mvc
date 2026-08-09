@@ -6,6 +6,7 @@ namespace App\Models\Contratos;
 
 use App\Models\Entidades\Integrante;
 use App\Models\Entidades\Servicio;
+use App\Models\Entidades\Testimonio;
 
 /**
  * Contrato que debe cumplir cualquier fuente de contenido del sitio.
@@ -54,6 +55,12 @@ interface RepositorioContenido
 
     /** @return array<string, mixed> */
     public function caso(): array;
+
+    /** @return array{etiqueta: string, titulo: string, texto: string} */
+    public function encabezadoTestimonios(): array;
+
+    /** @return list<Testimonio> */
+    public function testimonios(): array;
 
     /** @return list<Integrante> */
     public function equipo(): array;

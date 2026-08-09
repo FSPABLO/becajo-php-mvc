@@ -190,6 +190,60 @@ return [
         ],
     ],
 
+    /** Client testimonials. TEST DATA. Structure documented in config/contenido.php. */
+    'testimonios' => [
+        'etiqueta' => 'Testimonials',
+        'titulo'   => 'What our clients say',
+        'texto'    => 'Feedback from technology teams that trusted their database '
+                    . 'operations to our consultancy.',
+        'lista'    => [
+            [
+                'nombre'      => 'Marcela Vindas Chaves',
+                'cargo'       => 'Head of Technology',
+                'iniciales'   => 'MV',
+                'puntaje'     => 5,
+                'descripcion' => 'We migrated a fifteen-year-old Oracle 11g without losing a '
+                               . 'single transaction. The rollback plan was written before anything '
+                               . 'was touched, and that is what gave us peace of mind.',
+            ],
+            [
+                'nombre'      => 'Andrés Quesada Mora',
+                'cargo'       => 'Internal Audit Manager',
+                'iniciales'   => 'AQ',
+                'puntaje'     => 4.5,
+                'descripcion' => 'The audit report got straight to the point: prioritized findings, '
+                               . 'each with an owner. We would only have liked the tracking '
+                               . 'dashboard sooner.',
+            ],
+            [
+                'nombre'      => 'Laura Céspedes Rojas',
+                'cargo'       => 'Analytics Coordinator',
+                'iniciales'   => 'LC',
+                'puntaje'     => 5,
+                'descripcion' => 'Monthly reports went from forty minutes to under two. It was '
+                               . 'indexing work and rewriting three queries, not buying hardware.',
+            ],
+            [
+                'nombre'      => 'Diego Hernández Alfaro',
+                'cargo'       => 'Head of Infrastructure',
+                'iniciales'   => 'DH',
+                'puntaje'     => 4,
+                'descripcion' => 'They put our backups in order and restores are now tested every '
+                               . 'quarter. The support was good; coordinating the maintenance '
+                               . 'windows took longer than expected.',
+            ],
+            [
+                'nombre'      => 'Sofía Ramírez Delgado',
+                'cargo'       => 'Information Security Officer',
+                'iniciales'   => 'SR',
+                'puntaje'     => 4.5,
+                'descripcion' => 'We passed the ISO/IEC 27001 review with no findings on access '
+                               . 'control. They documented every permission and taught us how to '
+                               . 'keep it that way.',
+            ],
+        ],
+    ],
+
     'equipo' => [
         [
             'nombre'      => 'Benjamín Alexander Solano Ortega',

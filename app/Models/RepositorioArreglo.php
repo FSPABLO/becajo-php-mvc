@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Entidades\Integrante;
 use App\Models\Entidades\Servicio;
+use App\Models\Entidades\Testimonio;
 
 /**
  * Implementación del repositorio que lee el contenido de config/contenido.php.
@@ -109,6 +110,25 @@ final class RepositorioArreglo implements RepositorioContenido
     public function caso(): array
     {
         return $this->datos['caso'];
+    }
+
+    /** @return array{etiqueta: string, titulo: string, texto: string} */
+    public function encabezadoTestimonios(): array
+    {
+        return [
+            'etiqueta' => $this->datos['testimonios']['etiqueta'],
+            'titulo'   => $this->datos['testimonios']['titulo'],
+            'texto'    => $this->datos['testimonios']['texto'],
+        ];
+    }
+
+    /** @return list<Testimonio> */
+    public function testimonios(): array
+    {
+        return array_map(
+            static fn (array $fila): Testimonio => Testimonio::desdeArreglo($fila),
+            $this->datos['testimonios']['lista'],
+        );
     }
 
     /** @return list<Integrante> */

@@ -62,7 +62,7 @@ $hojas = $hojas ?? [];
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 
-<link rel="stylesheet" href="<?= e($vista->url('assets/css/estilos.css')) ?>">
+<link rel="stylesheet" href="<?= e($vista->recurso('assets/css/estilos.css')) ?>">
 <?php foreach ($hojas as $hoja): ?>
-<link rel="stylesheet" href="<?= e($vista->url($hoja)) ?>">
+<link rel="stylesheet" href="<?= e($vista->recurso($hoja)) ?>">
 <?php endforeach; ?>

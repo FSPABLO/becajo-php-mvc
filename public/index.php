@@ -43,7 +43,7 @@ require RAIZ . '/app/Core/funciones.php';
 // 3. Servicios compartidos.
 $peticion = new Peticion();
 $idioma = new Idioma(RAIZ . '/config/idiomas');
-$vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase(), $idioma);
+$vista = new Vista(RAIZ . '/app/Views', $peticion->rutaBase(), $idioma, __DIR__);
 $sesion = new Sesion();
 
 // ── Fuente de datos ──────────────────────────────────────────────────────────

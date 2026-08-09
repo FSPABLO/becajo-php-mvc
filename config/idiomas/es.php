@@ -18,6 +18,13 @@ return [
     'nav.abrir_menu'      => 'Abrir menú de navegación',
     'nav.idioma'          => 'Idioma',
 
+    // Testimonios de la portada
+    'testimonios.calificacion' => 'Calificación: %s de 5 estrellas',
+    'testimonios.lista'        => 'Testimonios de clientes',
+    'testimonios.anterior'     => 'Ver el testimonio anterior',
+    'testimonios.siguiente'    => 'Ver el testimonio siguiente',
+    'testimonios.ir_a'         => 'Ver el testimonio de %s',
+
     // Pie de página
     'pie.navegacion'      => 'Navegación',
     'pie.contacto'        => 'Contacto',
