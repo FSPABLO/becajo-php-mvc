@@ -115,6 +115,12 @@ return [
     'eval.criterio_documentado' => 'Documented',
     'eval.criterio_repetible'   => 'Repeatable',
     'eval.criterio_evidencia'   => 'With evidence',
+    'eval.evidencia_verificada' => 'Evidence reviewed',
+    'eval.evidencia_ayuda'      => 'Required if the answer is "Yes": describe the document, log, screenshot, or configuration that supports the answer (ISO/IEC 27007 — conformity is proven with evidence, not with the auditee\'s statement).',
+    'eval.calidad_evidencia'    => 'Evidence quality',
+    'eval.calidad_bien'         => 'Well implemented',
+    'eval.calidad_mejora'       => 'Needs improvement',
+    'eval.calidad_declarativo'  => 'Declarative (no real evidence)',
 
     // Results / report / comparison
     'eval.resultados'           => 'Results',
