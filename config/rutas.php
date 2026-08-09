@@ -65,6 +65,13 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
     $enrutador->get('/evaluacion/{id}/reporte', [AuditoriaController::class, 'reporte']);
 
+    // ── Remediación y re-auditoría (punto 19) ────────────────────────────────
+    $enrutador->get('/evaluacion/{id}/remediaciones', [AuditoriaController::class, 'remediaciones']);
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}/remediacion', [AuditoriaController::class, 'crearRemediacion']);
+    $enrutador->post('/remediaciones/{idRemediacion}/programar', [AuditoriaController::class, 'programarReauditoria']);
+    $enrutador->post('/remediaciones/{idRemediacion}/estado', [AuditoriaController::class, 'actualizarEstadoRemediacion']);
+    $enrutador->get('/remediaciones/vencidas', [AuditoriaController::class, 'remediacionesVencidas']);
+
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //
     // Reservado al rol ADMIN_BD; lo comprueba el propio controlador.

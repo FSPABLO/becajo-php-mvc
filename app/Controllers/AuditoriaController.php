@@ -305,6 +305,120 @@ final class AuditoriaController extends Controlador
         ], 'imprimir');
     }
 
+    // ── Remediación y re-auditoría ─────────────────────────────────
+
+    /** Panel de plazos de corrección de una auditoría. */
+    public function remediaciones(): void
+    {
+        $usuario = $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+
+        $this->ver('evaluacion/remediaciones', [
+            ...$this->contexto(),
+            'meta'          => $this->meta('Remediaciones · Auditoría ' . $auditoria->id),
+            'usuario'       => $usuario,
+            'auditoria'     => $auditoria,
+            'remediaciones' => $this->auditorias()->remediacionesAuditoria($auditoria->id),
+        ]);
+    }
+
+    /**
+     * Crea el plazo de corrección de UN hallazgo puntual.
+     *
+     * Cuelga de la evaluación del control, no de la auditoría completa: por
+     * eso necesita el código del control además del id de la auditoría, igual
+     * que guardarControl().
+     */
+    public function crearRemediacion(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $control = $this->controlDelCatalogo();
+        $destino = '/evaluacion/' . $auditoria->id . '/remediaciones';
+
+        $this->exigirToken($destino);
+
+        $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
+
+        if ($evaluacion === null || $evaluacion->id === 0) {
+            $this->sesion()->destello('error', 'Ese control todavía no tiene una evaluación guardada.');
+            $this->redirigir($destino);
+        }
+
+        $fechaLimite = (string) $this->peticion()->entrada('fecha_limite', '');
+        $responsable = $this->peticion()->entrada('responsable');
+
+        if ($fechaLimite === '' || !$this->fechaValida($fechaLimite)) {
+            $this->sesion()->destello('error', 'Indique una fecha límite válida (AAAA-MM-DD).');
+            $this->redirigir($destino);
+        }
+
+        $this->auditorias()->crearRemediacion($evaluacion->id, $fechaLimite, $responsable);
+
+        $this->sesion()->destello('aviso', 'Plazo de corrección creado para ' . $control->id . '.');
+        $this->redirigir($destino);
+    }
+
+    /** Enlaza una remediación con la auditoría de seguimiento ya creada. */
+    public function programarReauditoria(): void
+    {
+        $this->exigirUsuario();
+
+        $idRemediacion = (int) $this->parametro('idRemediacion', '0');
+        $idAuditoriaReauditoria = (int) $this->peticion()->entrada('id_auditoria_reauditoria', '0');
+
+        // La auditoría de seguimiento tiene que ser propia: si no lo fuera,
+        // auditoriaPropia() ya habría respondido 404 antes de llegar aquí.
+        $original = $this->auditorias()->auditoria($idAuditoriaReauditoria);
+        $usuario = $this->autenticacion()->usuario();
+
+        if ($original === null || $original->idAuditor !== $usuario?->id) {
+            $this->noEncontrado();
+        }
+
+        $this->exigirToken('/evaluacion/' . $original->id . '/remediaciones');
+
+        $this->auditorias()->programarReauditoria($idRemediacion, $idAuditoriaReauditoria);
+
+        $this->sesion()->destello('aviso', 'Re-auditoría programada.');
+        $this->redirigir('/evaluacion/' . $original->id . '/remediaciones');
+    }
+
+    /** Marca una remediación como cumplida, en proceso o pendiente a mano. */
+    public function actualizarEstadoRemediacion(): void
+    {
+        $this->exigirUsuario();
+
+        $idRemediacion = (int) $this->parametro('idRemediacion', '0');
+        $estado = (string) $this->peticion()->entrada('estado', '');
+        $destino = (string) $this->peticion()->entrada('volver', '/evaluacion');
+
+        $this->exigirToken($destino);
+
+        if (!in_array($estado, ['PENDIENTE', 'EN_PROCESO', 'CUMPLIDO'], true)) {
+            $this->sesion()->destello('error', 'Estado de remediación no válido.');
+            $this->redirigir($destino);
+        }
+
+        $this->auditorias()->actualizarEstadoRemediacion($idRemediacion, $estado);
+
+        $this->sesion()->destello('aviso', 'Estado de la remediación actualizado.');
+        $this->redirigir($destino);
+    }
+
+    /** Panel global (todas las organizaciones) de remediaciones vencidas. */
+    public function remediacionesVencidas(): void
+    {
+        $usuario = $this->exigirAdministrador();
+
+        $this->ver('evaluacion/remediaciones-vencidas', [
+            ...$this->contexto(),
+            'meta'          => $this->meta('Remediaciones vencidas'),
+            'usuario'       => $usuario,
+            'remediaciones' => $this->auditorias()->remediacionesVencidas(),
+        ]);
+    }
+
     // Compara el histórico de auditorías del auditor, agrupado por organización.
     public function comparar(): void
     {
