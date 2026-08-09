@@ -35,6 +35,13 @@ final class AuditoriaController extends Controlador
     /** Criterios válidos, según ck_evalctrl_criterio. */
     private const CRITERIOS = ['DOCUMENTADO', 'REPETIBLE', 'EVIDENCIA'];
 
+    /** Calidad de la evidencia, según ck_evalctrl_calidad_evidencia. */
+    private const CALIDADES = [
+        EvaluacionControl::CALIDAD_BIEN_IMPLEMENTADO,
+        EvaluacionControl::CALIDAD_REQUIERE_MEJORA,
+        EvaluacionControl::CALIDAD_DECLARATIVO,
+    ];
+
     // ── Panel ────────────────────────────────────────────────────────────────
 
     public function panel(): void
@@ -205,6 +212,8 @@ final class AuditoriaController extends Controlador
             hallazgo:               $datos['hallazgo'],
             recomendacion:          $datos['recomendacion'],
             preguntaPersonalizada:  $datos['pregunta'],
+            evidenciaVerificada:    $datos['evidencia'],
+            calidadEvidencia:       $datos['calidad'],
         ));
 
         // Se recalcula en cada guardado, no solo al finalizar: el auditor puede
@@ -353,6 +362,8 @@ final class AuditoriaController extends Controlador
             'hallazgo'         => $peticion->entrada('hallazgo'),
             'recomendacion'    => $peticion->entrada('recomendacion'),
             'pregunta'         => $peticion->entrada('pregunta'),
+            'evidencia'        => $peticion->entrada('evidencia'),
+            'calidad'          => $peticion->entrada('calidad'),
         ];
     }
 
@@ -433,6 +444,22 @@ final class AuditoriaController extends Controlador
 
         if ($datos['criterio'] !== null && !in_array($datos['criterio'], self::CRITERIOS, true)) {
             $errores['criterio'] = 'El criterio indicado no es válido.';
+        }
+
+        // ISO-IEC 27007: la conformidad se determina contra
+        // evidencia verificable, no contra la afirmación del auditado. Un
+        // "Sí" sin evidencia ni clasificación de calidad no se puede guardar
+        // — mismo espíritu que ck_evalctrl_evidencia_si en la base de datos,
+        // pero comprobado aquí primero para dar un mensaje claro en el
+        // campo exacto, en vez de que el auditor reciba un ORA-02290.
+        if ($estado === EvaluacionControl::SI) {
+            if (trim((string) ($datos['evidencia'] ?? '')) === '') {
+                $errores['evidencia'] = 'Si la respuesta es "Sí", debe describir la evidencia revisada.';
+            }
+
+            if ($datos['calidad'] === null || !in_array($datos['calidad'], self::CALIDADES, true)) {
+                $errores['calidad'] = 'Indique si la evidencia está bien implementada, requiere mejora o es solo declarativa.';
+            }
         }
 
         foreach (['impacto' => 'El impacto', 'probabilidad' => 'La probabilidad'] as $campo => $etiqueta) {
