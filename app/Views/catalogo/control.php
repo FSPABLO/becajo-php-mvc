@@ -117,6 +117,21 @@ $opcionesProceso = array_map(
             'ayuda'    => 'Qué documento o registro debería poder mostrar la organización.',
         ]) ?>
 
+        <?= $vista->renderizar('catalogo/_campo', [
+            'campo'       => 'peso',
+            'etiqueta'    => 'Importancia (peso)',
+            'valor'       => $v('peso', $control->peso ?? \App\Models\Entidades\Control::PESO_MEDIA),
+            'error'       => $errores['peso'] ?? null,
+            'tipo'        => 'select',
+            'opciones'    => [
+                ['valor' => 'ALTA',  'texto' => 'Alta'],
+                ['valor' => 'MEDIA', 'texto' => 'Media'],
+                ['valor' => 'BAJA',  'texto' => 'Baja'],
+            ],
+            'obligatorio' => true,
+            'ayuda'       => 'Importancia relativa del control (COBIT 4.1): pesa más en el cálculo ponderado del riesgo.',
+        ]) ?>
+
         <button type="submit"
                 class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
             <?= $esNuevo ? 'Crear control' : 'Guardar cambios' ?>
