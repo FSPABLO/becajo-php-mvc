@@ -6,6 +6,7 @@ namespace App\Models\Contratos;
 
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
 
@@ -163,4 +164,44 @@ interface RepositorioAuditorias
      * @return list<ResultadoRiesgo>
      */
     public function exposicionRiesgo(int $idAuditoria): array;
+
+    /**
+     * Madurez ponderada por dominio, a través de todas las auditorías de una
+     * organización — la evolución en el tiempo, no solo el resultado de una.
+     * Complementa a auditoriasDe() (que ya trae el índice general por
+     * auditoría) con el desglose por dominio.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function historicoPorDominio(string $organizacion): array;
+
+    // ── Remediación (punto 19: plazos y re-auditoría) ───────────────────────
+
+    /** Crea un plazo de corrección para un hallazgo puntual. */
+    public function crearRemediacion(
+        int $idEvaluacionControl,
+        string $fechaLimite,
+        ?string $responsable,
+    ): void;
+
+    /**
+     * Las remediaciones abiertas de una auditoría, con el control al que
+     * pertenecen ya resuelto.
+     *
+     * @return list<Remediacion>
+     */
+    public function remediacionesAuditoria(int $idAuditoria): array;
+
+    /**
+     * Todas las remediaciones vencidas, de cualquier auditoría — el panel
+     * global para quien le da seguimiento a los hallazgos.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function remediacionesVencidas(): array;
+
+    /** Enlaza una remediación con la auditoría creada para verificarla. */
+    public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void;
+
+    public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void;
 }
