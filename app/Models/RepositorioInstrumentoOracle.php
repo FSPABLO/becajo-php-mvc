@@ -119,7 +119,7 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
         // devuelve ya convertidos a texto (OCI_RETURN_LOBS).
         $filas = $this->bd->consultar(
             'SELECT codigo, numero_proceso, referencia_iso,
-                    enunciado, evidencia_esperada, pregunta
+                    enunciado, evidencia_esperada, pregunta, peso
                FROM control
               ORDER BY codigo'
         );
@@ -278,7 +278,7 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
     {
         $fila = $this->bd->consultarUna(
             'SELECT codigo, numero_proceso, referencia_iso,
-                    enunciado, evidencia_esperada, pregunta
+                    enunciado, evidencia_esperada, pregunta, peso
                FROM control WHERE codigo = :codigo',
             ['codigo' => $codigo],
         );
@@ -294,12 +294,13 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
     {
         $this->bd->ejecutar(
             'INSERT INTO control (codigo, numero_proceso, referencia_iso,
-                                  enunciado, evidencia_esperada, pregunta)
-             VALUES (:codigo, :proceso, :iso, :enunciado, :evidencia, :pregunta)',
+                                  enunciado, evidencia_esperada, pregunta, peso)
+             VALUES (:codigo, :proceso, :iso, :enunciado, :evidencia, :pregunta, :peso)',
             [
                 'codigo'  => $control->id,
                 'proceso' => $control->proceso,
                 'iso'     => $control->iso,
+                'peso'    => $control->peso,
             ],
             [
                 'enunciado' => $control->enunciado,
@@ -317,11 +318,12 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
             'UPDATE control
                 SET numero_proceso = :proceso, referencia_iso = :iso,
                     enunciado = :enunciado, evidencia_esperada = :evidencia,
-                    pregunta = :pregunta
+                    pregunta = :pregunta, peso = :peso
               WHERE codigo = :codigo',
             [
                 'proceso' => $control->proceso,
                 'iso'     => $control->iso,
+                'peso'    => $control->peso,
                 'codigo'  => $control->id,
             ],
             [
@@ -450,6 +452,7 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
             enunciado: (string) ($fila['enunciado'] ?? ''),
             evidencia: (string) ($fila['evidencia_esperada'] ?? ''),
             pregunta:  (string) ($fila['pregunta'] ?? ''),
+            peso:      (string) ($fila['peso'] ?? Control::PESO_MEDIA),
         );
     }
 
