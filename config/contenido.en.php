@@ -50,8 +50,26 @@ return [
         'texto'     => 'Becajo supports organizations in administering, protecting and '
                      . 'optimizing their databases. Less downtime, less risk, decisions backed '
                      . 'by reliable information.',
+        'puntos'    => [
+            'Free initial diagnosis',
+            'Critical incidents answered in under 15 minutes',
+            'Report with prioritized findings within five business days',
+        ],
         'cta_primario'   => ['etiqueta' => 'Request a diagnosis', 'destino' => '#contacto'],
         'cta_secundario' => ['etiqueta' => 'See our services',    'destino' => '#servicios'],
+
+        /** Sample dashboard illustrating the hero. See the Spanish file for the notes. */
+        'panel' => [
+            'titulo'    => 'Operational status',
+            'subtitulo' => 'Last 24 hours',
+            'filas'     => [
+                ['etiqueta' => 'Availability',        'valor' => '99.98%',        'estado' => 'exito'],
+                ['etiqueta' => 'Verified backups',    'valor' => '12 / 12',       'estado' => 'exito'],
+                ['etiqueta' => 'Slow queries',        'valor' => '3 under review', 'estado' => 'aviso'],
+                ['etiqueta' => 'Privileged accounts', 'valor' => 'Audited',       'estado' => 'exito'],
+            ],
+            'pie' => 'Sample of the dashboard delivered with the monitoring service.',
+        ],
     ],
 
     'retos' => [
@@ -143,6 +161,20 @@ return [
     ],
 
     'motores' => ['Oracle', 'MySQL', 'PostgreSQL', 'SQL Server', 'MongoDB', 'MariaDB'],
+
+    /** Technology stack. Structure documented in config/contenido.php. */
+    'stack' => [
+        'etiqueta' => 'Technology stack',
+        'titulo'   => 'Engines we review, maintain and support',
+        'logos'    => [
+            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.jpg',     'ancho' => 663,  'alto' => 720],
+            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png',      'ancho' => 1280, 'alto' => 720],
+            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610,  'alto' => 280],
+            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 614,  'alto' => 499],
+            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.jpg',    'ancho' => 1024, 'alto' => 512],
+            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.jpg',    'ancho' => 714,  'alto' => 430],
+        ],
+    ],
 
     'caso' => [
         'sector'  => 'Financial sector',

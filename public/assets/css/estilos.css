@@ -44,3 +44,57 @@
 body {
     overflow-x: hidden;
 }
+
+/*
+ * Carrusel de logotipos del stack tecnológico
+ *
+ * La pista contiene la lista de logotipos DOS veces. Al desplazarla un 50 % de
+ * su ancho, el segundo juego queda exactamente donde empezó el primero, así que
+ * el salto al reiniciar la animación es invisible y el movimiento parece
+ * infinito. El segundo juego lleva aria-hidden en el HTML: es una copia visual,
+ * no contenido nuevo.
+ *
+ * Se hace con CSS y no con JavaScript a propósito: el navegador lo anima en el
+ * compositor y el carrusel funciona aunque el script no cargue.
+ */
+.carrusel-logos {
+    overflow: hidden;
+    /* Difumina los bordes para que los logotipos entren y salgan sin cortarse */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+/*
+ * La duración se ajusta al ancho de la pista: al agrandar los logotipos la
+ * pista se alarga, y con la misma duración el desfile se acelera. 72s mantiene
+ * un paso de lectura tranquilo con las medidas actuales.
+ */
+.carrusel-logos__pista {
+    display: flex;
+    width: max-content;
+    animation: desplazar-logos 72s linear infinite;
+}
+
+@keyframes desplazar-logos {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+/*
+ * Con movimiento reducido no basta la regla general de arriba: una animación
+ * infinita de 0.01ms parpadearía. Se detiene del todo y la lista se acomoda
+ * centrada en varias líneas, con la copia oculta para no repetir logotipos.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .carrusel-logos__pista,
+    .carrusel-logos__grupo {
+        animation: none !important;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .carrusel-logos__copia {
+        display: none;
+    }
+}

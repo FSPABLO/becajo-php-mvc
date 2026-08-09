@@ -33,6 +33,7 @@ final class HomeController extends Controlador
             'servicios'           => $repositorio->servicios(),
             'metricas'            => $repositorio->metricas(),
             'motores'             => $repositorio->motores(),
+            'stack'               => $repositorio->stack(),
             'caso'                => $repositorio->caso(),
             'equipo'              => $repositorio->equipo(),
             'contacto'            => $repositorio->contacto(),

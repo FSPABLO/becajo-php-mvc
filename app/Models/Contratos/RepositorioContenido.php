@@ -50,6 +50,9 @@ interface RepositorioContenido
     public function motores(): array;
 
     /** @return array<string, mixed> */
+    public function stack(): array;
+
+    /** @return array<string, mixed> */
     public function caso(): array;
 
     /** @return list<Integrante> */

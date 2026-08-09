@@ -100,6 +100,12 @@ final class RepositorioArreglo implements RepositorioContenido
     }
 
     /** @return array<string, mixed> */
+    public function stack(): array
+    {
+        return $this->datos['stack'];
+    }
+
+    /** @return array<string, mixed> */
     public function caso(): array
     {
         return $this->datos['caso'];

@@ -62,8 +62,32 @@ return [
         'texto'     => 'Becajo acompaña a las organizaciones en la administración, protección y '
                      . 'optimización de sus bases de datos. Menos tiempo fuera de servicio, '
                      . 'menos riesgo, decisiones respaldadas por información confiable.',
+        'puntos'    => [
+            'Diagnóstico inicial sin costo',
+            'Respuesta a incidentes críticos en menos de 15 minutos',
+            'Informe con hallazgos priorizados en cinco días hábiles',
+        ],
         'cta_primario'   => ['etiqueta' => 'Solicitar diagnóstico', 'destino' => '#contacto'],
         'cta_secundario' => ['etiqueta' => 'Conocer servicios',     'destino' => '#servicios'],
+
+        /**
+         * Tablero de ejemplo que ilustra el hero.
+         *
+         * El campo 'estado' solo admite los valores exito, aviso y alerta: la
+         * vista los traduce a clases de color con una lista blanca, para que un
+         * valor inventado aquí no inyecte clases arbitrarias en el HTML.
+         */
+        'panel' => [
+            'titulo'    => 'Estado de la operación',
+            'subtitulo' => 'Últimas 24 horas',
+            'filas'     => [
+                ['etiqueta' => 'Disponibilidad',        'valor' => '99.98 %',      'estado' => 'exito'],
+                ['etiqueta' => 'Respaldos verificados', 'valor' => '12 / 12',      'estado' => 'exito'],
+                ['etiqueta' => 'Consultas lentas',      'valor' => '3 en revisión', 'estado' => 'aviso'],
+                ['etiqueta' => 'Accesos privilegiados', 'valor' => 'Auditados',    'estado' => 'exito'],
+            ],
+            'pie' => 'Ejemplo del tablero que entregamos con el servicio de monitoreo.',
+        ],
     ],
 
     'retos' => [
@@ -155,6 +179,28 @@ return [
     ],
 
     'motores' => ['Oracle', 'MySQL', 'PostgreSQL', 'SQL Server', 'MongoDB', 'MariaDB'],
+
+    /**
+     * Stack tecnológico: los motores sobre los que se presta el servicio.
+     *
+     * 'logos' alimenta el carrusel de la sección. Las medidas 'ancho' y 'alto'
+     * son las reales del archivo: se imprimen en el <img> para que el navegador
+     * reserve el espacio y la fila no salte mientras cargan las imágenes.
+     *
+     * El orden de la lista es el orden en que desfilan los logotipos.
+     */
+    'stack' => [
+        'etiqueta' => 'Stack tecnológico',
+        'titulo'   => 'Motores que revisamos, mantenemos y soportamos',
+        'logos'    => [
+            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.jpg',     'ancho' => 663,  'alto' => 720],
+            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png',      'ancho' => 1280, 'alto' => 720],
+            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610,  'alto' => 280],
+            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 614,  'alto' => 499],
+            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.jpg',    'ancho' => 1024, 'alto' => 512],
+            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.jpg',    'ancho' => 714,  'alto' => 430],
+        ],
+    ],
 
     'caso' => [
         'sector'  => 'Sector financiero',
