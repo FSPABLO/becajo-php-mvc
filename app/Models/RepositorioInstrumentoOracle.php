@@ -96,7 +96,8 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
         }
 
         $filas = $this->bd->consultar(
-            'SELECT numero, clave_dominio, nombre, ancla, orden
+            'SELECT numero, clave_dominio, nombre, ancla, orden,
+                    relacion_confidencialidad, relacion_integridad, relacion_disponibilidad
                FROM proceso
               ORDER BY orden, numero'
         );
@@ -208,7 +209,8 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
     public function proceso(int $numero): ?Proceso
     {
         $fila = $this->bd->consultarUna(
-            'SELECT numero, clave_dominio, nombre, ancla, orden
+            'SELECT numero, clave_dominio, nombre, ancla, orden,
+                    relacion_confidencialidad, relacion_integridad, relacion_disponibilidad
                FROM proceso WHERE numero = :numero',
             ['numero' => $numero],
         );
@@ -219,14 +221,19 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
     public function crearProceso(Proceso $proceso): void
     {
         $this->bd->ejecutar(
-            'INSERT INTO proceso (numero, clave_dominio, nombre, ancla, orden)
-             VALUES (:numero, :dominio, :nombre, :ancla, :orden)',
+            'INSERT INTO proceso (numero, clave_dominio, nombre, ancla, orden,
+                                  relacion_confidencialidad, relacion_integridad, relacion_disponibilidad)
+             VALUES (:numero, :dominio, :nombre, :ancla, :orden,
+                     :relacion_c, :relacion_i, :relacion_d)',
             [
-                'numero'  => $proceso->numero,
-                'dominio' => $proceso->dominio,
-                'nombre'  => $proceso->nombre,
-                'ancla'   => $proceso->ancla,
-                'orden'   => $proceso->orden,
+                'numero'      => $proceso->numero,
+                'dominio'     => $proceso->dominio,
+                'nombre'      => $proceso->nombre,
+                'ancla'       => $proceso->ancla,
+                'orden'       => $proceso->orden,
+                'relacion_c'  => $proceso->relacionConfidencialidad,
+                'relacion_i'  => $proceso->relacionIntegridad,
+                'relacion_d'  => $proceso->relacionDisponibilidad,
             ],
         );
 
@@ -238,14 +245,20 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
         $this->bd->ejecutar(
             'UPDATE proceso
                 SET clave_dominio = :dominio, nombre = :nombre,
-                    ancla = :ancla, orden = :orden
+                    ancla = :ancla, orden = :orden,
+                    relacion_confidencialidad = :relacion_c,
+                    relacion_integridad = :relacion_i,
+                    relacion_disponibilidad = :relacion_d
               WHERE numero = :numero',
             [
-                'dominio' => $proceso->dominio,
-                'nombre'  => $proceso->nombre,
-                'ancla'   => $proceso->ancla,
-                'orden'   => $proceso->orden,
-                'numero'  => $proceso->numero,
+                'dominio'    => $proceso->dominio,
+                'nombre'     => $proceso->nombre,
+                'ancla'      => $proceso->ancla,
+                'orden'      => $proceso->orden,
+                'relacion_c' => $proceso->relacionConfidencialidad,
+                'relacion_i' => $proceso->relacionIntegridad,
+                'relacion_d' => $proceso->relacionDisponibilidad,
+                'numero'     => $proceso->numero,
             ],
         );
 
@@ -421,6 +434,9 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
             nombre:  (string) $fila['nombre'],
             ancla:   (string) ($fila['ancla'] ?? ''),
             orden:   (int) ($fila['orden'] ?? 0),
+            relacionConfidencialidad: self::valorONulo($fila['relacion_confidencialidad'] ?? null),
+            relacionIntegridad:       self::valorONulo($fila['relacion_integridad'] ?? null),
+            relacionDisponibilidad:   self::valorONulo($fila['relacion_disponibilidad'] ?? null),
         );
     }
 
@@ -435,5 +451,10 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
             evidencia: (string) ($fila['evidencia_esperada'] ?? ''),
             pregunta:  (string) ($fila['pregunta'] ?? ''),
         );
+    }
+
+    private static function valorONulo(mixed $valor): ?string
+    {
+        return ($valor === null || $valor === '') ? null : (string) $valor;
     }
 }
