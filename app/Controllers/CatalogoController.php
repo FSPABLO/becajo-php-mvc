@@ -48,6 +48,24 @@ final class CatalogoController extends Controlador
         ]);
     }
 
+    /**
+     * Mapa de procesos vs C-I-D — la misma idea del Apéndice II
+     * de COBIT 4.1: cada proceso, con su relación Primaria/Secundaria/ninguna
+     * declarada frente a Confidencialidad, Integridad y Disponibilidad.
+     */
+    public function matriz(): void
+    {
+        $this->exigirAdministrador();
+        $catalogo = $this->catalogo();
+
+        $this->ver('catalogo/matriz', [
+            ...$this->contexto(),
+            'meta'     => $this->meta('Mapa de procesos vs C-I-D'),
+            'dominios' => $catalogo->dominios(),
+            'procesos' => $catalogo->procesos(),
+        ]);
+    }
+
     // ── Dominios ─────────────────────────────────────────────────────────────
 
     public function dominioFormulario(): void

@@ -81,7 +81,8 @@ return static function (Enrutador $enrutador): void {
     // decide según lo reciba o no. La coincidencia exacta se resuelve antes
     // que el patrón, así que "nuevo" nunca se interpreta como una clave.
     $enrutador->get('/catalogo', [CatalogoController::class, 'indice']);
-
+    $enrutador->get('/catalogo/matriz', [CatalogoController::class, 'matriz']);
+    
     $enrutador->get('/catalogo/dominios/nuevo', [CatalogoController::class, 'dominioFormulario']);
     $enrutador->post('/catalogo/dominios/nuevo', [CatalogoController::class, 'guardarDominio']);
     $enrutador->get('/catalogo/dominios/{clave}', [CatalogoController::class, 'dominioFormulario']);
