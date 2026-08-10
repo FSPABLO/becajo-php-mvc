@@ -6,6 +6,7 @@ declare(strict_types=1);
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Usuario $usuario
  * @var array<string, list<\App\Models\Entidades\Auditoria>> $porOrganizacion
+ * @var array<string, list<array<string, mixed>>> $historicoPorOrganizacion
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 $maximo = 1;
@@ -65,6 +66,50 @@ foreach ($porOrganizacion as $grupo) {
                             </a>
                         <?php endforeach; ?>
                     </div>
+
+                    <?php
+                    // Punto 18: desglose de la misma tendencia, pero por dominio en
+                    // vez de por índice general — para ver en qué áreas concretas
+                    // mejoró o empeoró cada auditoría, no solo el número global.
+                    $historico = $historicoPorOrganizacion[$organizacion] ?? [];
+                    if ($historico !== []):
+                        $fechas = [];
+                        $porDominio = [];
+                        foreach ($historico as $fila) {
+                            $fechas[$fila['fecha']] = true;
+                            $porDominio[$fila['dominio']][$fila['fecha']] = (float) $fila['madurez_promedio'];
+                        }
+                        $fechas = array_keys($fechas);
+                        sort($fechas);
+                    ?>
+                        <div class="mt-6 overflow-x-auto">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Madurez ponderada por dominio
+                            </p>
+                            <table class="w-full text-left text-xs">
+                                <thead class="text-slate-500">
+                                    <tr>
+                                        <th class="py-1 pr-3 font-semibold">Dominio</th>
+                                        <?php foreach ($fechas as $fecha): ?>
+                                            <th class="px-2 py-1 text-center font-semibold"><?= e($fecha) ?></th>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <?php foreach ($porDominio as $dominio => $valoresPorFecha): ?>
+                                        <tr>
+                                            <td class="py-1.5 pr-3 font-medium text-marina-950"><?= e($dominio) ?></td>
+                                            <?php foreach ($fechas as $fecha): ?>
+                                                <td class="px-2 py-1.5 text-center tabular-nums text-slate-700">
+                                                    <?= isset($valoresPorFecha[$fecha]) ? e(number_format($valoresPorFecha[$fecha], 2)) : '—' ?>
+                                                </td>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>

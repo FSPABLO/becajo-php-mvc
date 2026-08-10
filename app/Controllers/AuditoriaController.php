@@ -437,11 +437,21 @@ final class AuditoriaController extends Controlador
         }
         unset($grupo);
 
+        // Punto 18: madurez ponderada por dominio, a través del tiempo, para
+        // cada organización que este auditor ya evaluó. Complementa las
+        // barras de índice general que ya se mostraban con el desglose por
+        // dominio, para ver en qué áreas mejoró o empeoró cada auditoría.
+        $historicoPorOrganizacion = [];
+        foreach (array_keys($porOrganizacion) as $organizacion) {
+            $historicoPorOrganizacion[$organizacion] = $this->auditorias()->historicoPorDominio($organizacion);
+        }
+
         $this->ver('evaluacion/comparar', [
             ...$this->contexto(),
-            'meta'            => $this->meta('Comparación histórica'),
-            'usuario'         => $usuario,
-            'porOrganizacion' => $porOrganizacion,
+            'meta'                     => $this->meta('Comparación histórica'),
+            'usuario'                  => $usuario,
+            'porOrganizacion'          => $porOrganizacion,
+            'historicoPorOrganizacion' => $historicoPorOrganizacion,
         ]);
     }
 
