@@ -79,6 +79,7 @@ $colorEstado = [
                               action="<?= e($vista->url('remediaciones/' . $remediacion->id . '/programar')) ?>"
                               class="mt-4 flex flex-wrap items-end gap-3">
                             <?= $vista->campoToken() ?>
+                            <input type="hidden" name="volver" value="<?= e($vista->url('evaluacion/' . $auditoria->id . '/remediaciones')) ?>">
                             <div>
                                 <label class="block text-xs font-semibold text-marina-950">Id de la auditoría de seguimiento</label>
                                 <input type="number" name="id_auditoria_reauditoria" required

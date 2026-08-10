@@ -338,6 +338,21 @@ final class AuditoriaController extends Controlador
 
         $this->exigirToken($destino);
 
+        $codigo = (string) $this->parametro('codigo', '');
+        $control = null;
+
+        foreach ($this->instrumento()->controles() as $candidato) {
+            if ($candidato->id === $codigo) {
+                $control = $candidato;
+                break;
+            }
+        }
+
+        if ($control === null) {
+            $this->sesion()->destello('error', 'Ese código de control no existe en el catálogo.');
+            $this->redirigir($destino);
+        }
+
         $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
 
         if ($evaluacion === null || $evaluacion->id === 0) {
