@@ -70,6 +70,11 @@ $etiquetaEstado = [
                 <?= e($vista->t('eval.ver_resultados')) ?>
             </a>
 
+            <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/remediaciones')) ?>"
+               class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-marina-950 transition hover:bg-slate-50">
+                Remediaciones
+            </a>
+
             <?php if ($abierta): ?>
                 <form method="post" action="<?= e($vista->url('evaluacion/' . $auditoria->id . '/finalizar')) ?>">
                     <?= $vista->campoToken() ?>
