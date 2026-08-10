@@ -1,7 +1,13 @@
 -- ============================================================================
 -- EIF402 · Proyecto Integrador — Evaluación de Riesgo ISO/IEC 27002
--- Fase 5 — Pruebas de integridad (Oracle 21c+)
+-- Pruebas de integridad (Oracle 21c+) — versión consolidada final
 -- Preparado por Persona 2
+--
+-- Fusiona las pruebas del esquema original (tests 1-12) con las de la rama
+-- feature/rigor-normativo (tests 13-21, antes en un archivo aparte
+-- 08_pruebas_integridad_rigor_normativo.sql) — ya no hace falta tenerlas
+-- separadas: todas prueban restricciones que hoy son parte del mismo
+-- 01_esquema.sql, así que se corren juntas, en una sola pasada.
 --
 -- CÓMO LEER LOS RESULTADOS:
 -- Cada bloque está etiquetado con PROMPT y dice qué error se espera.
@@ -11,10 +17,16 @@
 -- ESO es un problema: significa que falta una restricción en el esquema.
 --
 -- Ejecutar después de 01_esquema.sql, 02_datos_semilla.sql y
--- 03_procedimientos_indicadores.sql (usa datos ya cargados por el seed).
+-- 03_procedimientos_indicadores.sql (usa los datos ya cargados por el seed:
+-- C-001 en estado SI, C-046 en estado NO, ambos en la auditoría 1).
 -- ============================================================================
 
 SET SERVEROUTPUT ON
+
+PROMPT
+PROMPT ############################################################
+PROMPT #  BLOQUE 1 — restricciones del esquema original (tests 1-12)
+PROMPT ############################################################
 
 PROMPT
 PROMPT ============================================================
@@ -76,7 +88,7 @@ PROMPT
 PROMPT ============================================================
 PROMPT TEST 9 — estado inválido en EVALUACION_CONTROL (se espera ORA-02290, ck_evalctrl_estado)
 PROMPT ============================================================
-UPDATE evaluacion_control SET estado = 'TALVEZ' WHERE codigo_control = 'C-001' AND id_auditoria = 1;
+UPDATE evaluacion_control SET estado = 'QUIZA' WHERE codigo_control = 'C-001' AND id_auditoria = 1;
 
 PROMPT
 PROMPT ============================================================
@@ -98,15 +110,119 @@ PROMPT (se espera ORA-02292, integridad referencial protege el historial)
 PROMPT ============================================================
 DELETE FROM control WHERE codigo = 'C-001';
 
+
+PROMPT
+PROMPT ############################################################
+PROMPT #  BLOQUE 2 — restricciones de la rama rigor-normativo (tests 13-21)
+PROMPT ############################################################
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 13 — peso inválido en CONTROL (se espera ORA-02290, ck_control_peso)
+PROMPT ============================================================
+UPDATE control SET peso = 'EXTREMA' WHERE codigo = 'C-001';
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 14 — relación C-I-D inválida en PROCESO
+PROMPT (se espera ORA-02290, ck_proceso_rel_confidencialidad)
+PROMPT ============================================================
+UPDATE proceso SET relacion_confidencialidad = 'X' WHERE numero = 1;
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 15 — respuesta "Sí" sin evidencia (se espera ORA-02290, ck_evalctrl_evidencia_si)
+PROMPT ============================================================
+UPDATE evaluacion_control
+   SET evidencia_verificada = NULL
+ WHERE codigo_control = 'C-001' AND id_auditoria = 1;
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 16 — respuesta "Sí" con evidencia pero sin calidad
+PROMPT (se espera ORA-02290, ck_evalctrl_evidencia_si)
+PROMPT ============================================================
+UPDATE evaluacion_control
+   SET calidad_evidencia = NULL
+ WHERE codigo_control = 'C-001' AND id_auditoria = 1;
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 17 — calidad de evidencia con valor inválido
+PROMPT (se espera ORA-02290, ck_evalctrl_calidad_evidencia)
+PROMPT ============================================================
+UPDATE evaluacion_control
+   SET calidad_evidencia = 'EXCELENTE'
+ WHERE codigo_control = 'C-001' AND id_auditoria = 1;
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 18 — estado inválido en REMEDIACION (se espera ORA-02290, ck_remediacion_estado)
+PROMPT ============================================================
+INSERT INTO remediacion (id_evaluacion_control, fecha_limite, estado)
+VALUES (
+    (SELECT id_evaluacion_control FROM evaluacion_control
+      WHERE codigo_control = 'C-046' AND id_auditoria = 1),
+    DATE '2026-12-01',
+    'CANCELADA'
+);
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 19 — remediación de una evaluación inexistente
+PROMPT (se espera ORA-02291, fk_remediacion_evalctrl)
+PROMPT ============================================================
+INSERT INTO remediacion (id_evaluacion_control, fecha_limite)
+VALUES (999999, DATE '2026-12-01');
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 20 — remediación enlazada a una auditoría de seguimiento inexistente
+PROMPT (se espera ORA-02291, fk_remediacion_reauditoria)
+PROMPT ============================================================
+INSERT INTO remediacion (id_evaluacion_control, fecha_limite, id_auditoria_reauditoria)
+VALUES (
+    (SELECT id_evaluacion_control FROM evaluacion_control
+      WHERE codigo_control = 'C-046' AND id_auditoria = 1),
+    DATE '2026-12-01',
+    999999
+);
+
+PROMPT
+PROMPT ============================================================
+PROMPT Preparación para TEST 21 — se crea una remediación real de prueba
+PROMPT (esto SÍ debe insertar sin error; es el montaje, no la prueba)
+PROMPT ============================================================
+INSERT INTO remediacion (id_evaluacion_control, fecha_limite, responsable)
+VALUES (
+    (SELECT id_evaluacion_control FROM evaluacion_control
+      WHERE codigo_control = 'C-046' AND id_auditoria = 1),
+    DATE '2026-12-01',
+    'Prueba de integridad'
+);
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 21 — borrar una evaluación que ya tiene una remediación
+PROMPT (se espera ORA-02292, fk_remediacion_evalctrl protege el historial)
+PROMPT ============================================================
+DELETE FROM evaluacion_control WHERE codigo_control = 'C-046' AND id_auditoria = 1;
+
+
 PROMPT
 PROMPT ============================================================
 PROMPT CONTROL DE SANIDAD — nada de lo anterior debió modificar datos reales.
-PROMPT Estos conteos deben seguir dando los mismos números de siempre:
+PROMPT Corre cada SELECT por separado si tu cliente pega varias líneas a la vez.
 PROMPT ============================================================
-SELECT COUNT(*) AS usuarios FROM usuario;              -- debe seguir en 2
-SELECT COUNT(*) AS auditorias FROM auditoria;           -- debe seguir en 1
-SELECT COUNT(*) AS evaluaciones FROM evaluacion_control; -- debe seguir en 2
+SELECT COUNT(*) AS usuarios FROM usuario;                          -- 2
+SELECT COUNT(*) AS auditorias FROM auditoria;                      -- 1
+SELECT COUNT(*) AS evaluaciones FROM evaluacion_control;           -- 2
 SELECT madurez, estado, impacto FROM evaluacion_control
- WHERE id_auditoria = 1 AND codigo_control = 'C-001';    -- madurez debe seguir en 3, estado 'SI'
+ WHERE id_auditoria = 1 AND codigo_control = 'C-001';               -- 3, SI, 2
+SELECT codigo, peso FROM control WHERE codigo = 'C-001';           -- MEDIA
+SELECT relacion_confidencialidad FROM proceso WHERE numero = 1;    -- NULL
+SELECT evidencia_verificada, calidad_evidencia FROM evaluacion_control
+ WHERE codigo_control = 'C-001' AND id_auditoria = 1;               -- con texto, BIEN_IMPLEMENTADO
+SELECT COUNT(*) AS remediaciones FROM remediacion;                  -- vuelve al número de antes de este script
 
 ROLLBACK;
