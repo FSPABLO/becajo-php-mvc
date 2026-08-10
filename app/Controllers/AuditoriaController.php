@@ -315,10 +315,12 @@ final class AuditoriaController extends Controlador
 
         $this->ver('evaluacion/remediaciones', [
             ...$this->contexto(),
-            'meta'          => $this->meta('Remediaciones · Auditoría ' . $auditoria->id),
-            'usuario'       => $usuario,
-            'auditoria'     => $auditoria,
-            'remediaciones' => $this->auditorias()->remediacionesAuditoria($auditoria->id),
+            'meta'                  => $this->meta('Remediaciones · Auditoría ' . $auditoria->id),
+            'usuario'               => $usuario,
+            'auditoria'             => $auditoria,
+            'remediaciones'         => $this->auditorias()->remediacionesAuditoria($auditoria->id),
+            'controlesElegibles'    => $this->controlesConHallazgo($auditoria->id),
+            'auditoriasSeguimiento' => $this->auditoriasSeguimientoDisponibles($usuario->id, $auditoria->id),
         ]);
     }
 
@@ -333,11 +335,15 @@ final class AuditoriaController extends Controlador
     {
         $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
-        $control = $this->controlDelCatalogo();
         $destino = '/evaluacion/' . $auditoria->id . '/remediaciones';
 
         $this->exigirToken($destino);
 
+        // No se usa controlDelCatalogo() aquí a propósito: esa función responde
+        // un 404 duro cuando el código no existe, y eso sacaba al auditor de la
+        // pantalla de remediaciones. Un código inválido en esta acción es un
+        // error de formulario, no una URL rota, así que se valida a mano y se
+        // vuelve al mismo destino con el aviso puesto.
         $codigo = (string) $this->parametro('codigo', '');
         $control = null;
 
@@ -377,26 +383,31 @@ final class AuditoriaController extends Controlador
     /** Enlaza una remediación con la auditoría de seguimiento ya creada. */
     public function programarReauditoria(): void
     {
-        $this->exigirUsuario();
+        $usuario = $this->exigirUsuario();
 
         $idRemediacion = (int) $this->parametro('idRemediacion', '0');
         $idAuditoriaReauditoria = (int) $this->peticion()->entrada('id_auditoria_reauditoria', '0');
 
-        // La auditoría de seguimiento tiene que ser propia: si no lo fuera,
-        // auditoriaPropia() ya habría respondido 404 antes de llegar aquí.
-        $original = $this->auditorias()->auditoria($idAuditoriaReauditoria);
-        $usuario = $this->autenticacion()->usuario();
+        // 'volver' viaja en el propio formulario (ver remediaciones.php): es la
+        // pantalla de remediaciones desde la que se disparó la acción. Se usa
+        // para el token y para todo redirect, así un id de auditoría inválido
+        // o ajeno deja al auditor donde estaba, en vez de un 404 que lo saca
+        // de la vista actual.
+        $volver = (string) $this->peticion()->entrada('volver', '/evaluacion');
 
-        if ($original === null || $original->idAuditor !== $usuario?->id) {
-            $this->noEncontrado();
+        $this->exigirToken($volver);
+
+        $seguimiento = $this->auditorias()->auditoria($idAuditoriaReauditoria);
+
+        if ($seguimiento === null || $seguimiento->idAuditor !== $usuario->id) {
+            $this->sesion()->destello('error', 'Esa auditoría de seguimiento no existe o no le pertenece.');
+            $this->redirigir($volver);
         }
-
-        $this->exigirToken('/evaluacion/' . $original->id . '/remediaciones');
 
         $this->auditorias()->programarReauditoria($idRemediacion, $idAuditoriaReauditoria);
 
-        $this->sesion()->destello('aviso', 'Re-auditoría programada.');
-        $this->redirigir('/evaluacion/' . $original->id . '/remediaciones');
+        $this->sesion()->destello('aviso', 'Re-auditoría programada con la auditoría ' . $seguimiento->id . '.');
+        $this->redirigir($volver);
     }
 
     /** Marca una remediación como cumplida, en proceso o pendiente a mano. */
@@ -713,6 +724,46 @@ final class AuditoriaController extends Controlador
         }
 
         return $indice;
+    }
+
+    /**
+     * Controles de esta auditoría con un hallazgo ("No") ya evaluado — los
+     * únicos que tiene sentido remediar. Alimenta el desplegable de "Código
+     * del control" en la pantalla de remediaciones, para que solo se pueda
+     * elegir un código que de verdad existe y de verdad tiene algo que
+     * corregir, en vez de escribirlo a mano.
+     *
+     * @return list<Control>
+     */
+    private function controlesConHallazgo(int $idAuditoria): array
+    {
+        $codigosConHallazgo = [];
+
+        foreach ($this->auditorias()->evaluaciones($idAuditoria) as $evaluacion) {
+            if ($evaluacion->estado === EvaluacionControl::NO) {
+                $codigosConHallazgo[$evaluacion->codigoControl] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            $this->instrumento()->controles(),
+            static fn (Control $control): bool => isset($codigosConHallazgo[$control->id]),
+        ));
+    }
+
+    /**
+     * Las demás auditorías propias del auditor, candidatas a servir de
+     * seguimiento de una remediación. Alimenta el desplegable de "auditoría
+     * de seguimiento", para no depender de que el auditor copie un id a mano.
+     *
+     * @return list<Auditoria>
+     */
+    private function auditoriasSeguimientoDisponibles(int $idAuditor, int $idAuditoriaActual): array
+    {
+        return array_values(array_filter(
+            $this->auditorias()->auditoriasDe($idAuditor),
+            static fn (Auditoria $candidata): bool => $candidata->id !== $idAuditoriaActual,
+        ));
     }
 
     /** @return array{anterior: Control|null, siguiente: Control|null} */
