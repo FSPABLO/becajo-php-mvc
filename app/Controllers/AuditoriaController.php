@@ -35,6 +35,13 @@ final class AuditoriaController extends Controlador
     /** Criterios válidos, según ck_evalctrl_criterio. */
     private const CRITERIOS = ['DOCUMENTADO', 'REPETIBLE', 'EVIDENCIA'];
 
+    /** Calidad de la evidencia, según ck_evalctrl_calidad_evidencia. */
+    private const CALIDADES = [
+        EvaluacionControl::CALIDAD_BIEN_IMPLEMENTADO,
+        EvaluacionControl::CALIDAD_REQUIERE_MEJORA,
+        EvaluacionControl::CALIDAD_DECLARATIVO,
+    ];
+
     // ── Panel ────────────────────────────────────────────────────────────────
 
     public function panel(): void
@@ -205,6 +212,8 @@ final class AuditoriaController extends Controlador
             hallazgo:               $datos['hallazgo'],
             recomendacion:          $datos['recomendacion'],
             preguntaPersonalizada:  $datos['pregunta'],
+            evidenciaVerificada:    $datos['evidencia'],
+            calidadEvidencia:       $datos['calidad'],
         ));
 
         // Se recalcula en cada guardado, no solo al finalizar: el auditor puede
@@ -296,6 +305,146 @@ final class AuditoriaController extends Controlador
         ], 'imprimir');
     }
 
+    // ── Remediación y re-auditoría ─────────────────────────────────
+
+    /** Panel de plazos de corrección de una auditoría. */
+    public function remediaciones(): void
+    {
+        $usuario = $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+
+        $this->ver('evaluacion/remediaciones', [
+            ...$this->contexto(),
+            'meta'                  => $this->meta('Remediaciones · Auditoría ' . $auditoria->id),
+            'usuario'               => $usuario,
+            'auditoria'             => $auditoria,
+            'remediaciones'         => $this->auditorias()->remediacionesAuditoria($auditoria->id),
+            'controlesElegibles'    => $this->controlesConHallazgo($auditoria->id),
+            'auditoriasSeguimiento' => $this->auditoriasSeguimientoDisponibles($usuario->id, $auditoria->id),
+        ]);
+    }
+
+    /**
+     * Crea el plazo de corrección de UN hallazgo puntual.
+     *
+     * Cuelga de la evaluación del control, no de la auditoría completa: por
+     * eso necesita el código del control además del id de la auditoría, igual
+     * que guardarControl().
+     */
+    public function crearRemediacion(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $destino = '/evaluacion/' . $auditoria->id . '/remediaciones';
+
+        $this->exigirToken($destino);
+
+        // No se usa controlDelCatalogo() aquí a propósito: esa función responde
+        // un 404 duro cuando el código no existe, y eso sacaba al auditor de la
+        // pantalla de remediaciones. Un código inválido en esta acción es un
+        // error de formulario, no una URL rota, así que se valida a mano y se
+        // vuelve al mismo destino con el aviso puesto.
+        $codigo = (string) $this->parametro('codigo', '');
+        $control = null;
+
+        foreach ($this->instrumento()->controles() as $candidato) {
+            if ($candidato->id === $codigo) {
+                $control = $candidato;
+                break;
+            }
+        }
+
+        if ($control === null) {
+            $this->sesion()->destello('error', 'Ese código de control no existe en el catálogo.');
+            $this->redirigir($destino);
+        }
+
+        $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
+
+        if ($evaluacion === null || $evaluacion->id === 0) {
+            $this->sesion()->destello('error', 'Ese control todavía no tiene una evaluación guardada.');
+            $this->redirigir($destino);
+        }
+
+        $fechaLimite = (string) $this->peticion()->entrada('fecha_limite', '');
+        $responsable = $this->peticion()->entrada('responsable');
+
+        if ($fechaLimite === '' || !$this->fechaValida($fechaLimite)) {
+            $this->sesion()->destello('error', 'Indique una fecha límite válida (AAAA-MM-DD).');
+            $this->redirigir($destino);
+        }
+
+        $this->auditorias()->crearRemediacion($evaluacion->id, $fechaLimite, $responsable);
+
+        $this->sesion()->destello('aviso', 'Plazo de corrección creado para ' . $control->id . '.');
+        $this->redirigir($destino);
+    }
+
+    /** Enlaza una remediación con la auditoría de seguimiento ya creada. */
+    public function programarReauditoria(): void
+    {
+        $usuario = $this->exigirUsuario();
+
+        $idRemediacion = (int) $this->parametro('idRemediacion', '0');
+        $idAuditoriaReauditoria = (int) $this->peticion()->entrada('id_auditoria_reauditoria', '0');
+
+        // 'volver' viaja en el propio formulario (ver remediaciones.php): es la
+        // pantalla de remediaciones desde la que se disparó la acción. Se usa
+        // para el token y para todo redirect, así un id de auditoría inválido
+        // o ajeno deja al auditor donde estaba, en vez de un 404 que lo saca
+        // de la vista actual.
+        $volver = (string) $this->peticion()->entrada('volver', '/evaluacion');
+
+        $this->exigirToken($volver);
+
+        $seguimiento = $this->auditorias()->auditoria($idAuditoriaReauditoria);
+
+        if ($seguimiento === null || $seguimiento->idAuditor !== $usuario->id) {
+            $this->sesion()->destello('error', 'Esa auditoría de seguimiento no existe o no le pertenece.');
+            $this->redirigir($volver);
+        }
+
+        $this->auditorias()->programarReauditoria($idRemediacion, $idAuditoriaReauditoria);
+
+        $this->sesion()->destello('aviso', 'Re-auditoría programada con la auditoría ' . $seguimiento->id . '.');
+        $this->redirigir($volver);
+    }
+
+    /** Marca una remediación como cumplida, en proceso o pendiente a mano. */
+    public function actualizarEstadoRemediacion(): void
+    {
+        $this->exigirUsuario();
+
+        $idRemediacion = (int) $this->parametro('idRemediacion', '0');
+        $estado = (string) $this->peticion()->entrada('estado', '');
+        $destino = (string) $this->peticion()->entrada('volver', '/evaluacion');
+
+        $this->exigirToken($destino);
+
+        if (!in_array($estado, ['PENDIENTE', 'EN_PROCESO', 'CUMPLIDO'], true)) {
+            $this->sesion()->destello('error', 'Estado de remediación no válido.');
+            $this->redirigir($destino);
+        }
+
+        $this->auditorias()->actualizarEstadoRemediacion($idRemediacion, $estado);
+
+        $this->sesion()->destello('aviso', 'Estado de la remediación actualizado.');
+        $this->redirigir($destino);
+    }
+
+    /** Panel global (todas las organizaciones) de remediaciones vencidas. */
+    public function remediacionesVencidas(): void
+    {
+        $usuario = $this->exigirAdministrador();
+
+        $this->ver('evaluacion/remediaciones-vencidas', [
+            ...$this->contexto(),
+            'meta'          => $this->meta('Remediaciones vencidas'),
+            'usuario'       => $usuario,
+            'remediaciones' => $this->auditorias()->remediacionesVencidas(),
+        ]);
+    }
+
     // Compara el histórico de auditorías del auditor, agrupado por organización.
     public function comparar(): void
     {
@@ -314,11 +463,21 @@ final class AuditoriaController extends Controlador
         }
         unset($grupo);
 
+        // Punto 18: madurez ponderada por dominio, a través del tiempo, para
+        // cada organización que este auditor ya evaluó. Complementa las
+        // barras de índice general que ya se mostraban con el desglose por
+        // dominio, para ver en qué áreas mejoró o empeoró cada auditoría.
+        $historicoPorOrganizacion = [];
+        foreach (array_keys($porOrganizacion) as $organizacion) {
+            $historicoPorOrganizacion[$organizacion] = $this->auditorias()->historicoPorDominio($organizacion);
+        }
+
         $this->ver('evaluacion/comparar', [
             ...$this->contexto(),
-            'meta'            => $this->meta('Comparación histórica'),
-            'usuario'         => $usuario,
-            'porOrganizacion' => $porOrganizacion,
+            'meta'                     => $this->meta('Comparación histórica'),
+            'usuario'                  => $usuario,
+            'porOrganizacion'          => $porOrganizacion,
+            'historicoPorOrganizacion' => $historicoPorOrganizacion,
         ]);
     }
 
@@ -353,6 +512,8 @@ final class AuditoriaController extends Controlador
             'hallazgo'         => $peticion->entrada('hallazgo'),
             'recomendacion'    => $peticion->entrada('recomendacion'),
             'pregunta'         => $peticion->entrada('pregunta'),
+            'evidencia'        => $peticion->entrada('evidencia'),
+            'calidad'          => $peticion->entrada('calidad'),
         ];
     }
 
@@ -433,6 +594,22 @@ final class AuditoriaController extends Controlador
 
         if ($datos['criterio'] !== null && !in_array($datos['criterio'], self::CRITERIOS, true)) {
             $errores['criterio'] = 'El criterio indicado no es válido.';
+        }
+
+        // ISO-IEC 27007: la conformidad se determina contra
+        // evidencia verificable, no contra la afirmación del auditado. Un
+        // "Sí" sin evidencia ni clasificación de calidad no se puede guardar
+        // — mismo espíritu que ck_evalctrl_evidencia_si en la base de datos,
+        // pero comprobado aquí primero para dar un mensaje claro en el
+        // campo exacto, en vez de que el auditor reciba un ORA-02290.
+        if ($estado === EvaluacionControl::SI) {
+            if (trim((string) ($datos['evidencia'] ?? '')) === '') {
+                $errores['evidencia'] = 'Si la respuesta es "Sí", debe describir la evidencia revisada.';
+            }
+
+            if ($datos['calidad'] === null || !in_array($datos['calidad'], self::CALIDADES, true)) {
+                $errores['calidad'] = 'Indique si la evidencia está bien implementada, requiere mejora o es solo declarativa.';
+            }
         }
 
         foreach (['impacto' => 'El impacto', 'probabilidad' => 'La probabilidad'] as $campo => $etiqueta) {
@@ -547,6 +724,46 @@ final class AuditoriaController extends Controlador
         }
 
         return $indice;
+    }
+
+    /**
+     * Controles de esta auditoría con un hallazgo ("No") ya evaluado — los
+     * únicos que tiene sentido remediar. Alimenta el desplegable de "Código
+     * del control" en la pantalla de remediaciones, para que solo se pueda
+     * elegir un código que de verdad existe y de verdad tiene algo que
+     * corregir, en vez de escribirlo a mano.
+     *
+     * @return list<Control>
+     */
+    private function controlesConHallazgo(int $idAuditoria): array
+    {
+        $codigosConHallazgo = [];
+
+        foreach ($this->auditorias()->evaluaciones($idAuditoria) as $evaluacion) {
+            if ($evaluacion->estado === EvaluacionControl::NO) {
+                $codigosConHallazgo[$evaluacion->codigoControl] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            $this->instrumento()->controles(),
+            static fn (Control $control): bool => isset($codigosConHallazgo[$control->id]),
+        ));
+    }
+
+    /**
+     * Las demás auditorías propias del auditor, candidatas a servir de
+     * seguimiento de una remediación. Alimenta el desplegable de "auditoría
+     * de seguimiento", para no depender de que el auditor copie un id a mano.
+     *
+     * @return list<Auditoria>
+     */
+    private function auditoriasSeguimientoDisponibles(int $idAuditor, int $idAuditoriaActual): array
+    {
+        return array_values(array_filter(
+            $this->auditorias()->auditoriasDe($idAuditor),
+            static fn (Auditoria $candidata): bool => $candidata->id !== $idAuditoriaActual,
+        ));
     }
 
     /** @return array{anterior: Control|null, siguiente: Control|null} */

@@ -126,6 +126,12 @@ return [
     'eval.criterio_documentado' => 'Documentado',
     'eval.criterio_repetible'   => 'Repetible',
     'eval.criterio_evidencia'   => 'Con evidencia',
+    'eval.evidencia_verificada' => 'Evidencia revisada',
+    'eval.evidencia_ayuda'      => 'Obligatorio si la respuesta es "Sí": describa el documento, log, captura o configuración que sustenta la respuesta (ISO/IEC 27007 — la conformidad se prueba con evidencia, no con la afirmación del auditado).',
+    'eval.calidad_evidencia'    => 'Calidad de la evidencia',
+    'eval.calidad_bien'         => 'Bien implementado',
+    'eval.calidad_mejora'       => 'Requiere mejora',
+    'eval.calidad_declarativo'  => 'Declarativo (sin evidencia real)',
 
     // Resultados / reporte / comparación
     'eval.resultados'           => 'Resultados',

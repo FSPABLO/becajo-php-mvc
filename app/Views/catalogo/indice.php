@@ -51,10 +51,16 @@ $botonBorrar = static function (\App\Core\Vista $vista, string $ruta, string $et
                 <?= e((string) count($controles)) ?> controles
             </p>
         </div>
-        <a href="<?= e($vista->url('evaluacion')) ?>"
-           class="text-sm font-semibold text-acento-600 hover:underline">
-            Ir a mis auditorías →
-        </a>
+        <div class="flex items-center gap-4">
+            <a href="<?= e($vista->url('catalogo/matriz')) ?>"
+               class="text-sm font-semibold text-acento-600 hover:underline">
+                Mapa de procesos vs C-I-D →
+            </a>
+            <a href="<?= e($vista->url('evaluacion')) ?>"
+               class="text-sm font-semibold text-acento-600 hover:underline">
+                Ir a mis auditorías →
+            </a>
+        </div>
     </header>
 
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>

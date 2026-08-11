@@ -23,6 +23,10 @@ final class EvaluacionControl
     public const NO = 'NO';
     public const NO_APLICA = 'NA';
 
+    public const CALIDAD_BIEN_IMPLEMENTADO = 'BIEN_IMPLEMENTADO';
+    public const CALIDAD_REQUIERE_MEJORA = 'REQUIERE_MEJORA';
+    public const CALIDAD_DECLARATIVO = 'DECLARATIVO';
+
     public function __construct(
         public readonly int $idAuditoria,
         public readonly string $codigoControl,
@@ -38,6 +42,15 @@ final class EvaluacionControl
         public readonly ?string $hallazgo = null,
         public readonly ?string $recomendacion = null,
         public readonly ?string $preguntaPersonalizada = null,
+        /**
+         * Evidencia concreta revisada (documento, log, captura, config.).
+         * Obligatoria en base de datos cuando estado = 'SI' (ck_evalctrl_evidencia_si):
+         * ISO/IEC 27007 exige que la conformidad se determine contra evidencia
+         * verificable, no contra la afirmación del auditado.
+         */
+        public readonly ?string $evidenciaVerificada = null,
+        /** BIEN_IMPLEMENTADO / REQUIERE_MEJORA / DECLARATIVO. Obligatoria junto con evidenciaVerificada cuando estado = 'SI'. */
+        public readonly ?string $calidadEvidencia = null,
         public readonly int $id = 0,
     ) {
     }
@@ -60,6 +73,8 @@ final class EvaluacionControl
             hallazgo:                self::textoONulo($fila['hallazgo'] ?? null),
             recomendacion:           self::textoONulo($fila['recomendacion'] ?? null),
             preguntaPersonalizada:   self::textoONulo($fila['pregunta_personalizada'] ?? null),
+            evidenciaVerificada:     self::textoONulo($fila['evidencia_verificada'] ?? null),
+            calidadEvidencia:        self::textoONulo($fila['calidad_evidencia'] ?? null),
             id:                      (int) ($fila['id_evaluacion_control'] ?? 0),
         );
     }
@@ -68,6 +83,15 @@ final class EvaluacionControl
     public function estaEvaluado(): bool
     {
         return $this->estado !== null;
+    }
+
+    /**
+     * ¿Esta respuesta exige evidencia? Solo "Sí": un "No" o "No aplica" no
+     * tiene nada que evidenciar. Refleja ck_evalctrl_evidencia_si.
+     */
+    public function necesitaEvidencia(): bool
+    {
+        return $this->estado === self::SI;
     }
 
     /**

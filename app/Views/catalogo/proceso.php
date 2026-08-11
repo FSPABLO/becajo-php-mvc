@@ -89,6 +89,49 @@ $opcionesDominio = array_map(
             'obligatorio' => true,
         ]) ?>
 
+        <div class="rounded-xl border border-slate-200 p-4">
+            <p class="text-sm font-semibold text-marina-950">Relación con C-I-D</p>
+            <p class="mt-1 text-xs text-slate-500">
+                Notación de COBIT 4.1 (Apéndice II): Primaria (P) o Secundaria (S).
+                Declarativo — no reemplaza lo que el auditor marca en cada evaluación.
+            </p>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <?php
+                $opcionesRelacion = [
+                    ['valor' => 'P', 'texto' => 'Primaria'],
+                    ['valor' => 'S', 'texto' => 'Secundaria'],
+                ];
+                ?>
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_confidencialidad',
+                    'etiqueta' => 'Confidencialidad',
+                    'valor'    => $v('relacion_confidencialidad', $proceso->relacionConfidencialidad ?? ''),
+                    'error'    => $errores['relacion_confidencialidad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_integridad',
+                    'etiqueta' => 'Integridad',
+                    'valor'    => $v('relacion_integridad', $proceso->relacionIntegridad ?? ''),
+                    'error'    => $errores['relacion_integridad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_disponibilidad',
+                    'etiqueta' => 'Disponibilidad',
+                    'valor'    => $v('relacion_disponibilidad', $proceso->relacionDisponibilidad ?? ''),
+                    'error'    => $errores['relacion_disponibilidad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+            </div>
+        </div>
+
         <button type="submit"
                 class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
             <?= $esNuevo ? 'Crear proceso' : 'Guardar cambios' ?>

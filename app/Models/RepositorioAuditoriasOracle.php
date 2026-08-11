@@ -8,6 +8,7 @@ use App\Core\BaseDatos;
 use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
 
@@ -312,16 +313,20 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                            destino.probabilidad = :probabilidad,
                            destino.nivel_riesgo = :nivel_riesgo,
                            destino.hallazgo = :hallazgo,
-                           destino.recomendacion = :recomendacion
+                           destino.recomendacion = :recomendacion,
+                           destino.evidencia_verificada = :evidencia_verificada,
+                           destino.calidad_evidencia = :calidad_evidencia
              WHEN NOT MATCHED THEN
                 INSERT (id_auditoria, codigo_control, pregunta_personalizada,
                         estado, madurez, criterio,
                         afecta_confidencialidad, afecta_integridad, afecta_disponibilidad,
-                        impacto, probabilidad, nivel_riesgo, hallazgo, recomendacion)
+                        impacto, probabilidad, nivel_riesgo, hallazgo, recomendacion,
+                        evidencia_verificada, calidad_evidencia)
                 VALUES (:id_auditoria, :codigo_control, :pregunta_personalizada,
                         :estado, :madurez, :criterio,
                         :afecta_confidencialidad, :afecta_integridad, :afecta_disponibilidad,
-                        :impacto, :probabilidad, :nivel_riesgo, :hallazgo, :recomendacion)',
+                        :impacto, :probabilidad, :nivel_riesgo, :hallazgo, :recomendacion,
+                        :evidencia_verificada, :calidad_evidencia)',
             [
                 'id_auditoria'            => $evaluacion->idAuditoria,
                 'codigo_control'          => $evaluacion->codigoControl,
@@ -334,11 +339,13 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                 'impacto'                 => $evaluacion->impacto,
                 'probabilidad'            => $evaluacion->probabilidad,
                 'nivel_riesgo'            => $evaluacion->nivelRiesgo ?? $evaluacion->nivelRiesgoCalculado(),
+                'calidad_evidencia'       => $evaluacion->calidadEvidencia,
             ],
             [
                 'pregunta_personalizada' => $evaluacion->preguntaPersonalizada,
                 'hallazgo'               => $evaluacion->hallazgo,
                 'recomendacion'          => $evaluacion->recomendacion,
+                'evidencia_verificada'   => $evaluacion->evidenciaVerificada,
             ],
         );
     }
@@ -425,6 +432,77 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
         return array_map(
             static fn (array $fila): ResultadoRiesgo => ResultadoRiesgo::desdeFila($fila),
             $filas,
+        );
+    }
+
+    // ── Punto 18: histórico por dominio ──────────────────────────────────────
+
+    /** @return list<array<string, mixed>> */
+    public function historicoPorDominio(string $organizacion): array
+    {
+        return $this->bd->cursor(
+            'BEGIN pkg_indicadores.sp_historico_dominio(:organizacion, :cursor); END;',
+            ['organizacion' => $organizacion],
+        );
+    }
+
+    // ── Punto 19: remediación y re-auditoría ─────────────────────────────────
+
+    public function crearRemediacion(
+        int $idEvaluacionControl,
+        string $fechaLimite,
+        ?string $responsable,
+    ): void {
+        $this->bd->procedimiento(
+            'BEGIN pkg_indicadores.sp_crear_remediacion(
+                :id_evaluacion_control, TO_DATE(:fecha_limite, \'YYYY-MM-DD\'), :responsable
+            ); END;',
+            [
+                'id_evaluacion_control' => $idEvaluacionControl,
+                'fecha_limite'          => $fechaLimite,
+                'responsable'           => $responsable,
+            ],
+        );
+    }
+
+    /** @return list<Remediacion> */
+    public function remediacionesAuditoria(int $idAuditoria): array
+    {
+        $filas = $this->bd->cursor(
+            'BEGIN pkg_indicadores.sp_remediaciones_auditoria(:id_auditoria, :cursor); END;',
+            ['id_auditoria' => $idAuditoria],
+        );
+
+        return array_map(
+            static fn (array $fila): Remediacion => Remediacion::desdeFila($fila),
+            $filas,
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function remediacionesVencidas(): array
+    {
+        return $this->bd->cursor(
+            'BEGIN pkg_indicadores.sp_remediaciones_vencidas(:cursor); END;',
+        );
+    }
+
+    public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void
+    {
+        $this->bd->procedimiento(
+            'BEGIN pkg_indicadores.sp_programar_reauditoria(:id_remediacion, :id_auditoria_reauditoria); END;',
+            [
+                'id_remediacion'            => $idRemediacion,
+                'id_auditoria_reauditoria'  => $idAuditoriaReauditoria,
+            ],
+        );
+    }
+
+    public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void
+    {
+        $this->bd->procedimiento(
+            'BEGIN pkg_indicadores.sp_actualizar_estado_remediacion(:id_remediacion, :estado); END;',
+            ['id_remediacion' => $idRemediacion, 'estado' => $estado],
         );
     }
 }

@@ -29,6 +29,11 @@ $etiquetaCriterio = [
     'REPETIBLE'   => $vista->t('eval.criterio_repetible'),
     'EVIDENCIA'   => $vista->t('eval.criterio_evidencia'),
 ];
+$etiquetaCalidad = [
+    'BIEN_IMPLEMENTADO' => $vista->t('eval.calidad_bien'),
+    'REQUIERE_MEJORA'   => $vista->t('eval.calidad_mejora'),
+    'DECLARATIVO'       => $vista->t('eval.calidad_declarativo'),
+];
 ?>
 <section class="mx-auto w-full max-w-3xl px-6 pt-24 pb-14">
 
@@ -115,6 +120,36 @@ $etiquetaCriterio = [
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <!-- Evidencia verificada (ISO-IEC 27007) -->
+            <div data-requiere-evidencia="<?= $evaluacion?->estado === 'SI' ? '1' : '0' ?>">
+                <label for="evidencia" class="block text-sm font-semibold text-marina-950">
+                    <?= e($vista->t('eval.evidencia_verificada')) ?>
+                    <span class="font-normal text-slate-500">(<?= e($vista->t('eval.estado_si')) ?>)</span>
+                </label>
+                <p class="mt-1 text-xs text-slate-500"><?= e($vista->t('eval.evidencia_ayuda')) ?></p>
+                <textarea id="evidencia" name="evidencia" rows="3"
+                          class="mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-slate-900 outline-none transition <?= isset($errores['evidencia']) ? 'border-alerta-500' : 'border-slate-300 focus:border-acento-500' ?>"><?= e($evaluacion?->evidenciaVerificada ?? '') ?></textarea>
+                <?php if (isset($errores['evidencia'])): ?>
+                    <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['evidencia']) ?></p>
+                <?php endif; ?>
+
+                <label for="calidad" class="mt-4 block text-sm font-semibold text-marina-950">
+                    <?= e($vista->t('eval.calidad_evidencia')) ?>
+                </label>
+                <select id="calidad" name="calidad"
+                        class="mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-slate-900 outline-none transition <?= isset($errores['calidad']) ? 'border-alerta-500' : 'border-slate-300 focus:border-acento-500' ?>">
+                    <option value=""><?= e($vista->t('eval.ninguno')) ?></option>
+                    <?php foreach ($etiquetaCalidad as $valor => $etiqueta): ?>
+                        <option value="<?= e($valor) ?>" <?= $evaluacion?->calidadEvidencia === $valor ? 'selected' : '' ?>>
+                            <?= e($etiqueta) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if (isset($errores['calidad'])): ?>
+                    <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['calidad']) ?></p>
+                <?php endif; ?>
             </div>
 
             <!-- Dimensiones CID -->
