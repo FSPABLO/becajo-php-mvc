@@ -23,6 +23,7 @@ final class Testimonio
         public readonly string $descripcion,
         public readonly string $cargo = '',
         public readonly string $iniciales = '',
+        public readonly string $foto = '',
     ) {
     }
 
@@ -37,6 +38,7 @@ final class Testimonio
             descripcion: (string) ($fila['descripcion'] ?? ''),
             cargo:       (string) ($fila['cargo'] ?? ''),
             iniciales:   (string) ($fila['iniciales'] ?? mb_strtoupper(mb_substr($nombre, 0, 1, 'UTF-8'), 'UTF-8')),
+            foto:        (string) ($fila['foto'] ?? ''),
         );
     }
 

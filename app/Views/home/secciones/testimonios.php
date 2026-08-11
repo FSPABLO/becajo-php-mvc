@@ -76,17 +76,33 @@ $fila = str_repeat($estrella, \App\Models\Entidades\Testimonio::MAXIMO);
 
                                 <?php
                                 /*
-                                 * Sin fotografías de los clientes, el avatar son las
-                                 * iniciales sobre un círculo, igual que en la sección
-                                 * de equipo. Es dato decorativo: el nombre ya está
-                                 * escrito debajo, así que se oculta al lector de
-                                 * pantalla en vez de repetirlo.
+                                 * El avatar es decorativo: el nombre está escrito
+                                 * justo debajo, así que la foto lleva alt vacío y
+                                 * las iniciales aria-hidden. Con alt="Marcela
+                                 * Vindas Chaves" un lector de pantalla leería el
+                                 * nombre dos veces seguidas.
+                                 *
+                                 * Las iniciales son el respaldo para un testimonio
+                                 * sin foto: se ve igual que en la sección de equipo
+                                 * en vez de dejar un círculo vacío.
+                                 *
+                                 * width/height son los del archivo (192 px, el
+                                 * triple del tamaño en pantalla para que no se vea
+                                 * borrosa en pantallas densas); el tamaño real lo
+                                 * fijan las clases.
                                  */
                                 ?>
-                                <span class="mt-4 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-marina-950 text-lg font-bold text-acento-400"
-                                      aria-hidden="true">
-                                    <?= e($testimonio->iniciales) ?>
-                                </span>
+                                <?php if ($testimonio->foto !== ''): ?>
+                                    <img src="<?= e($vista->url($testimonio->foto)) ?>"
+                                         alt="" width="192" height="192"
+                                         loading="lazy" decoding="async"
+                                         class="mt-4 h-16 w-16 shrink-0 rounded-full object-cover">
+                                <?php else: ?>
+                                    <span class="mt-4 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-marina-950 text-lg font-bold text-acento-400"
+                                          aria-hidden="true">
+                                        <?= e($testimonio->iniciales) ?>
+                                    </span>
+                                <?php endif; ?>
 
                                 <blockquote class="mt-6 flex-1 text-sm leading-relaxed text-slate-600">
                                     <p><?= e($testimonio->descripcion) ?></p>

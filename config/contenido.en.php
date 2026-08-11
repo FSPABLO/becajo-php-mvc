@@ -199,6 +199,7 @@ return [
         'lista'    => [
             [
                 'nombre'      => 'Marcela Vindas Chaves',
+                'foto'        => 'assets/images/testimonios/marcela-vindas.jpg',
                 'cargo'       => 'Head of Technology',
                 'iniciales'   => 'MV',
                 'puntaje'     => 5,
@@ -208,6 +209,7 @@ return [
             ],
             [
                 'nombre'      => 'Andrés Quesada Mora',
+                'foto'        => 'assets/images/testimonios/andres-quesada.jpg',
                 'cargo'       => 'Internal Audit Manager',
                 'iniciales'   => 'AQ',
                 'puntaje'     => 4.5,
@@ -217,6 +219,7 @@ return [
             ],
             [
                 'nombre'      => 'Laura Céspedes Rojas',
+                'foto'        => 'assets/images/testimonios/laura-cespedes.jpg',
                 'cargo'       => 'Analytics Coordinator',
                 'iniciales'   => 'LC',
                 'puntaje'     => 5,
@@ -225,6 +228,7 @@ return [
             ],
             [
                 'nombre'      => 'Diego Hernández Alfaro',
+                'foto'        => 'assets/images/testimonios/diego-hernandez.jpg',
                 'cargo'       => 'Head of Infrastructure',
                 'iniciales'   => 'DH',
                 'puntaje'     => 4,
@@ -234,6 +238,7 @@ return [
             ],
             [
                 'nombre'      => 'Sofía Ramírez Delgado',
+                'foto'        => 'assets/images/testimonios/sofia-ramirez.jpg',
                 'cargo'       => 'Information Security Officer',
                 'iniciales'   => 'SR',
                 'puntaje'     => 4.5,
