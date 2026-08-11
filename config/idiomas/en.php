@@ -13,6 +13,24 @@ return [
     'nav.contactar'       => 'Contact',
     'nav.abrir_menu'      => 'Open navigation menu',
     'nav.idioma'          => 'Language',
+    'nav.principal'       => 'Main navigation',
+    'nav.movil'           => 'Mobile navigation',
+    'nav.saltar_contenido' => 'Skip to content',
+
+    // Marco del módulo interno: barra lateral y barra superior.
+    'panel.navegacion'            => 'Module navigation',
+    'panel.ubicacion'             => 'Current location',
+    'panel.mostrar_navegacion'    => 'Show navigation',
+    'panel.ocultar_navegacion'    => 'Hide navigation',
+    'panel.grupo_auditorias'      => 'Audits',
+    'panel.grupo_administracion'  => 'Administration',
+    'panel.grupo_referencia'      => 'Reference',
+    'panel.catalogo_controles'    => 'Control catalog',
+    'panel.matriz_cid'            => 'Process vs C-I-A map',
+    'panel.remediaciones_vencidas' => 'Overdue remediations',
+    'panel.volver_sitio'          => 'Back to the site',
+    'panel.rol_auditor'           => 'Auditor',
+    'panel.rol_admin'             => 'DB administrator',
 
     // Testimonios de la portada
     'testimonios.calificacion' => 'Rating: %s out of 5 stars',
@@ -20,9 +38,11 @@ return [
     'testimonios.anterior'     => 'See the previous testimonial',
     'testimonios.siguiente'    => 'See the next testimonial',
     'testimonios.ir_a'         => 'See the testimonial from %s',
+    'testimonios.calificacion_corta' => '%s of 5.0',
+    'testimonios.anterior_corto'   => 'previous',
+    'testimonios.siguiente_corto'  => 'next',
 
     // Pie de página
-    'pie.navegacion'      => 'Navigation',
     'pie.contacto'        => 'Contact',
     'pie.proyecto'        => 'Academic project — Database Administration.',
     'pie.eslogan_extra'   => "We reduce the operational risk of your organization's critical information.",
@@ -59,11 +79,72 @@ return [
     'auth.iniciar_sesion'     => 'Log in',
     'auth.minimo_caracteres'  => 'Minimum %s characters.',
 
+    // Log-in welcome panel
+    'auth.panel_titulo'       => 'Start your audit',
+    'auth.panel_texto'        => 'Three steps to assess the 75 controls of the instrument.',
+    'auth.paso_uno'           => 'Log in',
+    // The first step names what is being done on each screen.
+    'auth.paso_uno_registro'  => 'Create your account',
+    'auth.paso_dos'           => 'Open an audit',
+    'auth.paso_tres'          => 'Assess and report',
+
     // Assessment module — dashboard and new audit
     'eval.comparar_historico'  => 'Compare history',
     'eval.nueva_auditoria'     => 'New audit',
     'eval.mis_auditorias'      => 'My audits',
     'eval.sin_auditorias'      => 'No audits yet.',
+
+    // Resumen de la cartera, en la cabecera de "Mis auditorías".
+    'eval.kpi_auditorias'      => 'Audits',
+    'eval.kpi_organizaciones'  => 'Distinct organizations: %s',
+    'eval.kpi_pendientes'      => 'Awaiting closure',
+    'eval.kpi_finalizadas'     => 'Completed',
+    'eval.kpi_congeladas'      => 'Frozen results',
+    'eval.kpi_indice'          => 'Average risk index',
+    'eval.kpi_calculadas'      => 'Audits with a calculated index: %s',
+    'eval.kpi_sin_calculo'     => 'Not calculated yet',
+
+    // Tablero del panel: matriz de la última auditoría y evolución mensual.
+    'eval.evolucion_titulo'    => 'Monthly progress',
+    'eval.empresa_auditada'    => 'Audited organization',
+    'eval.evolucion_texto'     => 'How much of the instrument was applied each month, and what share came out compliant.',
+    'eval.cobertura_instrumento' => 'Instrument coverage',
+    'eval.sin_evolucion'       => 'No months with audits to plot yet.',
+    'eval.evolucion_un_mes'    => 'There are audits from a single month (%s). The trend line appears with two or more.',
+    'eval.evolucion_resumen'   => 'Progress across %s months with audits. Latest compliance: %s. Latest coverage: %s.',
+    'eval.punto_cobertura'     => 'Month %s · coverage %s · audits: %s',
+    'eval.punto_cumplimiento'  => 'Month %s · compliance %s',
+    'eval.eje_meses'           => 'Months with recorded audits, not consecutive calendar months.',
+    'eval.eje_matriz_corto'    => 'Probability ↑ · Impact →',
+    'eval.empresa_marcador'    => 'Type the organization name',
+    'eval.ver_progreso'        => 'View progress',
+    'eval.empresa_sin_coincidencia' => 'No audits for "%s". Showing %s.',
+
+    // Bases de datos conectadas (previsualización del monitoreo).
+    'bd.titulo'                => 'Connected databases',
+    'bd.texto'                 => 'Engines under watch, awaiting a health check.',
+    'bd.conexion'              => 'connection',
+    'bd.conexiones'            => 'connections',
+    'bd.enlace_activo'         => 'link up',
+    'bd.total'                 => '%s connections across %s engines.',
+    'bd.previsualizacion'      => 'Preview: per-instance diagnostics arrive with the monitoring module.',
+    'bd.sin_conexiones'        => 'No databases registered yet.',
+
+    // Filtros y paginación de la tabla de auditorías.
+    'eval.buscar_etiqueta'     => 'Search by organization or area',
+    'eval.buscar_marcador'     => 'e.g. cooperative, backups…',
+    'eval.limpiar'             => 'Clear',
+    'eval.ordenar_por'         => 'Sort by',
+    'eval.orden_recientes'     => 'Most recent',
+    'eval.orden_indice'        => 'Highest index',
+    'eval.sin_coincidencias'   => 'No audit matches.',
+    'eval.sin_coincidencias_texto' => '"%s" was not found in the organization or the area assessed.',
+    'eval.paginacion'          => 'Audit pagination',
+    'eval.rango'               => 'Showing %s–%s of %s',
+    'eval.anterior'            => 'Previous',
+    'eval.siguiente'           => 'Next',
+    'eval.celda_matriz'        => 'Impact %s · Probability %s · controls: %s · %s',
+
     'eval.crear_primera'       => 'Create the first one to start assessing the %s controls in the instrument.',
     'eval.col_organizacion'    => 'Organization',
     'eval.col_area'            => 'Area assessed',
@@ -73,6 +154,7 @@ return [
     'eval.finalizada'          => 'Completed',
     'eval.en_progreso'         => 'In progress',
     'eval.sin_calcular'        => 'not calculated',
+    'eval.volver'              => 'Back',
     'eval.volver_auditorias'   => '← My audits',
     'eval.crear_auditoria'     => 'Create audit',
 
@@ -150,6 +232,9 @@ return [
     'eval.sin_controles_eval'   => 'No controls assessed yet.',
     'eval.col_dominio'          => 'Domain',
     'eval.col_cumplimiento'     => 'Compliance',
+    'eval.zona_alta'            => 'High risk',
+    'eval.zona_media'           => 'Medium risk',
+    'eval.zona_baja'            => 'Low risk',
     'eval.sin_datos'            => 'no data',
     'eval.menor_madurez'        => 'Controls with lowest maturity',
     'eval.mayor_riesgo'         => 'Controls with highest risk',

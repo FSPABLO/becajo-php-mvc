@@ -38,7 +38,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
         $catalogo = $this->catalogo();
 
-        $this->ver('catalogo/indice', [
+        $this->verPanel('catalogo/indice', [
             ...$this->contexto(),
             'meta'      => $this->meta('Catálogo de controles'),
             'dominios'  => $catalogo->dominios(),
@@ -58,7 +58,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
         $catalogo = $this->catalogo();
 
-        $this->ver('catalogo/matriz', [
+        $this->verPanel('catalogo/matriz', [
             ...$this->contexto(),
             'meta'     => $this->meta('Mapa de procesos vs C-I-D'),
             'dominios' => $catalogo->dominios(),
@@ -79,7 +79,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/dominio', [
+        $this->verPanel('catalogo/dominio', [
             ...$this->contexto(),
             'meta'     => $this->meta($dominio === null ? 'Nuevo dominio' : 'Dominio ' . $dominio->clave),
             'dominio'  => $dominio,
@@ -180,7 +180,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/proceso', [
+        $this->verPanel('catalogo/proceso', [
             ...$this->contexto(),
             'meta'     => $this->meta($proceso === null ? 'Nuevo proceso' : 'Proceso ' . $proceso->numero),
             'proceso'  => $proceso,
@@ -286,7 +286,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/control', [
+        $this->verPanel('catalogo/control', [
             ...$this->contexto(),
             'meta'        => $this->meta($control === null ? 'Nuevo control' : 'Control ' . $control->id),
             'control'     => $control,

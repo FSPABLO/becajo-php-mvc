@@ -22,24 +22,40 @@ $hojas = $hojas ?? [];
 $guiones = $guiones ?? [];
 $herramientas = $herramientas ?? [];
 $usuarioActual = $usuarioActual ?? null;
+$rutaActual = $rutaActual ?? '/';
 ?>
 <!DOCTYPE html>
-<html lang="es-CR" class="scroll-smooth">
+<html lang="<?= e($vista->idiomaActual() === 'en' ? 'en' : 'es-CR') ?>">
 <head>
     <?= $vista->renderizar('partials/head', compact('meta', 'empresa', 'hojas')) ?>
 </head>
-<body class="bg-white font-sans antialiased">
+<body class="bg-fondo font-sans text-texto antialiased">
 
     <a href="#contenido"
-       class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-acento-500 focus:px-4 focus:py-2 focus:font-semibold focus:text-marina-950">
-        Saltar al contenido
+       class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-rv focus:bg-primario focus:px-4 focus:py-2 focus:font-semibold focus:text-primario-texto">
+        <?= e($vista->t('nav.saltar_contenido')) ?>
     </a>
 
-    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas', 'usuarioActual')) ?>
+    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas', 'usuarioActual', 'rutaActual')) ?>
 
     <main id="contenido"><?= $contenido ?></main>
 
-    <?= $vista->renderizar('partials/pie', compact('empresa', 'navegacion', 'herramientas')) ?>
+    <?php
+    /*
+     * El pie recibe los datos del formulario de contacto, que ahora vive
+     * dentro de él. Solo la portada los provee; en el resto de las páginas
+     * llegan nulos y el pie se pinta sin formulario. Ya no recibe 'navegacion'
+     * ni 'herramientas': el panel de enlaces del pie se retiró.
+     */
+    ?>
+    <?= $vista->renderizar('partials/pie', [
+        'empresa'         => $empresa,
+        'contacto'        => $contacto ?? null,
+        'motores'         => $motores ?? [],
+        'mensajes'        => $mensajes ?? [],
+        'erroresContacto' => $erroresContacto ?? [],
+        'valoresContacto' => $valoresContacto ?? [],
+    ]) ?>
 
     <script src="<?= e($vista->recurso('assets/js/principal.js')) ?>" defer></script>
     <?php foreach ($guiones as $guion): ?>

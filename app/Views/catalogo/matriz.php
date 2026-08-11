@@ -32,25 +32,36 @@ foreach ($procesos as $proceso) {
     $procesosPorDominio[$proceso->dominio][] = $proceso;
 }
 
+/*
+ * Los tres estados del cruce no se distinguen solo por color: la letra («P»,
+ * «S», «—») es ya el segundo canal, y el título accesible es el tercero, para
+ * que un lector de pantalla no anuncie una letra suelta sin contexto.
+ *
+ * La relación es referencia de catálogo, no cumplimiento: por eso «P» va en
+ * oro, la voz de lo normativo, y no en el verde de la escala de estado.
+ */
 $etiquetaRelacion = static function (?string $relacion): string {
     return match ($relacion) {
-        'P'     => '<span class="rounded bg-marina-950 px-2 py-0.5 text-xs font-bold text-white">P</span>',
-        'S'     => '<span class="rounded border border-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-600">S</span>',
-        default => '<span class="text-slate-300">—</span>',
+        'P' => '<span class="rounded border border-oro bg-oro-tinte px-2 py-0.5 font-mono text-xs font-bold text-oro-texto"'
+             . ' title="Relación primaria">P<span class="sr-only"> — relación primaria</span></span>',
+        'S' => '<span class="rounded border border-borde px-2 py-0.5 font-mono text-xs font-semibold text-texto-2"'
+             . ' title="Relación secundaria">S<span class="sr-only"> — relación secundaria</span></span>',
+        default => '<span class="text-na" title="Sin relación relevante">—'
+             . '<span class="sr-only">Sin relación relevante</span></span>',
     };
 };
 ?>
-<section class="mx-auto w-full max-w-5xl px-6 pt-24 pb-14">
+<section class="mx-auto w-full max-w-5xl px-6 py-8 lg:px-8">
 
     <nav class="mb-6 text-sm">
-        <a href="<?= e($vista->url('catalogo')) ?>" class="text-acento-600 hover:underline">
+        <a href="<?= e($vista->url('catalogo')) ?>" class="text-primario hover:underline">
             ← Volver al catálogo
         </a>
     </nav>
 
     <header class="mb-8">
-        <h1 class="text-3xl font-extrabold text-marina-950">Mapa de procesos vs C-I-D</h1>
-        <p class="mt-1 text-slate-600">
+        <h1 class="rv-titulo text-3xl font-semibold text-texto">Mapa de procesos vs C-I-D</h1>
+        <p class="mt-1 text-texto-2">
             Relación declarada de cada proceso con Confidencialidad, Integridad y Disponibilidad —
             notación de COBIT 4.1 (Apéndice II): <strong>P</strong> = relación primaria,
             <strong>S</strong> = relación secundaria, sin marca = sin relación relevante.
@@ -58,13 +69,13 @@ $etiquetaRelacion = static function (?string $relacion): string {
     </header>
 
     <?php if ($procesos === []): ?>
-        <div class="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center">
-            <p class="font-semibold text-marina-950">Todavía no hay procesos en el catálogo.</p>
+        <div class="rv-hundido rounded-rv-lg border border-borde bg-superficie px-6 py-16 text-center">
+            <p class="font-semibold text-texto">Todavía no hay procesos en el catálogo.</p>
         </div>
     <?php else: ?>
-        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+        <div class="rv-extruido rv-relieve-sutil rv-tabla overflow-x-auto rounded-rv-lg border border-borde bg-superficie">
             <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <thead class="bg-elevado text-xs font-semibold uppercase tracking-wide text-texto-2">
                     <tr>
                         <th class="px-4 py-3">Proceso</th>
                         <th class="px-4 py-3 text-center">Confidencialidad</th>
@@ -72,10 +83,10 @@ $etiquetaRelacion = static function (?string $relacion): string {
                         <th class="px-4 py-3 text-center">Disponibilidad</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-borde">
                     <?php foreach ($procesosPorDominio as $claveDominio => $procesosDelDominio): ?>
-                        <tr class="bg-slate-50/60">
-                            <td colspan="4" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-marina-950">
+                        <tr class="bg-elevado/60">
+                            <td colspan="4" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-texto">
                                 <?= e($nombreDominio[$claveDominio] ?? $claveDominio) ?>
                             </td>
                         </tr>
@@ -83,7 +94,7 @@ $etiquetaRelacion = static function (?string $relacion): string {
                             <tr>
                                 <td class="px-4 py-3">
                                     <a href="<?= e($vista->url('catalogo/procesos/' . $proceso->numero)) ?>"
-                                       class="font-medium text-marina-950 hover:text-acento-600">
+                                       class="font-medium text-texto hover:text-primario">
                                         <?= e($proceso->nombre) ?>
                                     </a>
                                 </td>
@@ -97,7 +108,7 @@ $etiquetaRelacion = static function (?string $relacion): string {
             </table>
         </div>
 
-        <p class="mt-4 text-xs text-slate-500">
+        <p class="mt-4 text-xs text-texto-2">
             Esta relación es de catálogo (referencia general del proceso), no la de una auditoría
             puntual: la exposición al riesgo real de cada auditoría usa lo que el auditor marcó
             control por control en su evaluación, que puede variar según lo que encuentre.

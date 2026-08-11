@@ -140,6 +140,12 @@ final class RepositorioArreglo implements RepositorioContenido
         );
     }
 
+    /** @return array<string, mixed> */
+    public function planes(): array
+    {
+        return $this->datos['planes'];
+    }
+
     /** @return array{titulo: string, texto: string} */
     public function contacto(): array
     {

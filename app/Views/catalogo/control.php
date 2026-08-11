@@ -29,20 +29,20 @@ $opcionesProceso = array_map(
     $procesos,
 );
 ?>
-<section class="mx-auto w-full max-w-2xl px-6 pt-24 pb-14">
+<section class="mx-auto w-full max-w-2xl px-6 py-8 lg:px-8">
 
     <nav class="mb-6 text-sm">
-        <a href="<?= e($vista->url('catalogo')) ?>" class="text-acento-600 hover:underline">← Catálogo</a>
+        <a href="<?= e($vista->url('catalogo')) ?>" class="text-primario hover:underline">← Catálogo</a>
     </nav>
 
-    <h1 class="mb-8 text-3xl font-extrabold text-marina-950">
+    <h1 class="mb-8 text-3xl font-extrabold text-texto">
         <?= $esNuevo ? 'Nuevo control' : 'Editar control ' . e($control->id) ?>
     </h1>
 
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <?php if (!$esNuevo && $evaluaciones > 0): ?>
-        <p class="mb-6 rounded-xl border border-aviso-400/40 bg-aviso-400/10 px-4 py-3 text-sm text-aviso-600">
+        <p class="mb-6 rounded-rv-lg border border-warn/10 bg-warn/10 px-4 py-3 text-sm text-warn">
             <strong><?= e((string) $evaluaciones) ?> evaluación(es)</strong> de auditoría ya
             respondieron este control. Cambiar su enunciado o su pregunta altera el
             significado de esas respuestas, y por eso no se puede eliminar.
@@ -133,7 +133,7 @@ $opcionesProceso = array_map(
         ]) ?>
 
         <button type="submit"
-                class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
+                class="w-full rv-extruido rv-interactivo rounded-rv bg-primario px-4 py-3 font-semibold text-primario-texto">
             <?= $esNuevo ? 'Crear control' : 'Guardar cambios' ?>
         </button>
     </form>

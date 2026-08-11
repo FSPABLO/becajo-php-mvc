@@ -1,8 +1,12 @@
 /**
- * Becajo — comportamiento del sitio
+ * Rivendel — comportamiento del sitio
  *
  * Se mantiene al mínimo a propósito: el menú móvil y los menús desplegables del
- * encabezado. Todo lo demás (desplazamiento suave, estados hover) es CSS.
+ * encabezado. Todo lo demás (desplazamiento suave, estados hover, relieves) es
+ * CSS.
+ *
+ * No hay conmutador de tema: el producto tiene un solo tono, «Imladris de
+ * noche», declarado en :root de assets/css/rivendel.css.
  */
 
 /* Menús desplegables del encabezado (Herramientas). */
@@ -128,23 +132,134 @@
     });
 })();
 
-/* Selector de idioma del encabezado. */
+/*
+ * Barra lateral del módulo interno.
+ *
+ * Una sola idea —enseñar u ocultar la navegación— con DOS mecanismos, porque en
+ * cada ancho significa algo distinto:
+ *
+ *   >= lg  se pliega. La barra sale por la izquierda y el contenido recupera el
+ *          ancho. Es una preferencia de trabajo, así que se recuerda en una
+ *          cookie y el servidor devuelve la página ya plegada.
+ *   <  lg  es un cajón. Se abre sobre el contenido y se cierra al navegar. No
+ *          se recuerda: ahí ocupa la pantalla entera y nadie quiere volver a
+ *          encontrárselo abierto.
+ *
+ * Los dos botones —el de dentro de la barra y el de la barra superior— llaman a
+ * lo mismo. Nunca están los dos a la vista: ver .rv-panel-mostrar en
+ * rivendel.css.
+ */
 (function () {
     'use strict';
 
-    document.querySelectorAll('[data-selector-idioma]').forEach(function (selector) {
-        selector.addEventListener('change', function () {
-            const destino = window.location.pathname + window.location.search;
-            const url = selector.getAttribute('data-ruta-idioma')
-                + '?codigo=' + encodeURIComponent(selector.value)
-                + '&destino=' + encodeURIComponent(destino);
+    const raiz = document.documentElement;
+    const lateral = document.querySelector('[data-panel-lateral]');
+    const superposicion = document.querySelector('[data-panel-superposicion]');
+    const botones = document.querySelectorAll('[data-panel-alternar]');
 
-            window.location.href = url;
+    if (!lateral || !superposicion || botones.length === 0) {
+        return;
+    }
+
+    const anchoEscritorio = window.matchMedia('(min-width: 1024px)');
+
+    function recordar(oculta) {
+        // Un año, como el idioma: es una preferencia de visualización, no algo
+        // que deba caducar con la sesión. Sin httponly a propósito — la escribe
+        // este guion, y lo que guarda no tiene ningún valor para un atacante.
+        document.cookie = 'becajo_lateral=' + (oculta ? 'oculta' : 'visible')
+            + ';path=/;max-age=' + (60 * 60 * 24 * 365) + ';samesite=Lax';
+    }
+
+    function estaVisible() {
+        return anchoEscritorio.matches
+            ? raiz.getAttribute('data-lateral') !== 'oculta'
+            : !lateral.classList.contains('-translate-x-full');
+    }
+
+    function alternar(mostrar) {
+        if (anchoEscritorio.matches) {
+            if (mostrar) {
+                raiz.removeAttribute('data-lateral');
+            } else {
+                raiz.setAttribute('data-lateral', 'oculta');
+            }
+
+            recordar(!mostrar);
+        } else {
+            lateral.classList.toggle('-translate-x-full', !mostrar);
+            superposicion.classList.toggle('hidden', !mostrar);
+        }
+
+        sincronizar();
+    }
+
+    function sincronizar() {
+        const visible = String(estaVisible());
+
+        botones.forEach(function (boton) {
+            boton.setAttribute('aria-expanded', visible);
+        });
+    }
+
+    botones.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            alternar(!estaVisible());
         });
     });
+
+    superposicion.addEventListener('click', function () {
+        alternar(false);
+    });
+
+    /*
+     * Navegar cierra el cajón: sin esto queda abierto sobre la página nueva.
+     * Solo en pantalla angosta — en ancha la barra plegada o desplegada es una
+     * preferencia, y pulsar un enlace no es motivo para cambiarla.
+     */
+    lateral.querySelectorAll('a').forEach(function (enlace) {
+        enlace.addEventListener('click', function () {
+            if (!anchoEscritorio.matches) {
+                alternar(false);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Escape' && !anchoEscritorio.matches && estaVisible()) {
+            alternar(false);
+        }
+    });
+
+    /*
+     * Al ensanchar la ventana hay que retirar el cajón y su superposición, que
+     * si no se quedaría tapando la página. Se hace a mano y NO con alternar():
+     * en ancho de escritorio esa llamada plegaría la barra y guardaría la
+     * cookie, y redimensionar la ventana no es pedir que se pliegue nada.
+     */
+    anchoEscritorio.addEventListener('change', function () {
+        lateral.classList.add('-translate-x-full');
+        superposicion.classList.add('hidden');
+        sincronizar();
+    });
+
+    // El servidor no puede saber en qué ancho se abrió la página: en angosta el
+    // cajón nace cerrado aunque la preferencia guardada diga "desplegada".
+    sincronizar();
 })();
 
-/* Carrusel de testimonios de la portada. */
+/*
+ * Carrusel de testimonios de la portada.
+ *
+ * Los cinco testimonios ya vienen del servidor dentro del HTML. Este guion no
+ * rellena contenido: solo reparte tres papeles —anterior, activo, siguiente— y
+ * esconde el resto. Por eso la sección se lee entera aunque el guion falle.
+ *
+ * El recorrido es CIRCULAR y ahí está el módulo: desde el primero, «anterior»
+ * lleva al último; desde el último, «siguiente» vuelve al primero. Sin el
+ * módulo habría que apagar las flechas en los extremos, que es justo lo que el
+ * diseño no quiere.
+ */
 (function () {
     'use strict';
 
@@ -156,138 +271,133 @@
 
     const pista = carrusel.querySelector('[data-carrusel-pista]');
     const tarjetas = Array.prototype.slice.call(carrusel.querySelectorAll('[data-carrusel-tarjeta]'));
-    const puntos = Array.prototype.slice.call(carrusel.querySelectorAll('[data-carrusel-punto]'));
-    const anterior = carrusel.querySelector('[data-carrusel-anterior]');
-    const siguiente = carrusel.querySelector('[data-carrusel-siguiente]');
 
     if (!pista || tarjetas.length === 0) {
         return;
     }
 
-    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const total = tarjetas.length;
 
-    function comportamiento() {
-        return sinMovimiento.matches ? 'auto' : 'smooth';
+    /*
+     * Con cuál abre. Lo decide el contenido y lo imprime la vista en
+     * data-inicial; leerlo de ahí —y no empezar en 0— es lo que evita que la
+     * ficha central salte a otra en cuanto carga el guion.
+     */
+    const declarado = Number(pista.getAttribute('data-inicial'));
+    let indice = Number.isInteger(declarado) && declarado >= 0 && declarado < total
+        ? declarado
+        : 0;
+    // Alterna 'a'/'b' en cada cambio: una animación no se reinicia si se le
+    // vuelve a asignar el mismo nombre de fotogramas. Ver rivendel.css.
+    let turno = 'b';
+
+    /* El resto de la aritmética del carrusel sale de aquí. */
+    function normalizar(i) {
+        return ((i % total) + total) % total;
     }
 
-    /* Destaca la tarjeta del centro y enciende el punto que le corresponde. */
-    function destacar(indice) {
-        tarjetas.forEach(function (tarjeta, i) {
-            tarjeta.classList.toggle('carrusel-testimonios__tarjeta--activa', i === indice);
-        });
+    function pintar(sentido) {
+        const anterior  = normalizar(indice - 1);
+        const siguiente = normalizar(indice + 1);
 
-        puntos.forEach(function (punto, i) {
-            punto.classList.toggle('carrusel-testimonios__punto--activo', i === indice);
+        // Sin sentido no hay animación: es el primer pintado, no un cambio.
+        if (sentido) {
+            turno = turno === 'a' ? 'b' : 'a';
+            pista.setAttribute('data-turno', turno);
+            pista.setAttribute('data-sentido', sentido);
+        }
+
+        tarjetas.forEach(function (tarjeta, i) {
+            let posicion = 'oculto';
 
             if (i === indice) {
-                punto.setAttribute('aria-current', 'true');
-            } else {
-                punto.removeAttribute('aria-current');
+                posicion = 'activo';
+            } else if (i === anterior) {
+                posicion = 'anterior';
+            } else if (i === siguiente) {
+                posicion = 'siguiente';
             }
+
+            tarjeta.setAttribute('data-posicion', posicion);
+
+            // Con dos testimonios, el anterior y el siguiente son el mismo:
+            // gana 'anterior' por el orden de arriba y el hueco derecho queda
+            // vacío, que es preferible a repetir la misma ficha dos veces.
+            tarjeta.querySelectorAll('[data-carrusel-punto]').forEach(function (punto, p) {
+                punto.setAttribute('aria-selected', String(p === indice));
+            });
         });
     }
 
-    /*
-     * Cuál es la tarjeta del centro no se calcula: se observa. El observador
-     * vigila una franja de apenas el 2 % del ancho de la pista, así que la única
-     * que la cruza es la que el scroll-snap dejó encajada en el medio.
-     *
-     * Hacerlo así —y no con una cuenta sobre scrollLeft— es lo que mantiene el
-     * destacado correcto cuando se arrastra con el dedo o con la rueda, sin que
-     * el guion tenga que enterarse de cada gesto.
-     */
-    const observador = new IntersectionObserver(function (entradas) {
-        entradas.forEach(function (entrada) {
-            if (entrada.isIntersecting) {
-                destacar(tarjetas.indexOf(entrada.target));
-            }
-        });
-    }, { root: pista, rootMargin: '0px -49% 0px -49%', threshold: 0 });
+    function ir(destino, sentido) {
+        indice = normalizar(destino);
+        pintar(sentido);
+    }
 
-    tarjetas.forEach(function (tarjeta) {
-        observador.observe(tarjeta);
+    carrusel.querySelectorAll('[data-carrusel-anterior]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            ir(indice - 1, 'anterior');
+        });
+    });
+
+    carrusel.querySelectorAll('[data-carrusel-siguiente]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            ir(indice + 1, 'siguiente');
+        });
     });
 
     /*
-     * Las flechas desplazan un ancho de tarjeta en lugar de saltar a un índice
-     * calculado: así dos pulsaciones seguidas avanzan dos tarjetas aunque el
-     * desplazamiento anterior siga en curso. El ancho se mide en cada pulsación
-     * porque cambia con el tamaño de la ventana.
+     * Pulsar una ficha lateral navega hacia ella. El sentido no está escrito
+     * en el HTML: se lee del lado que la ficha ocupa AHORA, porque al girar el
+     * carrusel la misma ficha pasa de un lado al otro.
      */
-    function mover(direccion) {
-        pista.scrollBy({
-            left: direccion * tarjetas[0].getBoundingClientRect().width,
-            behavior: comportamiento()
+    carrusel.querySelectorAll('[data-carrusel-ir]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            const tarjeta = boton.closest('[data-carrusel-tarjeta]');
+
+            if (!tarjeta) {
+                return;
+            }
+
+            const lado = tarjeta.getAttribute('data-posicion');
+
+            if (lado === 'anterior') {
+                ir(indice - 1, 'anterior');
+            } else if (lado === 'siguiente') {
+                ir(indice + 1, 'siguiente');
+            }
         });
-    }
+    });
 
-    if (anterior) {
-        anterior.addEventListener('click', function () {
-            mover(-1);
-        });
-    }
-
-    if (siguiente) {
-        siguiente.addEventListener('click', function () {
-            mover(1);
-        });
-    }
-
-    /* Deja una tarjeta concreta en el centro de la pista. */
-    function centrar(indice, suave) {
-        const destino = tarjetas[indice];
-
-        if (!destino) {
-            return;
-        }
-
-        const areaPista = pista.getBoundingClientRect();
-        const areaDestino = destino.getBoundingClientRect();
-
-        pista.scrollBy({
-            left: (areaDestino.left - areaPista.left) - (areaPista.width - areaDestino.width) / 2,
-            behavior: suave ? comportamiento() : 'auto'
-        });
-    }
-
-    /* Los puntos sí saltan a una tarjeta concreta. */
-    puntos.forEach(function (punto, indice) {
+    /*
+     * Los puntos saltan a un testimonio concreto. El sentido de la animación se
+     * decide por el camino más corto en el círculo, para que saltar del primero
+     * al último entre por la izquierda y no cruce toda la fila.
+     */
+    carrusel.querySelectorAll('[data-carrusel-punto]').forEach(function (punto) {
         punto.addEventListener('click', function () {
-            centrar(indice, true);
+            const destino = Number(punto.getAttribute('data-indice'));
+
+            if (Number.isNaN(destino) || destino === indice) {
+                return;
+            }
+
+            const avance = normalizar(destino - indice);
+            ir(destino, avance <= total - avance ? 'siguiente' : 'anterior');
         });
     });
 
-    /* Apaga la flecha del extremo al que ya no se puede avanzar. */
-    function actualizarFlechas() {
-        const restante = pista.scrollWidth - pista.clientWidth - pista.scrollLeft;
-
-        if (anterior) {
-            anterior.disabled = pista.scrollLeft <= 1;
+    /* Flechas del teclado sobre la pista, que es enfocable. */
+    pista.addEventListener('keydown', function (evento) {
+        if (evento.key === 'ArrowLeft') {
+            evento.preventDefault();
+            ir(indice - 1, 'anterior');
+        } else if (evento.key === 'ArrowRight') {
+            evento.preventDefault();
+            ir(indice + 1, 'siguiente');
         }
+    });
 
-        if (siguiente) {
-            siguiente.disabled = restante <= 1;
-        }
-    }
-
-    pista.addEventListener('scroll', actualizarFlechas, { passive: true });
-    window.addEventListener('resize', actualizarFlechas);
-
-    /*
-     * Arranca en el testimonio del medio: el tercero de cinco, el quinto de
-     * diez. Así el carrusel abre con tanto recorrido a un lado como al otro, y
-     * de paso nunca en un extremo: la pista tiene un hueco del ancho de media
-     * pantalla a cada lado para que la primera y la última tarjeta también
-     * puedan llegar al centro, y el precio es que ahí el costado queda vacío.
-     * Empezando en el medio se ve de entrada como el diseño —tres tarjetas, la
-     * central destacada— sin salto visible, porque va sin desplazamiento suave
-     * y ocurre antes del primer pintado.
-     *
-     * Con un número par se toma la anterior al medio exacto: de diez, la quinta.
-     */
-    const inicial = Math.floor((tarjetas.length - 1) / 2);
-
-    destacar(inicial);
-    centrar(inicial, false);
-    actualizarFlechas();
+    // Primer pintado sin sentido: no hay de dónde venir, así que no se anima.
+    pintar(null);
 })();

@@ -35,6 +35,9 @@ final class AuditoriaController extends Controlador
     /** Criterios válidos, según ck_evalctrl_criterio. */
     private const CRITERIOS = ['DOCUMENTADO', 'REPETIBLE', 'EVIDENCIA'];
 
+    /** Filas por página en la tabla del panel. */
+    private const POR_PAGINA = 4;
+
     /** Calidad de la evidencia, según ck_evalctrl_calidad_evidencia. */
     private const CALIDADES = [
         EvaluacionControl::CALIDAD_BIEN_IMPLEMENTADO,
@@ -48,12 +51,225 @@ final class AuditoriaController extends Controlador
     {
         $usuario = $this->exigirUsuario();
 
-        $this->ver('evaluacion/panel', [
+        $auditorias = $this->auditorias()->auditoriasDe($usuario->id);
+
+        // auditoriasDe() devuelve de la más reciente a la más antigua, así que
+        // la primera es la última trabajada. Es la que se resume en el panel:
+        // quien entra viene de ella o va hacia ella.
+        $ultima = $auditorias[0] ?? null;
+
+        /*
+         * Las empresas que este auditor ha evaluado, sin repetir y en el orden
+         * en que aparecen — es decir, la de la auditoría más reciente primero.
+         * Salen de la lista que ya está en memoria: preguntarle otra vez a la
+         * base por algo que se acaba de traer sería un viaje de más.
+         */
+        $organizaciones = [];
+
+        foreach ($auditorias as $auditoria) {
+            $organizaciones[$auditoria->organizacion] = true;
+        }
+
+        $organizaciones = array_keys($organizaciones);
+
+        /*
+         * Qué empresa mira el gráfico. El auditor la ESCRIBE, así que lo que
+         * llega por la URL se resuelve contra las que este auditor auditó de
+         * verdad y nunca se pasa tal cual al repositorio. Sin esa comprobación,
+         * /evaluacion?organizacion=Otra sería una forma de preguntar por la
+         * cartera de otra consultora — el mismo razonamiento que
+         * auditoriaPropia() aplica a /evaluacion/9.
+         *
+         * Por defecto, la empresa de la última auditoría: es de donde viene
+         * quien abre el panel.
+         */
+        $escrita = $this->peticion()->entrada('organizacion');
+
+        $coincidencia = $escrita === null
+            ? null
+            : $this->buscarOrganizacion($escrita, $organizaciones);
+
+        $organizacion = $coincidencia ?? ($organizaciones[0] ?? null);
+
+        // ── Tabla: qué se busca, cómo se ordena y qué página se mira ─────────
+        $buscar = $this->peticion()->entrada('buscar');
+
+        // Solo dos órdenes, y cualquier otra cosa cae en el de por defecto: un
+        // valor inventado en la URL no debe poder dejar la tabla sin ordenar.
+        $orden = $this->peticion()->entrada('orden') === 'indice' ? 'indice' : 'reciente';
+
+        $filtradas = $this->ordenarAuditorias($this->buscarAuditorias($auditorias, $buscar), $orden);
+
+        $paginas = max(1, (int) ceil(count($filtradas) / self::POR_PAGINA));
+
+        /*
+         * La página se recorta al rango válido en vez de responder un error:
+         * ?pagina=99 después de afinar la búsqueda es un accidente corriente
+         * —el enlace queda en el historial—, no un intento de romper nada.
+         */
+        $pagina = max(1, min($paginas, (int) ($this->peticion()->entrada('pagina') ?? '1')));
+
+        $this->verPanel('evaluacion/panel', [
             ...$this->contexto(),
             'meta'       => $this->meta('Mis auditorías'),
-            'usuario'    => $usuario,
-            'auditorias' => $this->auditorias()->auditoriasDe($usuario->id),
+            // Ya no se pasa 'usuario': la cabecera dejó de imprimir el nombre y
+            // la organización, y el marco los saca de $usuarioActual. Un dato
+            // que ninguna vista lee es un dato que nadie mantiene.
+            // La lista COMPLETA alimenta el resumen de la cabecera: las cifras
+            // de la cartera no pueden encogerse porque alguien esté buscando.
+            'auditorias' => $auditorias,
             'total'      => count($this->instrumento()->controles()),
+            'ultima'     => $ultima,
+            'organizaciones' => $organizaciones,
+            'organizacion'   => $organizacion,
+            /*
+             * Si lo escrito no casó con ninguna empresa, la vista lo dice. El
+             * aviso lo decide AQUÍ y no comparando cadenas allí: escribir
+             * «cooperativa» encuentra «Cooperativa de Ejemplo R.L.», y una
+             * comparación de textos lo tomaría por un fallo.
+             */
+            'organizacionEscrita'    => $escrita,
+            'organizacionSinCoincidencia' => $escrita !== null && $coincidencia === null,
+            'conexiones'     => $this->contenedor->conexiones(),
+
+            'visibles'  => array_slice($filtradas, ($pagina - 1) * self::POR_PAGINA, self::POR_PAGINA),
+            'encontradas' => count($filtradas),
+            'buscar'    => $buscar,
+            'orden'     => $orden,
+            'pagina'    => $pagina,
+            'paginas'   => $paginas,
+            // La vista calcula con esto el «mostrando 1–8 de 23». Escrito a
+            // mano allí, el recuento mentiría el día que cambie el tamaño.
+            'porPagina' => self::POR_PAGINA,
+            /*
+             * Las dos consultas del tablero solo se hacen si hay algo que
+             * dibujar. Sin auditorías no hay matriz ni evolución, y pedirlas
+             * sería un viaje a la base para traer dos listas vacías.
+             */
+            'evaluacionesUltima' => $ultima === null
+                ? []
+                : $this->auditorias()->evaluaciones($ultima->id),
+            'evolucion'          => $ultima === null
+                ? []
+                : $this->auditorias()->evolucionAuditor($usuario->id, $organizacion),
+        ]);
+    }
+
+    /**
+     * Busca la empresa que el auditor escribió, o null si no la hay.
+     *
+     * Devuelve null en vez de un valor por defecto a propósito: quien llama
+     * decide qué hacer con el fallo, y así puede distinguir «no encontré nada»
+     * de «encontré la de siempre». Mezclar las dos cosas aquí obligaría a la
+     * vista a adivinarlo comparando textos.
+     *
+     * Se busca SIEMPRE dentro de las organizaciones que ese auditor evaluó de
+     * verdad: el campo es texto libre y no puede convertirse en una forma de
+     * preguntar por la cartera ajena.
+     *
+     * Se acepta el nombre a medias —«cooperativa» encuentra «Cooperativa de
+     * Ejemplo R.L.»— porque nadie escribe la razón social completa. Pero solo
+     * si señala a UNA: con dos candidatas no se adivina cuál, porque acertar la
+     * mitad de las veces es peor que no elegir.
+     *
+     * @param list<string> $organizaciones
+     */
+    private function buscarOrganizacion(string $escrita, array $organizaciones): ?string
+    {
+        $buscado = $this->normalizar($escrita);
+
+        foreach ($organizaciones as $organizacion) {
+            if ($this->normalizar($organizacion) === $buscado) {
+                return $organizacion;
+            }
+        }
+
+        $parciales = array_values(array_filter(
+            $organizaciones,
+            fn (string $o): bool => str_contains($this->normalizar($o), $buscado),
+        ));
+
+        return count($parciales) === 1 ? $parciales[0] : null;
+    }
+
+    /**
+     * Filtra la cartera por lo que el auditor escribió en el buscador.
+     *
+     * Busca en la organización Y en el área evaluada. Quien escribe «respaldos»
+     * está buscando un alcance, no una empresa, y obligarle a saber en cuál de
+     * los dos campos vive lo que recuerda es trasladarle la estructura de la
+     * tabla.
+     *
+     * @param list<Auditoria> $auditorias
+     * @return list<Auditoria>
+     */
+    private function buscarAuditorias(array $auditorias, ?string $termino): array
+    {
+        if ($termino === null) {
+            return $auditorias;
+        }
+
+        $buscado = $this->normalizar($termino);
+
+        return array_values(array_filter(
+            $auditorias,
+            fn (Auditoria $a): bool =>
+                str_contains($this->normalizar($a->organizacion), $buscado)
+                || str_contains($this->normalizar($a->areaEvaluada), $buscado),
+        ));
+    }
+
+    /**
+     * Ordena la cartera: por fecha o por índice de riesgo.
+     *
+     * @param list<Auditoria> $auditorias
+     * @return list<Auditoria>
+     */
+    private function ordenarAuditorias(array $auditorias, string $orden): array
+    {
+        if ($orden === 'indice') {
+            /*
+             * Mayor índice primero, y las SIN CALCULAR al final — nunca
+             * mezcladas con las de índice bajo. Un null no es un cero: una
+             * auditoría sin calcular no es una auditoría de riesgo mínimo, y
+             * ponerla arriba o abajo del todo por accidente cambia la lectura.
+             */
+            usort($auditorias, static function (Auditoria $a, Auditoria $b): int {
+                $ia = $a->indiceGeneralRiesgo;
+                $ib = $b->indiceGeneralRiesgo;
+
+                if ($ia === null || $ib === null) {
+                    return ($ia === null ? 1 : 0) <=> ($ib === null ? 1 : 0);
+                }
+
+                return $ib <=> $ia ?: $b->fecha <=> $a->fecha;
+            });
+
+            return $auditorias;
+        }
+
+        // Las últimas realizadas primero. auditoriasDe() ya las trae así, pero
+        // se ordena igual: la vista no debe depender de un orden que se decide
+        // en un ORDER BY a tres archivos de distancia.
+        usort($auditorias, static fn (Auditoria $a, Auditoria $b): int =>
+            $b->fecha <=> $a->fecha ?: $b->id <=> $a->id);
+
+        return $auditorias;
+    }
+
+    /**
+     * Pasa un texto a minúsculas y sin tildes, para comparar.
+     *
+     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
+     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
+     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
+     * devuelve cosas distintas en la máquina de cada quien.
+     */
+    private function normalizar(string $texto): string
+    {
+        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
         ]);
     }
 
@@ -63,7 +279,7 @@ final class AuditoriaController extends Controlador
     {
         $this->exigirUsuario();
 
-        $this->ver('evaluacion/nueva', [
+        $this->verPanel('evaluacion/nueva', [
             ...$this->contexto(),
             'meta'           => $this->meta('Nueva auditoría'),
             'administradores' => $this->auditorias()->usuariosPorRol(Usuario::ROL_ADMIN_BD),
@@ -115,7 +331,7 @@ final class AuditoriaController extends Controlador
 
         $controles = $this->instrumento()->controles();
 
-        $this->ver('evaluacion/mostrar', [
+        $this->verPanel('evaluacion/mostrar', [
             ...$this->contexto(),
             'meta'         => $this->meta('Auditoría ' . $auditoria->id),
             'auditoria'    => $auditoria,
@@ -163,7 +379,7 @@ final class AuditoriaController extends Controlador
         $auditoria = $this->auditoriaPropia();
         $control = $this->controlDelCatalogo();
 
-        $this->ver('evaluacion/control', [
+        $this->verPanel('evaluacion/control', [
             ...$this->contexto(),
             'meta'       => $this->meta($control->id . ' · Auditoría ' . $auditoria->id),
             'auditoria'  => $auditoria,
@@ -271,7 +487,7 @@ final class AuditoriaController extends Controlador
         $auditoria = $this->auditoriaPropia();
         $repositorio = $this->auditorias();
 
-        $this->ver('evaluacion/resultados', [
+        $this->verPanel('evaluacion/resultados', [
             ...$this->contexto(),
             'meta'        => $this->meta('Resultados · Auditoría ' . $auditoria->id),
             'auditoria'   => $auditoria,
@@ -313,7 +529,7 @@ final class AuditoriaController extends Controlador
         $usuario = $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
 
-        $this->ver('evaluacion/remediaciones', [
+        $this->verPanel('evaluacion/remediaciones', [
             ...$this->contexto(),
             'meta'                  => $this->meta('Remediaciones · Auditoría ' . $auditoria->id),
             'usuario'               => $usuario,
@@ -437,7 +653,7 @@ final class AuditoriaController extends Controlador
     {
         $usuario = $this->exigirAdministrador();
 
-        $this->ver('evaluacion/remediaciones-vencidas', [
+        $this->verPanel('evaluacion/remediaciones-vencidas', [
             ...$this->contexto(),
             'meta'          => $this->meta('Remediaciones vencidas'),
             'usuario'       => $usuario,
@@ -472,7 +688,7 @@ final class AuditoriaController extends Controlador
             $historicoPorOrganizacion[$organizacion] = $this->auditorias()->historicoPorDominio($organizacion);
         }
 
-        $this->ver('evaluacion/comparar', [
+        $this->verPanel('evaluacion/comparar', [
             ...$this->contexto(),
             'meta'                     => $this->meta('Comparación histórica'),
             'usuario'                  => $usuario,

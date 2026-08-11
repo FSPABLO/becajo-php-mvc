@@ -65,6 +65,9 @@ interface RepositorioContenido
     /** @return list<Integrante> */
     public function equipo(): array;
 
+    /** @return array<string, mixed> */
+    public function planes(): array;
+
     /** @return array{titulo: string, texto: string} */
     public function contacto(): array;
 }

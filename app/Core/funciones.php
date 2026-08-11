@@ -59,6 +59,10 @@ if (!function_exists('icono')) {
             'flecha'   => '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
             'check'    => '<path d="m5 12 5 5L20 7"/>',
             'menu'     => '<path d="M4 7h16M4 12h16M4 17h16"/>',
+            // Armazón del módulo: la silueta de la barra lateral y el gesto de
+            // plegarla. El doble cheurón dice "hasta el borde", no "uno atrás".
+            'lateral'  => '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+            'plegar'   => '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
 
             // Catálogo del instrumento de consultoría
             'herramienta' => '<path d="M14.7 6.3a4 4 0 0 1-5 5L5 16v3h3l4.7-4.7a4 4 0 0 0 5-5l-2.4 2.4-2.1-2.1 2.5-2.3Z"/>',
@@ -76,6 +80,22 @@ if (!function_exists('icono')) {
             'basura'      => '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M9 7V4h6v3"/>',
             'chispa'      => '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/>',
             'alerta'      => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+
+            /*
+             * Escala semántica de estado del sistema visual de Rivendel.
+             *
+             * Existen porque el color NUNCA puede ser el único canal: todo
+             * estado se comunica a la vez por color, ícono y etiqueta de
+             * texto, para que se lea igual con daltonismo o impreso en
+             * escala de grises. Cada nombre corresponde a una fila de la
+             * tabla §4 del sistema visual.
+             */
+            'circle-check'   => '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+            'alert-circle'   => '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16h.01"/>',
+            'alert-triangle' => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+            'alert-octagon'  => '<path d="M8.4 2.5h7.2l5.9 5.9v7.2l-5.9 5.9H8.4l-5.9-5.9V8.4l5.9-5.9Z"/><path d="M12 7.5v5"/><path d="M12 16h.01"/>',
+            'minus'          => '<path d="M6 12h12"/>',
+
         ];
 
         $trazo = $trazos[$nombre] ?? $trazos['check'];
@@ -85,5 +105,41 @@ if (!function_exists('icono')) {
         return '<svg class="' . e($clases) . '" width="24" height="24" viewBox="0 0 24 24" fill="none" '
              . 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
              . 'stroke-linejoin="round" aria-hidden="true">' . $trazo . '</svg>';
+    }
+}
+
+if (!function_exists('pill')) {
+    /**
+     * Dibuja una etiqueta de estado del sistema visual de Rivendel.
+     *
+     * Existe para que la regla "el color nunca es el único canal" no dependa
+     * de que cada vista se acuerde: aquí el ícono y el texto van siempre
+     * juntos, y quien la llama no puede pintar solo el color.
+     *
+     * Contorno y texto teñido, sin relleno sólido: cuatro rellenos saturados
+     * compitiendo en una tabla de 75 filas destruyen la jerarquía de lectura.
+     *
+     * @param string $tono     ok | warn | bad | na
+     * @param string $etiqueta Texto visible; ya traducido por quien llama.
+     */
+    function pill(string $tono, string $etiqueta): string
+    {
+        static $iconos = [
+            'ok'   => 'circle-check',
+            'warn' => 'alert-circle',
+            'bad'  => 'alert-triangle',
+            'na'   => 'minus',
+            // 'crit' comparte color con 'bad' y se distingue por el ícono:
+            // un octógono es la señal de alto, no una advertencia más.
+            'crit' => 'alert-octagon',
+        ];
+
+        $clase = $tono === 'crit' ? 'bad' : $tono;
+        $icono = $iconos[$tono] ?? 'minus';
+
+        return '<span class="rv-pill rv-pill--' . e($clase) . '">'
+             . icono($icono, 'h-3.5 w-3.5 shrink-0')
+             . '<span>' . e($etiqueta) . '</span>'
+             . '</span>';
     }
 }

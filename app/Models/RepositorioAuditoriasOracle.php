@@ -446,6 +446,15 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
         );
     }
 
+    /** @return list<array<string, mixed>> */
+    public function evolucionAuditor(int $idAuditor, ?string $organizacion = null): array
+    {
+        return $this->bd->cursor(
+            'BEGIN pkg_indicadores.sp_evolucion_auditor(:id_auditor, :organizacion, :cursor); END;',
+            ['id_auditor' => $idAuditor, 'organizacion' => $organizacion],
+        );
+    }
+
     // ── Punto 19: remediación y re-auditoría ─────────────────────────────────
 
     public function crearRemediacion(

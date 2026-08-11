@@ -35,18 +35,18 @@
      * genera aunque aquí se apliquen después.
      */
     const BORDE_ESTADO = {
-        si: 'border-l-exito-500',
-        no: 'border-l-alerta-500',
-        na: 'border-l-marina-300',
-        '': 'border-l-slate-200'
+        si: 'border-l-ok',
+        no: 'border-l-bad',
+        na: 'border-l-na',
+        '': 'border-l-borde'
     };
 
     const BORDE_RESPUESTA = {
-        si: 'border-l-exito-500',
-        parcial: 'border-l-aviso-500',
-        no: 'border-l-alerta-500',
-        na: 'border-l-marina-300',
-        '': 'border-l-slate-200'
+        si: 'border-l-ok',
+        parcial: 'border-l-warn',
+        no: 'border-l-bad',
+        na: 'border-l-na',
+        '': 'border-l-borde'
     };
 
     // ── Índices del catálogo ─────────────────────────────────────────────────
@@ -244,11 +244,11 @@
 
             pestana.setAttribute('aria-selected', String(activa));
             pestana.tabIndex = activa ? 0 : -1;
-            pestana.classList.toggle('bg-acento-500', activa);
-            pestana.classList.toggle('text-marina-950', activa);
-            pestana.classList.toggle('text-slate-600', !activa);
-            pestana.classList.toggle('hover:bg-slate-100', !activa);
-            pestana.classList.toggle('hover:text-marina-950', !activa);
+            pestana.classList.toggle('bg-primario', activa);
+            pestana.classList.toggle('text-primario-texto', activa);
+            pestana.classList.toggle('text-texto-2', !activa);
+            pestana.classList.toggle('hover:bg-elevado', !activa);
+            pestana.classList.toggle('hover:text-texto', !activa);
 
             if (activa && moverFoco) {
                 pestana.focus();
@@ -321,12 +321,12 @@
 
             tab.setAttribute('aria-selected', String(activo));
             tab.tabIndex = activo ? 0 : -1;
-            tab.classList.toggle('border-acento-500', activo);
-            tab.classList.toggle('text-marina-950', activo);
+            tab.classList.toggle('border-primario', activo);
+            tab.classList.toggle('text-primario-texto', activo);
             tab.classList.toggle('border-transparent', !activo);
-            tab.classList.toggle('text-slate-500', !activo);
-            tab.classList.toggle('hover:border-slate-300', !activo);
-            tab.classList.toggle('hover:text-marina-950', !activo);
+            tab.classList.toggle('text-texto-2', !activo);
+            tab.classList.toggle('hover:border-borde', !activo);
+            tab.classList.toggle('hover:text-texto', !activo);
 
             if (activo && moverFoco) {
                 tab.focus();
@@ -395,10 +395,10 @@
                 const completo = datos.total > 0 && datos.hechos === datos.total;
 
                 nodo.textContent = datos.hechos + '/' + datos.total;
-                nodo.classList.toggle('bg-exito-500', completo);
-                nodo.classList.toggle('text-white', completo);
-                nodo.classList.toggle('bg-slate-100', !completo);
-                nodo.classList.toggle('text-slate-500', !completo);
+                nodo.classList.toggle('bg-ok', completo);
+                nodo.classList.toggle('text-primario-texto', completo);
+                nodo.classList.toggle('bg-elevado', !completo);
+                nodo.classList.toggle('text-texto-2', !completo);
             });
         });
     }
@@ -671,10 +671,10 @@
     }
 
     const ZONA_RIESGO = {
-        rojo:     { etiqueta: 'Zona roja',     fondo: 'bg-alerta-500', texto: 'text-white' },
-        amarillo: { etiqueta: 'Zona amarilla', fondo: 'bg-aviso-500',  texto: 'text-white' },
-        verde:    { etiqueta: 'Zona verde',    fondo: 'bg-exito-500',  texto: 'text-white' },
-        sin:      { etiqueta: 'Sin datos',     fondo: 'bg-slate-100',  texto: 'text-slate-400' }
+        rojo:     { etiqueta: 'Zona roja',     fondo: 'bg-bad', texto: 'text-primario-texto' },
+        amarillo: { etiqueta: 'Zona amarilla', fondo: 'bg-warn',  texto: 'text-primario-texto' },
+        verde:    { etiqueta: 'Zona verde',    fondo: 'bg-ok', texto: 'text-primario-texto' },
+        sin:      { etiqueta: 'Sin datos',     fondo: 'bg-elevado', texto: 'text-na' }
     };
     
     const CLASES_ZONA_RIESGO = Object.keys(ZONA_RIESGO).reduce(function (clases, clave) {
@@ -775,7 +775,7 @@
 
         if (calificados.length === 0) {
             const vacio = document.createElement('li');
-            vacio.className = 'text-sm text-slate-400';
+            vacio.className = 'text-sm text-na';
             vacio.textContent = 'Todavía no hay controles con madurez registrada.';
             lista.appendChild(vacio);
 
@@ -787,12 +787,12 @@
             const elemento = document.createElement('li');
             elemento.className = 'flex items-center gap-3';
             elemento.innerHTML =
-                '<span class="w-14 shrink-0 font-mono text-xs font-bold text-marina-950"></span>' +
-                '<span class="min-w-0 flex-1 truncate text-sm text-slate-600" title=""></span>' +
-                '<div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-slate-100">' +
-                '<div class="h-full rounded-full bg-alerta-500" style="width: ' + (madurez / 5 * 100) + '%"></div>' +
+                '<span class="w-14 shrink-0 font-mono rv-id text-xs font-bold"></span>' +
+                '<span class="min-w-0 flex-1 truncate text-sm text-texto-2" title=""></span>' +
+                '<div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-elevado">' +
+                '<div class="h-full rounded-full bg-bad" style="width: ' + (madurez / 5 * 100) + '%"></div>' +
                 '</div>' +
-                '<span class="w-6 shrink-0 text-right text-xs font-bold text-marina-950"></span>';
+                '<span class="w-6 shrink-0 text-right rv-id text-xs font-bold"></span>';
 
             elemento.querySelector('span.font-mono').textContent = item.control.id;
 

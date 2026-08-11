@@ -3,27 +3,45 @@
 declare(strict_types=1);
 
 /**
+ * Barra de navegación global.
+ *
+ * Tres zonas: la marca a la izquierda, los enlaces centrados ocupando el
+ * espacio sobrante, y las acciones a la derecha. Sigue fija (y no pegajosa)
+ * porque todas las vistas del producto reservan arriba el alto de esta barra.
+ *
+ * El selector de idioma son ENLACES, no un formulario ni un <select> con
+ * guion: cambiar de idioma es una petición GET a /idioma, así que funciona sin
+ * JavaScript. Por eso el encabezado recibe $rutaActual — para volver a donde
+ * estaba el visitante en lugar de mandarlo a la portada.
+ *
  * @var \App\Core\Vista     $vista
  * @var array<string, mixed> $empresa
  * @var list<array{etiqueta: string, destino: string}> $navegacion
  * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
  * @var \App\Models\Entidades\Usuario|null $usuarioActual
+ * @var string|null $rutaActual
  */
 $herramientas = $herramientas ?? [];
 $usuarioActual = $usuarioActual ?? null;
-?>
-<header class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-marina-950/80 backdrop-blur">
-    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
+$rutaActual = $rutaActual ?? '/';
 
-        <a href="<?= e($vista->destino('#inicio')) ?>" class="flex items-center gap-2.5">
-            <span class="grid h-9 w-9 place-items-center rounded-lg bg-acento-500 font-extrabold text-marina-950">B</span>
-            <span class="text-lg font-bold tracking-tight text-white"><?= e($empresa['nombre']) ?></span>
+$enlaceIdioma = static fn (string $codigo): string =>
+    '?codigo=' . rawurlencode($codigo) . '&destino=' . rawurlencode($rutaActual);
+
+$clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medium text-nav-texto';
+?>
+<header class="fixed inset-x-0 top-0 z-50 border-b border-borde bg-fondo/95 px-5 backdrop-blur">
+    <nav class="mx-auto flex h-16 max-w-[1180px] items-center gap-[18px]">
+
+        <?php /* Cinzel: solo el logotipo. Una palabra, caja alta, 0.09em. */ ?>
+        <a href="<?= e($vista->destino('#inicio')) ?>" class="flex flex-none items-center gap-[11px]">
+            <span class="rv-extruido grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-superficie font-marca text-[15px] tracking-[0.02em] text-oro">R</span>
+            <span class="rv-marca text-[15px] text-nav-texto"><?= e($empresa['nombre']) ?></span>
         </a>
 
-        <nav class="hidden items-center gap-8 md:flex" aria-label="Navegación principal">
+        <div class="hidden flex-1 flex-wrap items-center justify-center gap-0.5 md:flex">
             <?php foreach ($navegacion as $enlace): ?>
-                <a href="<?= e($vista->destino($enlace['destino'])) ?>"
-                   class="text-sm font-medium text-marina-200 transition hover:text-white">
+                <a href="<?= e($vista->destino($enlace['destino'])) ?>" class="<?= e($clasesEnlace) ?>">
                     <?= e($enlace['etiqueta']) ?>
                 </a>
             <?php endforeach; ?>
@@ -33,36 +51,31 @@ $usuarioActual = $usuarioActual ?? null;
                     <button type="button"
                             id="boton-herramientas"
                             data-desplegable-boton
-                            class="flex items-center gap-1.5 text-sm font-medium text-marina-200 transition hover:text-white"
+                            class="<?= e($clasesEnlace) ?> flex items-center gap-1.5"
                             aria-expanded="false"
                             aria-haspopup="true"
                             aria-controls="menu-herramientas">
                         <?= e($vista->t('nav.herramientas')) ?>
-                        <span data-desplegable-flecha class="transition-transform duration-200">
-                            <?= icono('chevron', 'h-4 w-4') ?>
+                        <span data-desplegable-flecha class="text-nav-texto2 transition-transform duration-200">
+                            <?= icono('chevron', 'h-3.5 w-3.5') ?>
                         </span>
                     </button>
 
                     <div id="menu-herramientas"
                          data-desplegable-panel
-                         class="absolute right-0 top-full hidden w-80 pt-3"
+                         class="absolute left-0 top-full hidden w-[300px] pt-3"
                          role="menu"
                          aria-labelledby="boton-herramientas">
-                        <div class="overflow-hidden rounded-xl border border-white/10 bg-marina-950 p-2 shadow-2xl shadow-marina-950/40">
+                        <div class="rv-extruido flex flex-col gap-1 rounded-rv-lg border border-borde bg-superficie p-2.5">
                             <?php foreach ($herramientas as $herramienta): ?>
                                 <a href="<?= e($vista->destino($herramienta['destino'])) ?>"
                                    role="menuitem"
-                                   class="group flex gap-3 rounded-lg p-3 transition hover:bg-white/5">
-                                    <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-acento-400 transition group-hover:bg-acento-500 group-hover:text-marina-950">
-                                        <?= icono($herramienta['icono'], 'h-5 w-5') ?>
+                                   class="flex flex-col gap-[3px] rounded-[9px] px-3 py-[11px] transition hover:bg-elevado">
+                                    <span class="text-[13.5px] font-semibold text-texto">
+                                        <?= e($herramienta['etiqueta']) ?>
                                     </span>
-                                    <span>
-                                        <span class="block text-sm font-semibold text-white">
-                                            <?= e($herramienta['etiqueta']) ?>
-                                        </span>
-                                        <span class="mt-1 block text-xs leading-relaxed text-marina-300">
-                                            <?= e($herramienta['descripcion']) ?>
-                                        </span>
+                                    <span class="text-xs leading-[1.4] text-texto-2">
+                                        <?= e($herramienta['descripcion']) ?>
                                     </span>
                                 </a>
                             <?php endforeach; ?>
@@ -70,75 +83,95 @@ $usuarioActual = $usuarioActual ?? null;
                     </div>
                 </div>
             <?php endif; ?>
-        </nav>
+        </div>
 
-        <div class="flex items-center gap-3">
+        <div class="ml-auto flex flex-none items-center gap-[9px] md:ml-0">
+
             <?php if ($usuarioActual !== null): ?>
-                <a href="<?= e($vista->url('evaluacion')) ?>"
-                   class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                <a href="<?= e($vista->url('evaluacion')) ?>" class="<?= e($clasesEnlace) ?> hidden sm:inline-block">
                     <?= e($vista->t('nav.mis_auditorias')) ?>
                 </a>
                 <?php if ($usuarioActual->esAdministrador()): ?>
-                    <a href="<?= e($vista->url('catalogo')) ?>"
-                       class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                    <a href="<?= e($vista->url('catalogo')) ?>" class="<?= e($clasesEnlace) ?> hidden sm:inline-block">
                         <?= e($vista->t('nav.catalogo')) ?>
                     </a>
                 <?php endif; ?>
-                <form method="post" action="<?= e($vista->url('salir')) ?>" class="hidden sm:block">
+            <?php endif; ?>
+
+            <?php
+            /*
+             * Grupo de idioma: la pieza va hundida y el idioma activo sobresale
+             * dentro de ella. El activo se marca con aria-current y no solo con
+             * el color, que aquí tampoco puede ser el único canal.
+             */
+            ?>
+            <div class="rv-hundido hidden rounded-[9px] bg-fondo p-[3px] sm:flex"
+                 role="group" aria-label="<?= e($vista->t('nav.idioma')) ?>">
+                <?php foreach (\App\Core\Idioma::DISPONIBLES as $codigo => $nombre): ?>
+                    <?php $activo = $vista->idiomaActual() === $codigo; ?>
+                    <a href="<?= e($vista->url('idioma') . $enlaceIdioma($codigo)) ?>"
+                       hreflang="<?= e($codigo) ?>"
+                       lang="<?= e($codigo) ?>"
+                       <?= $activo ? 'aria-current="true"' : '' ?>
+                       title="<?= e($nombre) ?>"
+                       class="rounded-[7px] px-2.5 py-[5px] text-[11.5px] font-semibold uppercase tracking-[0.04em] transition <?= $activo
+                           ? 'rv-extruido bg-primario text-primario-texto'
+                           : 'text-nav-texto2 hover:text-nav-texto' ?>">
+                        <?= e($codigo) ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+
+            <?php
+            /*
+             * Botón invertido: lienzo claro sobre la barra oscura. Es el único
+             * de la portada con este tratamiento, y por eso destaca sin gastar
+             * el verde, que aquí significaría cumplimiento.
+             */
+            ?>
+            <?php if ($usuarioActual !== null): ?>
+                <form method="post" action="<?= e($vista->url('salir')) ?>">
                     <?= $vista->campoToken() ?>
-                    <button type="submit" class="text-sm font-medium text-marina-200 transition hover:text-white">
+                    <button type="submit"
+                            class="rv-extruido rv-interactivo rounded-[9px] bg-texto px-[15px] py-[9px] text-[13px] font-medium text-fondo">
                         <?= e($vista->t('nav.salir')) ?>
                     </button>
                 </form>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
-                   class="hidden text-sm font-medium text-marina-200 transition hover:text-white sm:inline-block">
+                   class="rv-extruido rv-interactivo rounded-[9px] bg-texto px-[15px] py-[9px] text-[13px] font-medium text-fondo">
                     <?= e($vista->t('nav.ingresar')) ?>
                 </a>
             <?php endif; ?>
 
-            <a href="<?= e($vista->destino('#contacto')) ?>"
-               class="hidden rounded-lg bg-acento-500 px-4 py-2 text-sm font-semibold text-marina-950 transition hover:bg-acento-400 sm:inline-block">
-                <?= e($vista->t('nav.contactar')) ?>
-            </a>
-
-            <select data-selector-idioma data-ruta-idioma="<?= e($vista->url('idioma')) ?>"
-                    aria-label="<?= e($vista->t('nav.idioma')) ?>"
-                    class="hidden rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-medium text-marina-200 outline-none transition hover:text-white sm:block">
-                <?php foreach (\App\Core\Idioma::DISPONIBLES as $codigo => $nombre): ?>
-                    <option value="<?= e($codigo) ?>" class="text-marina-950" <?= $vista->idiomaActual() === $codigo ? 'selected' : '' ?>>
-                        <?= e($nombre) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
             <button type="button"
                     id="boton-menu"
-                    class="text-marina-200 transition hover:text-white md:hidden"
+                    class="text-nav-texto2 transition hover:text-nav-texto md:hidden"
                     aria-expanded="false"
                     aria-controls="menu-movil"
                     aria-label="<?= e($vista->t('nav.abrir_menu')) ?>">
                 <?= icono('menu', 'h-6 w-6') ?>
             </button>
         </div>
-    </div>
+    </nav>
 
-    <div id="menu-movil" class="hidden border-t border-white/10 bg-marina-950 md:hidden">
-        <nav class="space-y-1 px-6 py-4" aria-label="Navegación móvil">
+    <div id="menu-movil" class="hidden border-t border-borde bg-fondo md:hidden">
+        <nav class="space-y-1 px-6 py-4" aria-label="<?= e($vista->t('nav.movil')) ?>">
             <?php foreach ($navegacion as $enlace): ?>
                 <a href="<?= e($vista->destino($enlace['destino'])) ?>"
-                   class="block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                   class="block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
                     <?= e($enlace['etiqueta']) ?>
                 </a>
             <?php endforeach; ?>
 
             <?php if ($herramientas !== []): ?>
-                <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-marina-400">
+                <p class="px-3 pb-1 pt-4 font-mono text-xs uppercase tracking-wider text-nav-texto2">
                     <?= e($vista->t('nav.herramientas')) ?>
                 </p>
                 <?php foreach ($herramientas as $herramienta): ?>
                     <a href="<?= e($vista->destino($herramienta['destino'])) ?>"
-                       class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
-                        <?= icono($herramienta['icono'], 'h-4 w-4 shrink-0 text-acento-400') ?>
+                       class="flex items-center gap-3 rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                        <?= icono($herramienta['icono'], 'h-4 w-4 shrink-0 text-oro') ?>
                         <?= e($herramienta['etiqueta']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -146,40 +179,48 @@ $usuarioActual = $usuarioActual ?? null;
 
             <?php if ($usuarioActual !== null): ?>
                 <a href="<?= e($vista->url('evaluacion')) ?>"
-                   class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                   class="mt-4 block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
                     <?= e($vista->t('nav.mis_auditorias')) ?>
                 </a>
                 <?php if ($usuarioActual->esAdministrador()): ?>
                     <a href="<?= e($vista->url('catalogo')) ?>"
-                       class="block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                       class="block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
                         <?= e($vista->t('nav.catalogo')) ?>
                     </a>
                 <?php endif; ?>
                 <form method="post" action="<?= e($vista->url('salir')) ?>">
                     <?= $vista->campoToken() ?>
                     <button type="submit"
-                            class="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                            class="block w-full rounded-rv px-3 py-2 text-left text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
                         <?= e($vista->t('nav.salir')) ?>
                     </button>
                 </form>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
-                   class="mt-4 block rounded-lg px-3 py-2 text-sm font-medium text-marina-200 transition hover:bg-white/5 hover:text-white">
+                   class="mt-4 block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
                     <?= e($vista->t('nav.ingresar')) ?>
                 </a>
             <?php endif; ?>
 
-            <label class="mt-4 block px-3 text-xs font-semibold uppercase tracking-wider text-marina-400">
+            <p class="px-3 pb-1 pt-4 font-mono text-xs uppercase tracking-wider text-nav-texto2">
                 <?= e($vista->t('nav.idioma')) ?>
-            </label>
-            <select data-selector-idioma data-ruta-idioma="<?= e($vista->url('idioma')) ?>"
-                    class="mx-3 mt-1.5 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-medium text-marina-200">
+            </p>
+            <div class="rv-hundido mx-3 mt-1.5 inline-flex rounded-[9px] bg-fondo p-[3px]"
+                 role="group" aria-label="<?= e($vista->t('nav.idioma')) ?>">
                 <?php foreach (\App\Core\Idioma::DISPONIBLES as $codigo => $nombre): ?>
-                    <option value="<?= e($codigo) ?>" class="text-marina-950" <?= $vista->idiomaActual() === $codigo ? 'selected' : '' ?>>
-                        <?= e($nombre) ?>
-                    </option>
+                    <?php $activo = $vista->idiomaActual() === $codigo; ?>
+                    <a href="<?= e($vista->url('idioma') . $enlaceIdioma($codigo)) ?>"
+                       hreflang="<?= e($codigo) ?>"
+                       lang="<?= e($codigo) ?>"
+                       <?= $activo ? 'aria-current="true"' : '' ?>
+                       title="<?= e($nombre) ?>"
+                       class="rounded-[7px] px-2.5 py-[5px] text-[11.5px] font-semibold uppercase tracking-[0.04em] <?= $activo
+                           ? 'rv-extruido bg-primario text-primario-texto'
+                           : 'text-nav-texto2' ?>">
+                        <?= e($codigo) ?>
+                    </a>
                 <?php endforeach; ?>
-            </select>
+            </div>
         </nav>
     </div>
 </header>

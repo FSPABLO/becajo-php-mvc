@@ -16,14 +16,14 @@ declare(strict_types=1);
  * y de los resultados en lugar de una línea divisoria.
  */
 ?>
-<section id="stack" class="bg-white py-48 lg:py-56">
+<section id="stack" class="rv-alterno bg-fondo py-48 lg:py-56">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
 
         <div class="mx-auto max-w-3xl text-center">
-            <p class="text-sm font-semibold uppercase tracking-widest text-acento-600">
+            <p class="text-sm font-semibold uppercase tracking-widest text-primario">
                 <?= e($stack['etiqueta']) ?>
             </p>
-            <h2 class="mt-3 text-4xl font-extrabold tracking-tight text-marina-950 sm:text-5xl">
+            <h2 class="rv-titulo mt-3 text-4xl font-extrabold tracking-tight text-texto sm:text-5xl">
                 <?= e($stack['titulo']) ?>
             </h2>
         </div>
@@ -33,7 +33,7 @@ declare(strict_types=1);
             /*
              * El carrusel imprime la lista de logotipos dos veces: el segundo
              * juego es la copia que permite el ciclo infinito (ver la regla
-             * .carrusel-logos en assets/css/estilos.css). La copia va con
+             * .carrusel-logos en assets/css/rivendel.css). La copia va con
              * aria-hidden y alt vacío para que un lector de pantalla no lea
              * seis motores dos veces.
              */
@@ -46,7 +46,17 @@ declare(strict_types=1);
                             <?= $esCopia ? 'aria-hidden="true"' : '' ?>>
                             <?php foreach ($stack['logos'] as $logo): ?>
                                 <li class="flex w-[268px] shrink-0 items-center justify-center px-6 sm:w-96 sm:px-8">
-                                    <img src="<?= e($vista->url($logo['imagen'])) ?>"
+                                    <?php
+                                    /*
+                                     * recurso() y no url(): añade ?v=<fecha del
+                                     * archivo>. Sin eso, reemplazar un logotipo
+                                     * conservando el nombre no se ve — el
+                                     * navegador sigue mostrando el que tenía en
+                                     * caché, que fue justo lo que pasó al quitar
+                                     * los fondos blancos de mysql y sql-server.
+                                     */
+                                    ?>
+                                    <img src="<?= e($vista->recurso($logo['imagen'])) ?>"
                                          alt="<?= $esCopia ? '' : e($logo['nombre']) ?>"
                                          width="<?= (int) $logo['ancho'] ?>"
                                          height="<?= (int) $logo['alto'] ?>"

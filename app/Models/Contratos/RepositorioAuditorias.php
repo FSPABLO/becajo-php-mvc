@@ -175,6 +175,25 @@ interface RepositorioAuditorias
      */
     public function historicoPorDominio(string $organizacion): array;
 
+    /**
+     * Evolución mensual del trabajo de un auditor: una fila por mes con
+     * auditorías, con el cumplimiento y la cobertura del instrumento ya
+     * agregados. Alimenta el gráfico del panel de entrada.
+     *
+     * Los meses sin auditorías NO vienen en el resultado. Rellenar los huecos
+     * es cosa de quien dibuja: solo la vista sabe si corta la línea o une los
+     * extremos.
+     *
+     * $organizacion acota a una empresa auditada — que es la del administrador
+     * de BD entrevistado. En null devuelve la cartera completa del auditor.
+     * Quien la pase debe haberla comprobado antes contra las organizaciones que
+     * ese auditor realmente evaluó: aquí llega como un filtro cualquiera y el
+     * repositorio no tiene forma de saber si el auditor tenía derecho a verla.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function evolucionAuditor(int $idAuditor, ?string $organizacion = null): array;
+
     // ── Remediación (punto 19: plazos y re-auditoría) ───────────────────────
 
     /** Crea un plazo de corrección para un hallazgo puntual. */

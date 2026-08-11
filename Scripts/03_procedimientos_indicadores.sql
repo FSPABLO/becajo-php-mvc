@@ -78,6 +78,14 @@ CREATE OR REPLACE PACKAGE pkg_indicadores AS
         p_cursor       OUT SYS_REFCURSOR
     );
 
+    -- Evolución mensual del trabajo de un auditor, para el panel de entrada.
+    -- p_organizacion en NULL trae la cartera completa.
+    PROCEDURE sp_evolucion_auditor(
+        p_id_auditor   IN  NUMBER,
+        p_organizacion IN  VARCHAR2,
+        p_cursor       OUT SYS_REFCURSOR
+    );
+
     -- Punto 19 — remediación y re-auditoría.
     PROCEDURE sp_crear_remediacion(
         p_id_evaluacion_control IN NUMBER,
@@ -396,6 +404,79 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
             GROUP BY aud.id_auditoria, aud.fecha, d.clave, d.nombre_corto
             ORDER BY aud.fecha, d.clave;
     END sp_historico_dominio;
+
+
+    -- ------------------------------------------------------------------
+    -- Evolución mensual del trabajo de un auditor.
+    --
+    -- Una fila por mes CON auditorías. Los meses vacíos no se rellenan
+    -- aquí: qué hacer con un hueco es una decisión de presentación, y la
+    -- vista es la única que sabe si dibuja un corte o une los extremos.
+    --
+    -- Dos medidas, ambas proporciones de 0 a 1 y por tanto comparables en
+    -- un mismo eje:
+    --   cumplimiento — de lo respondido, cuánto resultó conforme.
+    --   cobertura    — cuánto del instrumento se llegó a responder.
+    --
+    -- El cumplimiento del mes NO es el promedio de los cumplimientos de
+    -- sus auditorías: es la razón agregada, SUM(si) / SUM(si+no).
+    -- Promediar razones le daría el mismo peso a una auditoría con tres
+    -- controles respondidos que a una con setenta y cinco.
+    --
+    -- La cobertura se mide contra el catálogo VIVO (COUNT(*) FROM control)
+    -- y no contra un 75 escrito a mano: el catálogo es editable desde la
+    -- aplicación, y una constante quedaría mintiendo el día que alguien
+    -- añada un control.
+    -- ------------------------------------------------------------------
+    --
+    -- p_organizacion filtra por la EMPRESA AUDITADA, que es la del
+    -- administrador de BD entrevistado (el esquema no tiene tabla de
+    -- organizaciones; ver el comentario de 01_esquema.sql). En NULL trae la
+    -- cartera completa del auditor.
+    PROCEDURE sp_evolucion_auditor(
+        p_id_auditor   IN  NUMBER,
+        p_organizacion IN  VARCHAR2,
+        p_cursor       OUT SYS_REFCURSOR
+    ) IS
+        v_controles NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_controles FROM control;
+
+        OPEN p_cursor FOR
+            WITH por_auditoria AS (
+                SELECT
+                    aud.id_auditoria,
+                    TO_CHAR(aud.fecha, 'YYYY-MM') AS mes,
+                    COUNT(CASE WHEN ec.estado = 'SI' THEN 1 END)          AS si,
+                    COUNT(CASE WHEN ec.estado IN ('SI', 'NO') THEN 1 END) AS si_no,
+                    -- COUNT sobre la columna, no sobre la fila: una
+                    -- evaluación empezada y sin estado todavía no cuenta
+                    -- como control respondido.
+                    COUNT(ec.estado)                                      AS respondidos,
+                    SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 WHEN 'BAJA' THEN 1 END) AS madurez_pond,
+                    SUM(
+                        CASE WHEN ec.madurez IS NOT NULL
+                             THEN CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 WHEN 'BAJA' THEN 1 END
+                        END
+                    ) AS peso_total
+                FROM auditoria aud
+                JOIN usuario adm ON adm.id_usuario = aud.id_administrador_bd
+                LEFT JOIN evaluacion_control ec ON ec.id_auditoria = aud.id_auditoria
+                LEFT JOIN control c ON c.codigo = ec.codigo_control
+                WHERE aud.id_auditor = p_id_auditor
+                  AND (p_organizacion IS NULL OR adm.organizacion = p_organizacion)
+                GROUP BY aud.id_auditoria, TO_CHAR(aud.fecha, 'YYYY-MM')
+            )
+            SELECT
+                mes,
+                COUNT(*) AS auditorias,
+                ROUND(SUM(si) / NULLIF(SUM(si_no), 0), 4)                       AS cumplimiento,
+                ROUND(SUM(respondidos) / NULLIF(COUNT(*) * v_controles, 0), 4)  AS cobertura,
+                ROUND(SUM(madurez_pond) / NULLIF(SUM(peso_total), 0), 2)        AS madurez_promedio
+            FROM por_auditoria
+            GROUP BY mes
+            ORDER BY mes;
+    END sp_evolucion_auditor;
 
 
     -- ------------------------------------------------------------------

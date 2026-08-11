@@ -11,16 +11,16 @@ declare(strict_types=1);
 return [
 
     'empresa' => [
-        'nombre'   => 'Becajo',
+        'nombre'   => 'Rivendel',
         'eslogan'  => 'Database Administration Consulting',
-        'correo'   => 'contacto@becajo.cr',
+        'correo'   => 'contacto@rivendel.cr',
         'telefono' => '+506 0000 0000',
         'ciudad'   => 'San José, Costa Rica',
         'anio'     => 2026,
     ],
 
     'meta' => [
-        'titulo'      => 'Becajo | Database Administration Consulting',
+        'titulo'      => 'Rivendel | Database Administration Consulting',
         'descripcion' => 'Migration, optimization, security and monitoring for enterprise '
                        . 'databases. We reduce the operational risk of your critical information.',
     ],
@@ -28,74 +28,89 @@ return [
     'navegacion' => [
         ['etiqueta' => 'Challenges', 'destino' => '#retos'],
         ['etiqueta' => 'Services',   'destino' => '#servicios'],
+        ['etiqueta' => 'Stack',      'destino' => '#stack'],
         ['etiqueta' => 'Results',    'destino' => '#resultados'],
         ['etiqueta' => 'Team',       'destino' => '#equipo'],
-        ['etiqueta' => 'Contact',    'destino' => '#contacto'],
+        ['etiqueta' => 'Pricing',    'destino' => '#planes'],
     ],
 
     'herramientas' => [
         [
-            'etiqueta'    => 'Consulting Instrument',
-            'descripcion' => 'Assessment of 75 database administration controls '
-                           . 'aligned with the ISO/IEC 27000 family.',
+            'etiqueta'    => 'Database Assessment Instrument',
+            'descripcion' => 'Public reference document: the 75 database administration '
+                           . 'controls aligned with the ISO/IEC 27000 family.',
             'destino'     => '/herramientas/instrumento-bd',
             'icono'       => 'documento',
+        ],
+        [
+            'etiqueta'    => 'Health Diagnosis',
+            'descripcion' => 'Open an audit, answer the controls and get the risk index '
+                           . 'with its remediation plan. Account required.',
+            'destino'     => '/evaluacion',
+            'icono'       => 'tablero',
         ],
     ],
 
     'hero' => [
-        'etiqueta'  => 'Enterprise database administration',
-        'titulo'    => 'Your data, under control.',
-        'resaltado' => 'Your operation, uninterrupted.',
-        'texto'     => 'Becajo supports organizations in administering, protecting and '
-                     . 'optimizing their databases. Less downtime, less risk, decisions backed '
-                     . 'by reliable information.',
-        'puntos'    => [
-            'Free initial diagnosis',
-            'Critical incidents answered in under 15 minutes',
-            'Report with prioritized findings within five business days',
-        ],
-        'cta_primario'   => ['etiqueta' => 'Request a diagnosis', 'destino' => '#contacto'],
-        'cta_secundario' => ['etiqueta' => 'See our services',    'destino' => '#servicios'],
+        'norma'  => 'ISO/IEC 27002 · 27007 · COBIT 4.1',
+        'titulo' => 'Your database holds what the organization cannot afford to lose.',
+        'texto'  => 'Database administration consulting with a measurable information security '
+                  . 'audit: 75 controls, 25 processes, 7 domains and a risk index you can track '
+                  . 'over time.',
 
-        /** Sample dashboard illustrating the hero. See the Spanish file for the notes. */
+        'cta_primario'   => ['etiqueta' => 'Request an audit',   'destino' => '#contacto'],
+        'cta_secundario' => ['etiqueta' => 'See the instrument', 'destino' => '/herramientas/instrumento-bd'],
+
+        'cifras' => [
+            ['valor' => '75', 'etiqueta' => 'Controls'],
+            ['valor' => '25', 'etiqueta' => 'Processes'],
+            ['valor' => '7',  'etiqueta' => 'Domains'],
+        ],
+
+        /** Risk index card illustrating the hero. See the Spanish file for the notes. */
         'panel' => [
-            'titulo'    => 'Operational status',
-            'subtitulo' => 'Last 24 hours',
-            'filas'     => [
-                ['etiqueta' => 'Availability',        'valor' => '99.98%',        'estado' => 'exito'],
-                ['etiqueta' => 'Verified backups',    'valor' => '12 / 12',       'estado' => 'exito'],
-                ['etiqueta' => 'Slow queries',        'valor' => '3 under review', 'estado' => 'aviso'],
-                ['etiqueta' => 'Privileged accounts', 'valor' => 'Audited',       'estado' => 'exito'],
+            'titulo'          => 'Overall risk index',
+            'referencia'      => 'AUD-0042',
+            'indice'          => '3.4',
+            'indice_maximo'   => 'of 5.0',
+            'estado'          => 'bad',
+            'estado_etiqueta' => 'Needs attention',
+            'barras' => [
+                ['etiqueta' => 'Overall compliance', 'valor' => '68.0 %',    'porcentaje' => 68],
+                ['etiqueta' => 'Average maturity',   'valor' => '2.6 / 5.0', 'porcentaje' => 52],
+                ['etiqueta' => 'Controls answered',  'valor' => '61 / 75',   'porcentaje' => 81],
             ],
-            'pie' => 'Sample of the dashboard delivered with the monitoring service.',
+            'conteos' => [
+                ['estado' => 'ok',  'etiqueta' => 'Compliant 41'],
+                ['estado' => 'bad', 'etiqueta' => 'Non-compliant 14'],
+                ['estado' => 'na',  'etiqueta' => 'Not applicable 6'],
+            ],
         ],
     ],
 
+    /** See the Spanish file for the notes on 'eyebrow' and the numbering. */
     'retos' => [
-        'titulo' => 'The problems we solve',
-        'texto'  => 'Most organizations don\'t lose data to a spectacular attack, but to '
-                  . 'small oversights that pile up during day-to-day operation.',
-        'lista'  => [
+        'eyebrow' => 'Challenges',
+        'titulo'  => 'What we usually find broken',
+        'lista'   => [
             [
-                'titulo' => 'Degraded performance',
-                'texto'  => 'Queries that take minutes, missing indexes, and users '
-                          . 'staring at the screen waiting.',
+                'titulo' => 'Nobody knows who holds privileges',
+                'texto'  => 'Inherited accounts, privileges piled up over the years, and no '
+                          . 'record of why they were granted.',
             ],
             [
-                'titulo' => 'Unverified backups',
-                'texto'  => 'Copies generated every night that nobody has ever tried to '
-                          . 'restore. An untested backup is not a backup.',
+                'titulo' => 'The backup exists, the restore was never tested',
+                'texto'  => 'A backup that has never been restored is a hypothesis, not a control.',
             ],
             [
-                'titulo' => 'Uncontrolled access',
-                'texto'  => 'Shared accounts, excessive privileges, and logs that nobody '
-                          . 'reviews. Internal risk outweighs external risk.',
+                'titulo' => 'Compliance declared without evidence',
+                'texto'  => 'ISO/IEC 27007 determines conformity against verified evidence, '
+                          . 'not against the auditee\'s statement.',
             ],
             [
-                'titulo' => 'No continuity plan',
-                'texto'  => 'Without a defined RTO or RPO, recovery from an incident '
-                          . 'gets improvised at the worst possible moment.',
+                'titulo' => 'Findings with no deadline and no owner',
+                'texto'  => 'With no due date and no owner, the finding comes back unchanged '
+                          . 'in the next audit.',
             ],
         ],
     ],
@@ -141,15 +156,6 @@ return [
                 'texto'  => 'A certified database administrator running your operation, '
                           . 'without the cost of a full-time position.',
             ],
-            [
-                'icono'          => 'tablero',
-                'titulo'         => 'ISO/IEC 27002 risk assessment',
-                'texto'          => 'We audit your database administration against 75 '
-                                   . 'ISO/IEC 27002 controls and deliver compliance, maturity and '
-                                   . 'risk exposure by domain.',
-                'enlace'         => '/ingresar',
-                'etiquetaEnlace' => 'Start assessment',
-            ],
         ],
     ],
 
@@ -167,12 +173,12 @@ return [
         'etiqueta' => 'Technology stack',
         'titulo'   => 'Engines we review, maintain and support',
         'logos'    => [
-            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.jpg',     'ancho' => 663,  'alto' => 720],
-            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png',      'ancho' => 1280, 'alto' => 720],
-            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610,  'alto' => 280],
-            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 614,  'alto' => 499],
-            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.jpg',    'ancho' => 1024, 'alto' => 512],
-            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.jpg',    'ancho' => 714,  'alto' => 430],
+            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.png', 'ancho' => 221, 'alto' => 240],
+            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png', 'ancho' => 427, 'alto' => 240],
+            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610, 'alto' => 280],
+            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 295, 'alto' => 240],
+            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.png', 'ancho' => 480, 'alto' => 240],
+            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.png', 'ancho' => 399, 'alto' => 240],
         ],
     ],
 
@@ -193,7 +199,7 @@ return [
     /** Client testimonials. TEST DATA. Structure documented in config/contenido.php. */
     'testimonios' => [
         'etiqueta' => 'Testimonials',
-        'titulo'   => 'What our clients say',
+        'titulo'   => 'Those who have already been audited',
         'texto'    => 'Feedback from technology teams that trusted their database '
                     . 'operations to our consultancy.',
         'lista'    => [
@@ -203,6 +209,7 @@ return [
                 'cargo'       => 'Head of Technology',
                 'iniciales'   => 'MV',
                 'puntaje'     => 5,
+                'referencia'  => 'Audit AUD-0031 · 75 controls',
                 'descripcion' => 'We migrated a fifteen-year-old Oracle 11g without losing a '
                                . 'single transaction. The rollback plan was written before anything '
                                . 'was touched, and that is what gave us peace of mind.',
@@ -213,6 +220,7 @@ return [
                 'cargo'       => 'Internal Audit Manager',
                 'iniciales'   => 'AQ',
                 'puntaje'     => 4.5,
+                'referencia'  => 'Audit AUD-0044 · 75 controls',
                 'descripcion' => 'The audit report got straight to the point: prioritized findings, '
                                . 'each with an owner. We would only have liked the tracking '
                                . 'dashboard sooner.',
@@ -223,6 +231,9 @@ return [
                 'cargo'       => 'Analytics Coordinator',
                 'iniciales'   => 'LC',
                 'puntaje'     => 5,
+                'referencia'  => 'Audit AUD-0052 · 75 controls',
+                // Con este abre el carrusel.
+                'destacado'   => true,
                 'descripcion' => 'Monthly reports went from forty minutes to under two. It was '
                                . 'indexing work and rewriting three queries, not buying hardware.',
             ],
@@ -232,6 +243,7 @@ return [
                 'cargo'       => 'Head of Infrastructure',
                 'iniciales'   => 'DH',
                 'puntaje'     => 4,
+                'referencia'  => 'Audit AUD-0058 · 75 controls',
                 'descripcion' => 'They put our backups in order and restores are now tested every '
                                . 'quarter. The support was good; coordinating the maintenance '
                                . 'windows took longer than expected.',
@@ -242,6 +254,7 @@ return [
                 'cargo'       => 'Information Security Officer',
                 'iniciales'   => 'SR',
                 'puntaje'     => 4.5,
+                'referencia'  => 'Audit AUD-0063 · 75 controls',
                 'descripcion' => 'We passed the ISO/IEC 27001 review with no findings on access '
                                . 'control. They documented every permission and taught us how to '
                                . 'keep it that way.',
@@ -273,6 +286,60 @@ return [
             'rol'         => 'Migration and monitoring',
             'iniciales'   => 'MB',
             'descripcion' => 'Engine modernization and continuous operational monitoring.',
+        ],
+    ],
+
+    /** Ver config/contenido.php para la forma de este bloque. */
+    'planes' => [
+        'etiqueta' => 'Pricing',
+        'titulo'   => 'Plans and pricing',
+        'texto'    => 'Measuring the risk of your databases costs nothing. '
+                    . 'You only pay once the assessment becomes continuous monitoring.',
+        'lista'    => [
+            [
+                'nombre'    => 'Free',
+                'precio'    => '$0',
+                'periodo'   => '/month',
+                'resumen'   => 'For the team measuring itself for the first time',
+                'insignia'  => '',
+                'destacado' => false,
+                'accion'    => [
+                    'etiqueta' => 'Start the assessment',
+                    'destino'  => '/herramientas/instrumento-bd',
+                ],
+                'incluye'   => [
+                    'Full access to the assessment instrument: all 75 controls',
+                    'Unlimited report downloads in PDF, CSV and JSON',
+                    'Framework and references ISO/IEC 27002 · 27007',
+                ],
+            ],
+            [
+                'nombre'    => 'Deluxe',
+                'precio'    => '$20',
+                'periodo'   => '/month',
+                'resumen'   => 'For operations that already depend on their databases',
+                'insignia'  => 'Recommended',
+                'destacado' => true,
+                'accion'    => [
+                    'etiqueta' => 'Request this plan',
+                    'destino'  => '#contacto',
+                ],
+                'incluye'   => [
+                    'Everything in the Free plan',
+                    'Health monitor for up to 5 databases',
+                    'Storage of previous assessment runs',
+                    'Detailed statistics by domain, process and control',
+                    'Report with the mapping across all three frameworks',
+                ],
+                'normas'    => [
+                    'etiqueta' => 'Frameworks',
+                    'lista'    => [
+                        'ISO/IEC 27002 · 27007',
+                        'COBIT 4.1',
+                        'NIST SP 800-53',
+                    ],
+                ],
+            ],
         ],
     ],
 

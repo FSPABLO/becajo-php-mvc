@@ -25,7 +25,7 @@ declare(strict_types=1);
  * @var array<string, int>                  $totalPorDominio
  */
 ?>
-<div class="border-b border-slate-200 no-imprimir">
+<div class="border-b border-borde no-imprimir">
     <div class="flex gap-1 overflow-x-auto px-2"
          role="tablist"
          aria-label="<?= e($etiquetaLista) ?>">
@@ -42,11 +42,11 @@ declare(strict_types=1);
                     aria-label="<?= e($dominio->nombre) ?>"
                     class="-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-3.5 text-sm font-semibold transition
                            <?= $activo
-                               ? 'border-acento-500 text-marina-950'
-                               : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-marina-950' ?>">
+                               ? 'border-primario text-texto'
+                               : 'border-transparent text-texto-2 hover:border-borde hover:text-texto' ?>">
                 <span><?= e($dominio->corto) ?></span>
                 <span data-avance-dominio="<?= e($dominio->clave) ?>"
-                      class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
+                      class="rounded-full bg-elevado px-2 py-0.5 text-xs font-bold text-texto-2">
                     0/<?= e((string) ($totalPorDominio[$dominio->clave] ?? 0)) ?>
                 </span>
             </button>

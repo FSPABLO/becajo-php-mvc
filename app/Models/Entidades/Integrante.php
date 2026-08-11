@@ -14,6 +14,9 @@ final class Integrante
         public readonly string $rol,
         public readonly string $iniciales,
         public readonly string $descripcion = '',
+        // Ruta del retrato, relativa a public/. Vacía mientras no haya foto:
+        // la vista dibuja entonces el hueco rayado con las iniciales.
+        public readonly string $foto = '',
     ) {
     }
 
@@ -27,6 +30,7 @@ final class Integrante
             rol:         (string) ($fila['rol'] ?? ''),
             iniciales:   (string) ($fila['iniciales'] ?? self::calcularIniciales($nombre)),
             descripcion: (string) ($fila['descripcion'] ?? ''),
+            foto:        (string) ($fila['foto'] ?? ''),
         );
     }
 

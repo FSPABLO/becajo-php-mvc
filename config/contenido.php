@@ -17,16 +17,16 @@ declare(strict_types=1);
 return [
 
     'empresa' => [
-        'nombre'   => 'Becajo',
+        'nombre'   => 'Rivendel',
         'eslogan'  => 'Consultoría en Administración de Bases de Datos',
-        'correo'   => 'contacto@becajo.cr',
+        'correo'   => 'contacto@rivendel.cr',
         'telefono' => '+506 0000 0000',
         'ciudad'   => 'San José, Costa Rica',
         'anio'     => 2026,
     ],
 
     'meta' => [
-        'titulo'      => 'Becajo | Consultoría en Administración de Bases de Datos',
+        'titulo'      => 'Rivendel | Consultoría en Administración de Bases de Datos',
         'descripcion' => 'Migración, optimización, seguridad y monitoreo de bases de datos '
                        . 'empresariales. Reducimos el riesgo operativo de su información crítica.',
     ],
@@ -34,9 +34,10 @@ return [
     'navegacion' => [
         ['etiqueta' => 'Retos',      'destino' => '#retos'],
         ['etiqueta' => 'Servicios',  'destino' => '#servicios'],
+        ['etiqueta' => 'Stack',      'destino' => '#stack'],
         ['etiqueta' => 'Resultados', 'destino' => '#resultados'],
         ['etiqueta' => 'Equipo',     'destino' => '#equipo'],
-        ['etiqueta' => 'Contacto',   'destino' => '#contacto'],
+        ['etiqueta' => 'Planes',     'destino' => '#planes'],
     ],
 
     /**
@@ -47,73 +48,102 @@ return [
      */
     'herramientas' => [
         [
-            'etiqueta'    => 'Instrumento de Consultoría',
-            'descripcion' => 'Evaluación de 75 controles de administración de bases de datos '
-                           . 'conforme a la familia ISO/IEC 27000.',
+            'etiqueta'    => 'Instrumento de evaluación de BD',
+            'descripcion' => 'Documento público de consulta: los 75 controles de administración '
+                           . 'de bases de datos conforme a la familia ISO/IEC 27000.',
             'destino'     => '/herramientas/instrumento-bd',
             'icono'       => 'documento',
+        ],
+        [
+            'etiqueta'    => 'Diagnóstico de Salud',
+            'descripcion' => 'Levante una auditoría, responda los controles y obtenga el índice '
+                           . 'de riesgo con su plan de remediación. Requiere cuenta.',
+            'destino'     => '/evaluacion',
+            'icono'       => 'tablero',
         ],
     ],
 
     'hero' => [
-        'etiqueta'  => 'Administración de bases de datos empresariales',
-        'titulo'    => 'Sus datos, bajo control.',
-        'resaltado' => 'Su operación, sin interrupciones.',
-        'texto'     => 'Becajo acompaña a las organizaciones en la administración, protección y '
-                     . 'optimización de sus bases de datos. Menos tiempo fuera de servicio, '
-                     . 'menos riesgo, decisiones respaldadas por información confiable.',
-        'puntos'    => [
-            'Diagnóstico inicial sin costo',
-            'Respuesta a incidentes críticos en menos de 15 minutos',
-            'Informe con hallazgos priorizados en cinco días hábiles',
+        // Badge normativo. Es referencia a norma, así que la vista lo pinta en
+        // oro y en mono: el único uso que el sistema visual permite del oro.
+        'norma'  => 'ISO/IEC 27002 · 27007 · COBIT 4.1',
+        'titulo' => 'Su base de datos guarda lo que la organización no puede perder.',
+        'texto'  => 'Consultoría en administración de bases de datos con una auditoría de '
+                  . 'seguridad de la información medible: 75 controles, 25 procesos, 7 dominios '
+                  . 'y un índice de riesgo que se puede seguir en el tiempo.',
+
+        'cta_primario'   => ['etiqueta' => 'Solicitar una auditoría', 'destino' => '#contacto'],
+        'cta_secundario' => ['etiqueta' => 'Ver el instrumento',      'destino' => '/herramientas/instrumento-bd'],
+
+        // Tamaño del instrumento, en cifras tabulares.
+        'cifras' => [
+            ['valor' => '75', 'etiqueta' => 'Controles'],
+            ['valor' => '25', 'etiqueta' => 'Procesos'],
+            ['valor' => '7',  'etiqueta' => 'Dominios'],
         ],
-        'cta_primario'   => ['etiqueta' => 'Solicitar diagnóstico', 'destino' => '#contacto'],
-        'cta_secundario' => ['etiqueta' => 'Conocer servicios',     'destino' => '#servicios'],
 
         /**
-         * Tablero de ejemplo que ilustra el hero.
+         * Tarjeta de índice de riesgo: enseña el producto real en vez de
+         * describirlo.
          *
-         * El campo 'estado' solo admite los valores exito, aviso y alerta: la
-         * vista los traduce a clases de color con una lista blanca, para que un
-         * valor inventado aquí no inyecte clases arbitrarias en el HTML.
+         * Los campos 'estado' solo admiten los tonos de la escala semántica
+         * (ok, warn, bad, crit, na): la vista los pasa por pill(), que exige
+         * ícono y etiqueta, de modo que un valor inventado aquí degrada a un
+         * pill neutro en vez de colar clases arbitrarias en el HTML.
+         *
+         * Los porcentajes van aparte del texto porque uno dibuja la barra y el
+         * otro se lee: 'Madurez promedio' se muestra como «2,6 / 5,0» pero la
+         * barra ocupa el 52 %.
          */
         'panel' => [
-            'titulo'    => 'Estado de la operación',
-            'subtitulo' => 'Últimas 24 horas',
-            'filas'     => [
-                ['etiqueta' => 'Disponibilidad',        'valor' => '99.98 %',      'estado' => 'exito'],
-                ['etiqueta' => 'Respaldos verificados', 'valor' => '12 / 12',      'estado' => 'exito'],
-                ['etiqueta' => 'Consultas lentas',      'valor' => '3 en revisión', 'estado' => 'aviso'],
-                ['etiqueta' => 'Accesos privilegiados', 'valor' => 'Auditados',    'estado' => 'exito'],
+            'titulo'          => 'Índice general de riesgo',
+            'referencia'      => 'AUD-0042',
+            'indice'          => '3,4',
+            'indice_maximo'   => 'de 5,0',
+            'estado'          => 'bad',
+            'estado_etiqueta' => 'Requiere atención',
+            'barras' => [
+                ['etiqueta' => 'Cumplimiento general',  'valor' => '68,0 %',    'porcentaje' => 68],
+                ['etiqueta' => 'Madurez promedio',      'valor' => '2,6 / 5,0', 'porcentaje' => 52],
+                ['etiqueta' => 'Controles respondidos', 'valor' => '61 / 75',   'porcentaje' => 81],
             ],
-            'pie' => 'Ejemplo del tablero que entregamos con el servicio de monitoreo.',
+            'conteos' => [
+                ['estado' => 'ok',  'etiqueta' => 'Cumple 41'],
+                ['estado' => 'bad', 'etiqueta' => 'No cumple 14'],
+                ['estado' => 'na',  'etiqueta' => 'No aplica 6'],
+            ],
         ],
     ],
 
+    /**
+     * Retos.
+     *
+     * 'eyebrow' es el rótulo en versalitas sobre el título; el encabezado va
+     * centrado. La lista se numera sola en la vista (01, 02...), así que el
+     * orden de estos elementos ES la numeración.
+     */
     'retos' => [
-        'titulo' => 'Los problemas que resolvemos',
-        'texto'  => 'La mayoría de las organizaciones no pierde información por un ataque '
-                  . 'espectacular, sino por descuidos acumulados en la operación diaria.',
-        'lista'  => [
+        'eyebrow' => 'Retos',
+        'titulo'  => 'Lo que suele estar roto cuando llegamos',
+        'lista'   => [
             [
-                'titulo' => 'Rendimiento degradado',
-                'texto'  => 'Consultas que tardan minutos, índices ausentes y usuarios '
-                          . 'esperando frente a la pantalla.',
+                'titulo' => 'Nadie sabe quién tiene privilegios',
+                'texto'  => 'Cuentas heredadas, permisos acumulados y ningún registro de '
+                          . 'por qué se otorgaron.',
             ],
             [
-                'titulo' => 'Respaldos sin verificar',
-                'texto'  => 'Copias que se generan cada noche pero que nadie ha intentado '
-                          . 'restaurar. Un respaldo no probado no es un respaldo.',
+                'titulo' => 'El respaldo existe, la restauración no se probó',
+                'texto'  => 'Un respaldo que nunca se restauró es una hipótesis, no un control.',
             ],
             [
-                'titulo' => 'Accesos sin control',
-                'texto'  => 'Cuentas compartidas, privilegios excesivos y bitácoras que '
-                          . 'nadie revisa. El riesgo interno supera al externo.',
+                'titulo' => 'Cumplimiento declarado sin evidencia',
+                'texto'  => 'ISO/IEC 27007 determina la conformidad contra evidencia '
+                          . 'verificada, no contra la afirmación del auditado.',
             ],
             [
-                'titulo' => 'Ausencia de plan de continuidad',
-                'texto'  => 'Sin RTO ni RPO definidos, la recuperación ante un incidente '
-                          . 'se improvisa en el peor momento posible.',
+                'titulo' => 'Hallazgos sin plazo ni responsable',
+                'texto'  => 'Sin fecha límite y sin dueño, el hallazgo vuelve idéntico a la '
+                          . 'siguiente auditoría.',
             ],
         ],
     ],
@@ -159,15 +189,6 @@ return [
                 'texto'  => 'Un administrador de bases de datos certificado a cargo de su '
                           . 'operación, sin el costo de una plaza de tiempo completo.',
             ],
-            [
-                'icono'          => 'tablero',
-                'titulo'         => 'Evaluación de riesgo ISO/IEC 27002',
-                'texto'          => 'Auditamos la administración de sus bases de datos contra 75 '
-                                   . 'controles ISO/IEC 27002 y entregamos cumplimiento, madurez y '
-                                   . 'exposición al riesgo por dominio.',
-                'enlace'         => '/ingresar',
-                'etiquetaEnlace' => 'Iniciar evaluación',
-            ],
         ],
     ],
 
@@ -193,12 +214,12 @@ return [
         'etiqueta' => 'Stack tecnológico',
         'titulo'   => 'Motores que revisamos, mantenemos y soportamos',
         'logos'    => [
-            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.jpg',     'ancho' => 663,  'alto' => 720],
-            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png',      'ancho' => 1280, 'alto' => 720],
-            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610,  'alto' => 280],
-            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 614,  'alto' => 499],
-            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.jpg',    'ancho' => 1024, 'alto' => 512],
-            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.jpg',    'ancho' => 714,  'alto' => 430],
+            ['nombre' => 'Oracle Database', 'imagen' => 'assets/images/oracle.png', 'ancho' => 221, 'alto' => 240],
+            ['nombre' => 'MySQL',           'imagen' => 'assets/images/mysql.png', 'ancho' => 427, 'alto' => 240],
+            ['nombre' => 'PostgreSQL',      'imagen' => 'assets/images/postgresql.png', 'ancho' => 610, 'alto' => 280],
+            ['nombre' => 'SQL Server',      'imagen' => 'assets/images/sql-server.png', 'ancho' => 295, 'alto' => 240],
+            ['nombre' => 'MariaDB',         'imagen' => 'assets/images/mariadb.png', 'ancho' => 480, 'alto' => 240],
+            ['nombre' => 'MongoDB',         'imagen' => 'assets/images/mongodb.png', 'ancho' => 399, 'alto' => 240],
         ],
     ],
 
@@ -226,7 +247,7 @@ return [
      */
     'testimonios' => [
         'etiqueta' => 'Testimonios',
-        'titulo'   => 'Lo que dicen nuestros clientes',
+        'titulo'   => 'Quienes ya pasaron por la auditoría',
         'texto'    => 'Opiniones de equipos de tecnología que confiaron la operación '
                     . 'de sus bases de datos a nuestra consultoría.',
         'lista'    => [
@@ -236,6 +257,7 @@ return [
                 'cargo'       => 'Directora de Tecnología',
                 'iniciales'   => 'MV',
                 'puntaje'     => 5,
+                'referencia'  => 'Auditoría AUD-0031 · 75 controles',
                 'descripcion' => 'Migramos un Oracle 11g con quince años encima y no perdimos '
                                . 'una sola transacción. El plan de reversión estaba escrito antes '
                                . 'de tocar nada, y eso fue lo que nos dio tranquilidad.',
@@ -246,6 +268,7 @@ return [
                 'cargo'       => 'Jefe de Auditoría Interna',
                 'iniciales'   => 'AQ',
                 'puntaje'     => 4.5,
+                'referencia'  => 'Auditoría AUD-0044 · 75 controles',
                 'descripcion' => 'El informe de auditoría fue directo al grano: hallazgos '
                                . 'priorizados y con responsable. Solo nos habría gustado tener '
                                . 'antes el tablero de seguimiento.',
@@ -256,6 +279,9 @@ return [
                 'cargo'       => 'Coordinadora de Analítica',
                 'iniciales'   => 'LC',
                 'puntaje'     => 5,
+                'referencia'  => 'Auditoría AUD-0052 · 75 controles',
+                // Con este abre el carrusel.
+                'destacado'   => true,
                 'descripcion' => 'Los reportes mensuales pasaron de tardar cuarenta minutos a '
                                . 'menos de dos. Fue trabajo de índices y de reescribir tres '
                                . 'consultas, no de comprar hardware.',
@@ -266,6 +292,7 @@ return [
                 'cargo'       => 'Jefe de Infraestructura',
                 'iniciales'   => 'DH',
                 'puntaje'     => 4,
+                'referencia'  => 'Auditoría AUD-0058 · 75 controles',
                 'descripcion' => 'Nos ordenaron los respaldos y ahora la restauración se prueba '
                                . 'cada trimestre. El acompañamiento fue bueno; la coordinación '
                                . 'de las ventanas de mantenimiento tomó más de lo previsto.',
@@ -276,6 +303,7 @@ return [
                 'cargo'       => 'Oficial de Seguridad de la Información',
                 'iniciales'   => 'SR',
                 'puntaje'     => 4.5,
+                'referencia'  => 'Auditoría AUD-0063 · 75 controles',
                 'descripcion' => 'Pasamos la revisión de ISO/IEC 27001 sin observaciones en el '
                                . 'control de accesos. Documentaron cada permiso y nos enseñaron '
                                . 'a mantenerlo.',
@@ -307,6 +335,77 @@ return [
             'rol'         => 'Migración y monitoreo',
             'iniciales'   => 'MB',
             'descripcion' => 'Modernización de motores y vigilancia continua de la operación.',
+        ],
+    ],
+
+    /**
+     * Planes del servicio.
+     *
+     * 'precio' y 'periodo' van separados porque la vista los compone con dos
+     * tamaños distintos; la cifra se imprime con la clase tabular.
+     *
+     * 'destacado' debe ser verdadero en UN solo plan: es el que la sección
+     * levanta con el tinte primario y la insignia. Dos destacados dejarían la
+     * comparación sin punto de apoyo.
+     */
+    'planes' => [
+        'etiqueta' => 'Planes',
+        'titulo'   => 'Planes y precios',
+        'texto'    => 'Medir el riesgo de sus bases de datos no cuesta nada. '
+                    . 'Se paga solo cuando la medición pasa a ser vigilancia continua.',
+        'lista'    => [
+            [
+                'nombre'    => 'Gratuito',
+                'precio'    => '$0',
+                'periodo'   => '/mes',
+                'resumen'   => 'Para el equipo que se mide por primera vez',
+                'insignia'  => '',
+                'destacado' => false,
+                'accion'    => [
+                    'etiqueta' => 'Comenzar la medición',
+                    'destino'  => '/herramientas/instrumento-bd',
+                ],
+                'incluye'   => [
+                    'Acceso completo al instrumento de medición: los 75 controles',
+                    'Descarga ilimitada del informe en PDF, CSV y JSON',
+                    'Marco normativo y referencias ISO/IEC 27002 · 27007',
+                ],
+            ],
+            [
+                'nombre'    => 'Deluxe',
+                'precio'    => '$20',
+                'periodo'   => '/mes',
+                'resumen'   => 'Para la operación que ya depende de sus bases de datos',
+                // La palabra existe para que «el plan recomendado» no se
+                // comunique solo con el tinte de la tarjeta.
+                'insignia'  => 'Recomendado',
+                'destacado' => true,
+                'accion'    => [
+                    'etiqueta' => 'Solicitar el plan',
+                    'destino'  => '#contacto',
+                ],
+                'incluye'   => [
+                    'Todo lo del plan Gratuito',
+                    'Monitor de salud para hasta 5 bases de datos',
+                    'Almacenamiento de las mediciones anteriores del instrumento',
+                    'Estadísticas detalladas por dominio, proceso y control',
+                    'Informe con las equivalencias entre los tres marcos',
+                ],
+                /*
+                 * Marcos que el informe del plan pagado cruza. Van aparte de
+                 * 'incluye' porque la vista los pinta como badges de norma: es
+                 * referencia normativa, el ÚNICO significado que el sistema
+                 * visual le permite al oro.
+                 */
+                'normas'    => [
+                    'etiqueta' => 'Marcos normativos',
+                    'lista'    => [
+                        'ISO/IEC 27002 · 27007',
+                        'COBIT 4.1',
+                        'NIST SP 800-53',
+                    ],
+                ],
+            ],
         ],
     ],
 

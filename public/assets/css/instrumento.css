@@ -20,11 +20,15 @@
     scroll-margin-top: 8rem;
 }
 
-/* El área de hallazgo crece con el texto sin obligar a arrastrar la esquina. */
+/*
+ * Alto mínimo de los campos de texto largo. NO se les devuelve el tirador de
+ * redimensionado: rivendel.css lo retira en todo el producto (decisión de
+ * diseño general) y aquí la excepción sería justo la peor, porque son campos
+ * repetidos 75 veces dentro de tarjetas de una rejilla.
+ */
 [data-campo="hallazgo"],
 [data-campo="recomendacion"],
 [data-campo="notas"] {
-    resize: vertical;
     min-height: 3.5rem;
 }
 

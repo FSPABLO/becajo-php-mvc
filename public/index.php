@@ -90,7 +90,15 @@ if (is_file($archivoBaseDatos)) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-$contenedor = new Contenedor($peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias);
+// Registro de bases de datos vigiladas. Es configuración, como las rutas: hoy
+// no hay tabla que consultar y la ficha del panel es una previsualización del
+// monitoreo. Si el archivo no está, la ficha simplemente no se pinta.
+$archivoConexiones = RAIZ . '/config/conexiones.php';
+$conexiones = is_file($archivoConexiones) ? require $archivoConexiones : [];
+
+$contenedor = new Contenedor(
+    $peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias, $conexiones
+);
 
 // Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a
 // Vista la forma de obtenerlo, no el valor: pedirlo abre la sesión, y las

@@ -38,6 +38,7 @@ final class HomeController extends Controlador
             'encabezadoTestimonios' => $repositorio->encabezadoTestimonios(),
             'testimonios'           => $repositorio->testimonios(),
             'equipo'                => $repositorio->equipo(),
+            'planes'                => $repositorio->planes(),
             'contacto'              => $repositorio->contacto(),
             'erroresContacto'       => $this->leerYOlvidar('contacto.errores'),
             'valoresContacto'       => $this->leerYOlvidar('contacto.valores'),

@@ -124,6 +124,36 @@ abstract class Controlador
     }
 
     /**
+     * Igual que ver(), pero dentro del marco del módulo interno.
+     *
+     * El sitio público y el módulo de auditorías ya no comparten diseño: fuera
+     * la navegación es una barra superior sobre una lectura vertical, y dentro
+     * es una barra lateral fija, porque trabajar una auditoría es saltar entre
+     * secciones y no recorrer una página. Existe como método propio —y no como
+     * un tercer argumento repetido en cada llamada— para que añadir una
+     * pantalla al módulo no dependa de acordarse del nombre de la plantilla.
+     *
+     * @param array<string, mixed> $datos
+     */
+    protected function verPanel(string $vista, array $datos = []): void
+    {
+        /*
+         * Si el auditor dejó la barra lateral plegada, el marco tiene que nacer
+         * plegado. Se decide en el servidor —a partir de la cookie que escribe
+         * el guion al pulsar el botón— y no al cargar la página: hacerlo con
+         * JavaScript significa pintar la barra desplegada y encogerla a la
+         * vista en cada navegación.
+         *
+         * La cookie es texto del cliente, así que se compara contra el único
+         * valor que significa algo. Cualquier otra cosa es "desplegada".
+         */
+        $datos['lateralOculta'] = $datos['lateralOculta']
+            ?? $this->peticion()->cookie('becajo_lateral') === 'oculta';
+
+        $this->ver($vista, $datos, 'panel');
+    }
+
+    /**
      * Datos que el diseño principal necesita en toda página.
      *
      * @return array<string, mixed>
@@ -134,6 +164,9 @@ abstract class Controlador
             'empresa'       => $this->repositorio()->empresa(),
             'navegacion'    => $this->repositorio()->navegacion(),
             'herramientas'  => $this->repositorio()->herramientas(),
+            // El selector de idioma son enlaces, no un <select> con guion, así
+            // que necesita saber a dónde volver después de cambiar de idioma.
+            'rutaActual'    => $this->peticion()->ruta(),
             // Null si no hay módulo de auditorías o si nadie inició sesión.
             // Así el encabezado sabe si mostrar "Ingresar" o "Mis auditorías".
             'usuarioActual' => $this->contenedor->hayAuditorias() ? $this->autenticacion()->usuario() : null,

@@ -2,124 +2,120 @@
 
 declare(strict_types=1);
 
-/** @var array<string, mixed> $hero */
+/**
+ * Hero de la portada.
+ *
+ * Sigue el artefacto de diseño: dos columnas 1,15 / 0,85 — el argumento a la
+ * izquierda y, a la derecha, una tarjeta de índice de riesgo que ENSEÑA el
+ * producto en vez de describirlo. Quien llega ve de una vez qué entrega la
+ * auditoría: un número, un estado y el desglose de controles.
+ *
+ * @var \App\Core\Vista $vista
+ * @var array<string, mixed> $hero
+ */
+$panel = $hero['panel'] ?? null;
 
 /**
- * Lista blanca de estados del tablero de ejemplo.
+ * Tonos admitidos para los estados del panel.
  *
- * El contenido no elige clases de Tailwind: elige un estado semántico y esta
- * tabla lo traduce. Así un valor equivocado en config/contenido.php degrada a
- * un color neutro en vez de romper la maqueta o colar clases arbitrarias.
+ * El contenido no elige clases: elige un tono de la escala semántica y pill()
+ * lo traduce, añadiendo ícono y etiqueta. Un valor inventado en
+ * config/contenido.php degrada a un pill neutro en vez de romper la maqueta.
  */
-$coloresEstado = [
-    'exito'  => ['punto' => 'bg-exito-400',  'texto' => 'text-exito-400'],
-    'aviso'  => ['punto' => 'bg-aviso-400',  'texto' => 'text-aviso-400'],
-    'alerta' => ['punto' => 'bg-alerta-400', 'texto' => 'text-alerta-400'],
-];
-$panel = $hero['panel'] ?? null;
+$tonos = ['ok', 'warn', 'bad', 'crit', 'na'];
+$tono = static fn (mixed $valor): string =>
+    in_array($valor, $tonos, true) ? (string) $valor : 'na';
 ?>
-<section id="inicio" class="relative overflow-hidden bg-marina-950 pt-16">
+<section id="inicio" class="relative overflow-hidden bg-fondo pt-16">
 
-    <div class="pointer-events-none absolute inset-0 opacity-[0.07]" aria-hidden="true">
-        <svg class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <pattern id="reticula" width="48" height="48" patternUnits="userSpaceOnUse">
-                    <path d="M48 0H0V48" fill="none" stroke="currentColor" stroke-width="1"
-                          class="text-acento-400"/>
-                </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#reticula)"/>
-        </svg>
-    </div>
+    <div class="relative mx-auto grid max-w-[1180px] items-center gap-12 px-5 pb-[74px] pt-[66px] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
 
-    <div class="pointer-events-none absolute -right-40 -top-40 h-[32rem] w-[32rem] rounded-full bg-acento-500/10 blur-3xl"
-         aria-hidden="true"></div>
-    <div class="pointer-events-none absolute -bottom-56 -left-32 h-[28rem] w-[28rem] rounded-full bg-marina-500/10 blur-3xl"
-         aria-hidden="true"></div>
+        <div class="flex flex-col items-start gap-[22px]">
 
-    <div class="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
-        <div class="grid items-center gap-16 lg:grid-cols-12">
+            <?php /* Badge normativo: oro y mono, extruido. */ ?>
+            <span class="rv-extruido rv-badge-norma px-[13px] py-[7px]">
+                <?= e($hero['norma']) ?>
+            </span>
 
-            <div class="lg:col-span-7">
+            <h1 class="rv-titulo m-0 text-[2.4rem] font-medium leading-[1.08] tracking-[-0.01em] text-texto sm:text-5xl lg:text-[56px]">
+                <?= e($hero['titulo']) ?>
+            </h1>
 
-                <p class="inline-flex items-center gap-2 rounded-full border border-acento-400/30 bg-acento-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-acento-400">
-                    <span class="relative flex h-2 w-2" aria-hidden="true">
-                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-acento-400 opacity-60"></span>
-                        <span class="relative inline-flex h-2 w-2 rounded-full bg-acento-400"></span>
-                    </span>
-                    <?= e($hero['etiqueta']) ?>
-                </p>
+            <p class="rv-titulo m-0 max-w-[52ch] text-xl leading-[1.55] text-texto-2">
+                <?= e($hero['texto']) ?>
+            </p>
 
-                <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-                    <?= e($hero['titulo']) ?><br>
-                    <span class="text-acento-400"><?= e($hero['resaltado']) ?></span>
-                </h1>
-
-                <p class="mt-6 max-w-2xl text-lg leading-relaxed text-marina-200">
-                    <?= e($hero['texto']) ?>
-                </p>
-
-                <?php if (($hero['puntos'] ?? []) !== []): ?>
-                    <ul class="mt-8 space-y-3">
-                        <?php foreach ($hero['puntos'] as $punto): ?>
-                            <li class="flex items-start gap-3 text-marina-100">
-                                <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-acento-500/15 text-acento-400">
-                                    <?= icono('check', 'h-3.5 w-3.5') ?>
-                                </span>
-                                <?= e($punto) ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-
-                <div class="mt-10 flex flex-col gap-3 sm:flex-row">
-                    <a href="<?= e($hero['cta_primario']['destino']) ?>"
-                       class="inline-flex items-center justify-center gap-2 rounded-lg bg-acento-500 px-7 py-3.5 text-base font-semibold text-marina-950 transition hover:bg-acento-400">
-                        <?= e($hero['cta_primario']['etiqueta']) ?>
-                        <?= icono('flecha', 'h-4 w-4') ?>
-                    </a>
-                    <a href="<?= e($hero['cta_secundario']['destino']) ?>"
-                       class="inline-flex items-center justify-center rounded-lg border border-white/20 px-7 py-3.5 text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/5">
-                        <?= e($hero['cta_secundario']['etiqueta']) ?>
-                    </a>
-                </div>
+            <div class="flex flex-wrap gap-3">
+                <a href="<?= e($vista->destino($hero['cta_primario']['destino'])) ?>"
+                   class="rv-extruido rv-interactivo rounded-rv-lg bg-primario px-[26px] py-[15px] text-[15px] font-semibold text-primario-texto">
+                    <?= e($hero['cta_primario']['etiqueta']) ?>
+                </a>
+                <a href="<?= e($vista->destino($hero['cta_secundario']['destino'])) ?>"
+                   class="rv-extruido rv-interactivo rounded-rv-lg bg-superficie px-[26px] py-[15px] text-[15px] font-medium text-texto">
+                    <?= e($hero['cta_secundario']['etiqueta']) ?>
+                </a>
             </div>
 
-            <?php if ($panel !== null): ?>
-                <div class="lg:col-span-5">
-                    <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-marina-950/50 backdrop-blur sm:p-8">
-
-                        <div class="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
-                            <div>
-                                <p class="text-sm font-semibold text-white"><?= e($panel['titulo']) ?></p>
-                                <p class="mt-1 text-xs uppercase tracking-wider text-marina-300">
-                                    <?= e($panel['subtitulo']) ?>
-                                </p>
-                            </div>
-                            <span class="text-acento-400"><?= icono('disco', 'h-6 w-6') ?></span>
+            <?php if (($hero['cifras'] ?? []) !== []): ?>
+                <dl class="flex flex-wrap gap-[26px] pt-1.5">
+                    <?php foreach ($hero['cifras'] as $cifra): ?>
+                        <div class="flex flex-col gap-0.5">
+                            <dt class="order-2 text-[11.5px] uppercase tracking-[0.05em] text-texto-2">
+                                <?= e($cifra['etiqueta']) ?>
+                            </dt>
+                            <dd class="tabular order-1 m-0 text-[21px] font-semibold text-texto">
+                                <?= e($cifra['valor']) ?>
+                            </dd>
                         </div>
-
-                        <dl class="divide-y divide-white/5">
-                            <?php foreach ($panel['filas'] as $fila): ?>
-                                <?php $color = $coloresEstado[$fila['estado']] ?? ['punto' => 'bg-marina-300', 'texto' => 'text-marina-100']; ?>
-                                <div class="flex items-center justify-between gap-4 py-3.5">
-                                    <dt class="flex items-center gap-2.5 text-sm text-marina-200">
-                                        <span class="h-1.5 w-1.5 rounded-full <?= $color['punto'] ?>" aria-hidden="true"></span>
-                                        <?= e($fila['etiqueta']) ?>
-                                    </dt>
-                                    <dd class="text-sm font-semibold <?= $color['texto'] ?>">
-                                        <?= e($fila['valor']) ?>
-                                    </dd>
-                                </div>
-                            <?php endforeach; ?>
-                        </dl>
-
-                        <p class="mt-5 border-t border-white/10 pt-5 text-xs leading-relaxed text-marina-300">
-                            <?= e($panel['pie']) ?>
-                        </p>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                </dl>
             <?php endif; ?>
         </div>
+
+        <?php if ($panel !== null): ?>
+            <div class="rv-extruido-lg rounded-[20px] bg-superficie p-[22px]">
+
+                <div class="mb-4 flex items-baseline justify-between gap-2.5">
+                    <span class="rv-titulo text-[17px] text-texto"><?= e($panel['titulo']) ?></span>
+                    <?php /* Identificador de auditoría: mono y oro. */ ?>
+                    <span class="rv-id text-[11px]"><?= e($panel['referencia']) ?></span>
+                </div>
+
+                <div class="mb-1 flex items-end gap-2.5">
+                    <span class="tabular text-[52px] font-semibold leading-none text-bad"><?= e($panel['indice']) ?></span>
+                    <span class="pb-[7px] text-[13px] text-texto-2"><?= e($panel['indice_maximo']) ?></span>
+                </div>
+
+                <div class="mb-5">
+                    <?= pill($tono($panel['estado'] ?? null), $panel['estado_etiqueta']) ?>
+                </div>
+
+                <div class="flex flex-col gap-3.5">
+                    <?php foreach ($panel['barras'] as $barra): ?>
+                        <?php
+                        // El porcentaje se acota aquí y no en la hoja de estilos:
+                        // un valor fuera de rango en el contenido desbordaría la pista.
+                        $ancho = max(0, min(100, (int) ($barra['porcentaje'] ?? 0)));
+                        ?>
+                        <div class="flex flex-col gap-[7px]">
+                            <div class="flex justify-between text-[12.5px]">
+                                <span class="text-texto-2"><?= e($barra['etiqueta']) ?></span>
+                                <span class="tabular font-semibold text-texto"><?= e($barra['valor']) ?></span>
+                            </div>
+                            <?php /* La pista va hundida: es un hueco que se rellena. */ ?>
+                            <div class="rv-hundido h-[11px] rounded-full bg-fondo">
+                                <div class="h-[11px] rounded-full bg-primario" style="width: <?= $ancho ?>%"></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="mt-[18px] flex flex-wrap gap-2 border-t border-borde pt-4">
+                    <?php foreach ($panel['conteos'] as $conteo): ?>
+                        <?= pill($tono($conteo['estado'] ?? null), $conteo['etiqueta']) ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </section>

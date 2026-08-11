@@ -17,6 +17,24 @@ return [
     'nav.contactar'       => 'Contactar',
     'nav.abrir_menu'      => 'Abrir menú de navegación',
     'nav.idioma'          => 'Idioma',
+    'nav.principal'       => 'Navegación principal',
+    'nav.movil'           => 'Navegación móvil',
+    'nav.saltar_contenido' => 'Saltar al contenido',
+
+    // Marco del módulo interno: barra lateral y barra superior.
+    'panel.navegacion'            => 'Navegación del módulo',
+    'panel.ubicacion'             => 'Ubicación actual',
+    'panel.mostrar_navegacion'    => 'Mostrar la navegación',
+    'panel.ocultar_navegacion'    => 'Ocultar la navegación',
+    'panel.grupo_auditorias'      => 'Auditorías',
+    'panel.grupo_administracion'  => 'Administración',
+    'panel.grupo_referencia'      => 'Referencia',
+    'panel.catalogo_controles'    => 'Catálogo de controles',
+    'panel.matriz_cid'            => 'Mapa de procesos vs C-I-D',
+    'panel.remediaciones_vencidas' => 'Remediaciones vencidas',
+    'panel.volver_sitio'          => 'Volver al sitio',
+    'panel.rol_auditor'           => 'Auditor',
+    'panel.rol_admin'             => 'Administrador de BD',
 
     // Testimonios de la portada
     'testimonios.calificacion' => 'Calificación: %s de 5 estrellas',
@@ -24,9 +42,11 @@ return [
     'testimonios.anterior'     => 'Ver el testimonio anterior',
     'testimonios.siguiente'    => 'Ver el testimonio siguiente',
     'testimonios.ir_a'         => 'Ver el testimonio de %s',
+    'testimonios.calificacion_corta' => '%s de 5,0',
+    'testimonios.anterior_corto'   => 'anterior',
+    'testimonios.siguiente_corto'  => 'siguiente',
 
     // Pie de página
-    'pie.navegacion'      => 'Navegación',
     'pie.contacto'        => 'Contacto',
     'pie.proyecto'        => 'Proyecto académico — Administración de Bases de Datos.',
     'pie.eslogan_extra'   => 'Reducimos el riesgo operativo de la información crítica de su organización.',
@@ -63,11 +83,76 @@ return [
     'auth.iniciar_sesion'     => 'Iniciar sesión',
     'auth.minimo_caracteres'  => 'Mínimo %s caracteres.',
 
+    // Panel de bienvenida del inicio de sesión
+    'auth.panel_titulo'       => 'Comience su auditoría',
+    'auth.panel_texto'        => 'Tres pasos para evaluar los 75 controles del instrumento.',
+    'auth.paso_uno'           => 'Inicie sesión',
+    // El primer paso nombra lo que se está haciendo en cada pantalla.
+    'auth.paso_uno_registro'  => 'Cree su cuenta',
+    'auth.paso_dos'           => 'Levante una auditoría',
+    'auth.paso_tres'          => 'Evalúe y reporte',
+
     // Módulo de evaluación — panel y alta de auditoría
     'eval.comparar_historico'  => 'Comparar histórico',
     'eval.nueva_auditoria'     => 'Nueva auditoría',
     'eval.mis_auditorias'      => 'Mis auditorías',
     'eval.sin_auditorias'      => 'Todavía no hay auditorías.',
+
+    // Resumen de la cartera, en la cabecera de "Mis auditorías". Las notas se
+    // redactan con la cifra AL FINAL para que valgan igual en singular y en
+    // plural: "Organizaciones distintas: 1" se lee bien; "1 organizaciones", no.
+    'eval.kpi_auditorias'      => 'Auditorías',
+    'eval.kpi_organizaciones'  => 'Organizaciones distintas: %s',
+    'eval.kpi_pendientes'      => 'Pendientes de cierre',
+    'eval.kpi_finalizadas'     => 'Finalizadas',
+    'eval.kpi_congeladas'      => 'Resultados congelados',
+    'eval.kpi_indice'          => 'Índice de riesgo promedio',
+    'eval.kpi_calculadas'      => 'Auditorías con índice calculado: %s',
+    'eval.kpi_sin_calculo'     => 'Todavía sin cálculo',
+
+    // Tablero del panel: matriz de la última auditoría y evolución mensual.
+    'eval.evolucion_titulo'    => 'Evolución mensual',
+    'eval.empresa_auditada'    => 'Empresa auditada',
+    'eval.evolucion_texto'     => 'Cuánto del instrumento se aplicó cada mes y qué proporción resultó conforme.',
+    'eval.cobertura_instrumento' => 'Cobertura del instrumento',
+    'eval.sin_evolucion'       => 'Todavía no hay meses con auditorías que graficar.',
+    'eval.evolucion_un_mes'    => 'Solo hay auditorías de un mes (%s). Con dos o más aparece la curva de evolución.',
+    'eval.evolucion_resumen'   => 'Evolución a lo largo de %s meses con auditorías. Último cumplimiento: %s. Última cobertura: %s.',
+    'eval.punto_cobertura'     => 'Mes %s · cobertura %s · auditorías: %s',
+    'eval.punto_cumplimiento'  => 'Mes %s · cumplimiento %s',
+    // Se dice explícitamente porque la pendiente entre dos columnas contiguas
+    // se leería como un mes de diferencia cuando pueden ser varios.
+    'eval.eje_meses'           => 'Meses con auditorías registradas, no meses consecutivos del calendario.',
+    'eval.eje_matriz_corto'    => 'Probabilidad ↑ · Impacto →',
+    'eval.empresa_marcador'    => 'Escriba el nombre de la empresa',
+    'eval.ver_progreso'        => 'Ver progreso',
+    'eval.empresa_sin_coincidencia' => 'No hay auditorías de «%s». Se muestra %s.',
+
+    // Bases de datos conectadas (previsualización del monitoreo).
+    'bd.titulo'                => 'Bases de datos conectadas',
+    'bd.texto'                 => 'Motores bajo vigilancia, a la espera de diagnóstico de salud.',
+    'bd.conexion'              => 'conexión',
+    'bd.conexiones'            => 'conexiones',
+    'bd.enlace_activo'         => 'enlace activo',
+    'bd.total'                 => '%s conexiones en %s motores.',
+    'bd.previsualizacion'      => 'Previsualización: el diagnóstico por instancia llega con el módulo de monitoreo.',
+    'bd.sin_conexiones'        => 'Todavía no hay bases de datos registradas.',
+
+    // Filtros y paginación de la tabla de auditorías.
+    'eval.buscar_etiqueta'     => 'Buscar por organización o área',
+    'eval.buscar_marcador'     => 'Ej.: cooperativa, respaldos…',
+    'eval.limpiar'             => 'Limpiar',
+    'eval.ordenar_por'         => 'Ordenar por',
+    'eval.orden_recientes'     => 'Recientes',
+    'eval.orden_indice'        => 'Mayor índice',
+    'eval.sin_coincidencias'   => 'Ninguna auditoría coincide.',
+    'eval.sin_coincidencias_texto' => 'No se encontró «%s» en la organización ni en el área evaluada.',
+    'eval.paginacion'          => 'Paginación de auditorías',
+    'eval.rango'               => 'Mostrando %s–%s de %s',
+    'eval.anterior'            => 'Anterior',
+    'eval.siguiente'           => 'Siguiente',
+    'eval.celda_matriz'        => 'Impacto %s · Probabilidad %s · controles: %s · %s',
+
     'eval.crear_primera'       => 'Cree la primera para empezar a evaluar los %s controles del instrumento.',
     'eval.col_organizacion'    => 'Organización',
     'eval.col_area'            => 'Área evaluada',
@@ -77,6 +162,7 @@ return [
     'eval.finalizada'          => 'Finalizada',
     'eval.en_progreso'         => 'En progreso',
     'eval.sin_calcular'        => 'sin calcular',
+    'eval.volver'              => 'Volver',
     'eval.volver_auditorias'   => '← Mis auditorías',
     'eval.crear_auditoria'     => 'Crear auditoría',
 
@@ -154,6 +240,9 @@ return [
     'eval.sin_controles_eval'   => 'Sin controles evaluados todavía.',
     'eval.col_dominio'          => 'Dominio',
     'eval.col_cumplimiento'     => 'Cumplimiento',
+    'eval.zona_alta'            => 'Riesgo alto',
+    'eval.zona_media'           => 'Riesgo medio',
+    'eval.zona_baja'            => 'Riesgo bajo',
     'eval.sin_datos'            => 'sin datos',
     'eval.menor_madurez'        => 'Controles con menor madurez',
     'eval.mayor_riesgo'         => 'Controles con mayor riesgo',

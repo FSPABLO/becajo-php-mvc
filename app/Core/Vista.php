@@ -140,7 +140,7 @@ final class Vista
      * URL de una hoja de estilos o un guion propio, con sello de versión.
      *
      * Apache sirve estos archivos sin Cache-Control, así que el navegador les
-     * aplica su caché heurística: tras editar estilos.css o principal.js puede
+     * aplica su caché heurística: tras editar rivendel.css o principal.js puede
      * seguir usando la copia vieja durante un rato. Con HTML nuevo y guion
      * viejo el sitio queda a medias —lo maquetado se ve, lo que necesita
      * JavaScript no responde— y el error parece del código.

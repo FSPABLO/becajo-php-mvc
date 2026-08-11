@@ -24,6 +24,15 @@ final class Testimonio
         public readonly string $cargo = '',
         public readonly string $iniciales = '',
         public readonly string $foto = '',
+        // Referencia de la auditoría a la que corresponde el testimonio. Va en
+        // oro y en mono porque es eso, una referencia; si está vacía, la ficha
+        // no dibuja la línea.
+        public readonly string $referencia = '',
+        // Con cuál abre el carrusel. Es una decisión de contenido —cuál se
+        // quiere enseñar primero—, no de maquetación, así que se marca aquí y
+        // no con un índice escrito en la vista. Si hay varios marcados manda
+        // el primero; si no hay ninguno, abre con el primero de la lista.
+        public readonly bool $destacado = false,
     ) {
     }
 
@@ -39,6 +48,8 @@ final class Testimonio
             cargo:       (string) ($fila['cargo'] ?? ''),
             iniciales:   (string) ($fila['iniciales'] ?? mb_strtoupper(mb_substr($nombre, 0, 1, 'UTF-8'), 'UTF-8')),
             foto:        (string) ($fila['foto'] ?? ''),
+            referencia:  (string) ($fila['referencia'] ?? ''),
+            destacado:   (bool) ($fila['destacado'] ?? false),
         );
     }
 
@@ -51,6 +62,19 @@ final class Testimonio
     public function porcentaje(): float
     {
         return $this->puntaje / self::MAXIMO * 100;
+    }
+
+    /**
+     * La fila completa de cinco estrellas.
+     *
+     * La vista la imprime DOS veces —una apagada de fondo y otra encendida
+     * recortada a porcentaje()— en vez de contar estrellas llenas y vacías.
+     * Contarlas obligaría a redondear, y entonces un 4,0 y un 4,5 dibujarían
+     * exactamente la misma fila; recortando, el medio punto se ve.
+     */
+    public function estrellas(): string
+    {
+        return str_repeat('★', self::MAXIMO);
     }
 
     /** Texto de la calificación: '4.5' y no '4.50' ni '5.0'. */
