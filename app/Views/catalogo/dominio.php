@@ -20,15 +20,15 @@ $accion = 'catalogo/dominios/' . ($esNuevo ? 'nuevo' : $dominio->clave);
 $v = static fn (string $campo, string $porDefecto = ''): string =>
     (string) ($valores[$campo] ?? $porDefecto);
 ?>
-<section class="mx-auto w-full max-w-xl px-6 pt-24 pb-14">
+<section class="mx-auto w-full max-w-xl px-6 py-8 lg:px-8">
 
     <nav class="mb-6 text-sm">
-        <a href="<?= e($vista->url('catalogo')) ?>" class="text-acento-600 hover:underline">
+        <a href="<?= e($vista->url('catalogo')) ?>" class="text-primario hover:underline">
             ← Catálogo
         </a>
     </nav>
 
-    <h1 class="mb-8 text-3xl font-extrabold text-marina-950">
+    <h1 class="mb-8 text-3xl font-extrabold text-texto">
         <?= $esNuevo ? 'Nuevo dominio' : 'Editar dominio' ?>
     </h1>
 
@@ -90,7 +90,7 @@ $v = static fn (string $campo, string $porDefecto = ''): string =>
         ]) ?>
 
         <button type="submit"
-                class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
+                class="w-full rv-extruido rv-interactivo rounded-rv bg-primario px-4 py-3 font-semibold text-primario-texto">
             <?= $esNuevo ? 'Crear dominio' : 'Guardar cambios' ?>
         </button>
     </form>

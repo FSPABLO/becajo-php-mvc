@@ -28,19 +28,19 @@ $acciones = [
     ['clave' => 'limpiar',       'etiqueta' => 'Limpiar todo',     'icono' => 'basura',    'titulo' => 'Borra todas las respuestas capturadas'],
 ];
 ?>
-<section class="border-b border-white/10 bg-marina-950">
+<section class="border-b border-borde bg-fondo">
     <div class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
 
-        <p class="inline-flex items-center gap-2 rounded-full border border-acento-400/30 bg-acento-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-acento-400">
+        <p class="rv-extruido-xs inline-flex items-center gap-2 rounded-full border border-oro/40 bg-oro-tinte px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-oro-texto">
             <?= icono('escudo', 'h-3.5 w-3.5') ?>
             ISO/IEC 27000 a 27011
         </p>
 
-        <h1 class="mt-5 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
+        <h1 class="mt-5 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-texto sm:text-4xl">
             <?= e($instrumento['titulo']) ?>
         </h1>
 
-        <p class="mt-4 max-w-3xl leading-relaxed text-marina-200">
+        <p class="mt-4 max-w-3xl leading-relaxed text-texto-2">
             <?= e($instrumento['descripcion']) ?>
         </p>
 
@@ -53,17 +53,19 @@ $acciones = [
                 'Versión'   => $instrumento['version'],
             ];
             ?>
+            <?php /* Cifras del resumen sobre losetas elevadas: son el primer
+                     dato de la página y hasta ahora flotaban sin caja. */ ?>
             <?php foreach ($resumen as $etiqueta => $valor): ?>
-                <div>
-                    <dt class="text-xs uppercase tracking-wider text-marina-400"><?= e($etiqueta) ?></dt>
-                    <dd class="mt-0.5 text-lg font-bold text-white"><?= e($valor) ?></dd>
+                <div class="rv-extruido-sm rounded-rv bg-superficie px-4 py-2.5">
+                    <dt class="text-xs uppercase tracking-wider text-texto-2"><?= e($etiqueta) ?></dt>
+                    <dd class="tabular mt-0.5 text-lg font-bold text-texto"><?= e($valor) ?></dd>
                 </div>
             <?php endforeach; ?>
         </dl>
 
         <!-- Identificación de la consultoría -->
-        <div class="mt-9 rounded-xl border border-white/10 bg-white/5 p-6">
-            <h2 class="text-sm font-semibold uppercase tracking-wider text-white">
+        <div class="rv-extruido mt-9 rounded-rv-lg border border-borde bg-superficie p-6">
+            <h2 class="text-sm font-semibold uppercase tracking-wider text-texto">
                 Identificación de la consultoría
             </h2>
 
@@ -71,14 +73,14 @@ $acciones = [
                 <?php foreach ($campos as $campo): ?>
                     <div>
                         <label for="ident-<?= e($campo['clave']) ?>"
-                               class="block text-xs font-medium text-marina-300">
+                               class="block text-xs font-medium text-texto-2">
                             <?= e($campo['etiqueta']) ?>
                         </label>
                         <input type="<?= e($campo['tipo']) ?>"
                                id="ident-<?= e($campo['clave']) ?>"
                                data-identificacion="<?= e($campo['clave']) ?>"
                                <?php if ($campo['marcador'] !== ''): ?>placeholder="<?= e($campo['marcador']) ?>"<?php endif; ?>
-                               class="mt-1.5 w-full rounded-lg border border-white/10 bg-marina-950/60 px-3 py-2 text-sm text-white placeholder:text-marina-400 focus:border-acento-500 focus:outline-none focus:ring-1 focus:ring-acento-500">
+                               class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -90,8 +92,8 @@ $acciones = [
                 <button type="button"
                         data-accion="<?= e($accion['clave']) ?>"
                         title="<?= e($accion['titulo']) ?>"
-                        class="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3.5 py-2 text-sm font-semibold text-white transition hover:border-acento-400 hover:bg-white/5">
-                    <?= icono($accion['icono'], 'h-4 w-4 text-acento-400') ?>
+                        class="rv-extruido-sm rv-interactivo-sm inline-flex items-center gap-2 rounded-rv border border-borde bg-superficie px-3.5 py-2 text-sm font-semibold text-texto hover:border-primario">
+                    <?= icono($accion['icono'], 'h-4 w-4 text-primario') ?>
                     <?= e($accion['etiqueta']) ?>
                 </button>
             <?php endforeach; ?>
@@ -101,7 +103,7 @@ $acciones = [
                    id="archivo-avance" data-archivo-avance
                    aria-label="Seleccionar archivo de avance en formato JSON">
 
-            <p class="w-full pt-1 text-xs text-marina-400" role="status" data-estado-guardado>
+            <p class="w-full pt-1 text-xs text-texto-2" role="status" data-estado-guardado>
                 El avance se guarda en este navegador de forma automática.
             </p>
         </div>

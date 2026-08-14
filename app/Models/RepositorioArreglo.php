@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Contratos\RepositorioContenido;
 use App\Models\Entidades\Integrante;
 use App\Models\Entidades\Servicio;
+use App\Models\Entidades\Testimonio;
 
 /**
  * Implementación del repositorio que lee el contenido de config/contenido.php.
@@ -49,6 +50,12 @@ final class RepositorioArreglo implements RepositorioContenido
     public function navegacion(): array
     {
         return $this->datos['navegacion'];
+    }
+
+    /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
+    public function nosotros(): array
+    {
+        return $this->datos['nosotros'];
     }
 
     /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
@@ -100,9 +107,34 @@ final class RepositorioArreglo implements RepositorioContenido
     }
 
     /** @return array<string, mixed> */
+    public function stack(): array
+    {
+        return $this->datos['stack'];
+    }
+
+    /** @return array<string, mixed> */
     public function caso(): array
     {
         return $this->datos['caso'];
+    }
+
+    /** @return array{etiqueta: string, titulo: string, texto: string} */
+    public function encabezadoTestimonios(): array
+    {
+        return [
+            'etiqueta' => $this->datos['testimonios']['etiqueta'],
+            'titulo'   => $this->datos['testimonios']['titulo'],
+            'texto'    => $this->datos['testimonios']['texto'],
+        ];
+    }
+
+    /** @return list<Testimonio> */
+    public function testimonios(): array
+    {
+        return array_map(
+            static fn (array $fila): Testimonio => Testimonio::desdeArreglo($fila),
+            $this->datos['testimonios']['lista'],
+        );
     }
 
     /** @return list<Integrante> */
@@ -114,9 +146,21 @@ final class RepositorioArreglo implements RepositorioContenido
         );
     }
 
+    /** @return array<string, mixed> */
+    public function planes(): array
+    {
+        return $this->datos['planes'];
+    }
+
     /** @return array{titulo: string, texto: string} */
     public function contacto(): array
     {
         return $this->datos['contacto'];
+    }
+
+    /** @return array<string, mixed> */
+    public function preguntas(): array
+    {
+        return $this->datos['preguntas'];
     }
 }

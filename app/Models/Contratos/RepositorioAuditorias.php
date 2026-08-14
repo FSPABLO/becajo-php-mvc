@@ -6,6 +6,7 @@ namespace App\Models\Contratos;
 
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
 
@@ -163,4 +164,63 @@ interface RepositorioAuditorias
      * @return list<ResultadoRiesgo>
      */
     public function exposicionRiesgo(int $idAuditoria): array;
+
+    /**
+     * Madurez ponderada por dominio, a través de todas las auditorías de una
+     * organización — la evolución en el tiempo, no solo el resultado de una.
+     * Complementa a auditoriasDe() (que ya trae el índice general por
+     * auditoría) con el desglose por dominio.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function historicoPorDominio(string $organizacion): array;
+
+    /**
+     * Evolución mensual del trabajo de un auditor: una fila por mes con
+     * auditorías, con el cumplimiento y la cobertura del instrumento ya
+     * agregados. Alimenta el gráfico del panel de entrada.
+     *
+     * Los meses sin auditorías NO vienen en el resultado. Rellenar los huecos
+     * es cosa de quien dibuja: solo la vista sabe si corta la línea o une los
+     * extremos.
+     *
+     * $organizacion acota a una empresa auditada — que es la del administrador
+     * de BD entrevistado. En null devuelve la cartera completa del auditor.
+     * Quien la pase debe haberla comprobado antes contra las organizaciones que
+     * ese auditor realmente evaluó: aquí llega como un filtro cualquiera y el
+     * repositorio no tiene forma de saber si el auditor tenía derecho a verla.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function evolucionAuditor(int $idAuditor, ?string $organizacion = null): array;
+
+    // ── Remediación (punto 19: plazos y re-auditoría) ───────────────────────
+
+    /** Crea un plazo de corrección para un hallazgo puntual. */
+    public function crearRemediacion(
+        int $idEvaluacionControl,
+        string $fechaLimite,
+        ?string $responsable,
+    ): void;
+
+    /**
+     * Las remediaciones abiertas de una auditoría, con el control al que
+     * pertenecen ya resuelto.
+     *
+     * @return list<Remediacion>
+     */
+    public function remediacionesAuditoria(int $idAuditoria): array;
+
+    /**
+     * Todas las remediaciones vencidas, de cualquier auditoría — el panel
+     * global para quien le da seguimiento a los hallazgos.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function remediacionesVencidas(): array;
+
+    /** Enlaza una remediación con la auditoría creada para verificarla. */
+    public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void;
+
+    public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void;
 }

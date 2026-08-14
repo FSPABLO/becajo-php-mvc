@@ -9,6 +9,7 @@ use App\Controllers\ContactoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
+use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
 /**
@@ -23,6 +24,9 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/', [HomeController::class, 'index']);
     $enrutador->post('/contacto', [ContactoController::class, 'enviar']);
     $enrutador->get('/idioma', [IdiomaController::class, 'cambiar']);
+
+    // Página institucional del menú "Nosotros".
+    $enrutador->get('/preguntas-frecuentes', [PreguntasController::class, 'index']);
 
     // Herramientas internas (menú "Herramientas" del encabezado).
     $enrutador->get('/herramientas/instrumento-bd', [HerramientasController::class, 'instrumentoBd']);
@@ -65,6 +69,13 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
     $enrutador->get('/evaluacion/{id}/reporte', [AuditoriaController::class, 'reporte']);
 
+    // ── Remediación y re-auditoría (punto 19) ────────────────────────────────
+    $enrutador->get('/evaluacion/{id}/remediaciones', [AuditoriaController::class, 'remediaciones']);
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}/remediacion', [AuditoriaController::class, 'crearRemediacion']);
+    $enrutador->post('/remediaciones/{idRemediacion}/programar', [AuditoriaController::class, 'programarReauditoria']);
+    $enrutador->post('/remediaciones/{idRemediacion}/estado', [AuditoriaController::class, 'actualizarEstadoRemediacion']);
+    $enrutador->get('/remediaciones/vencidas', [AuditoriaController::class, 'remediacionesVencidas']);
+
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //
     // Reservado al rol ADMIN_BD; lo comprueba el propio controlador.
@@ -74,7 +85,8 @@ return static function (Enrutador $enrutador): void {
     // decide según lo reciba o no. La coincidencia exacta se resuelve antes
     // que el patrón, así que "nuevo" nunca se interpreta como una clave.
     $enrutador->get('/catalogo', [CatalogoController::class, 'indice']);
-
+    $enrutador->get('/catalogo/matriz', [CatalogoController::class, 'matriz']);
+    
     $enrutador->get('/catalogo/dominios/nuevo', [CatalogoController::class, 'dominioFormulario']);
     $enrutador->post('/catalogo/dominios/nuevo', [CatalogoController::class, 'guardarDominio']);
     $enrutador->get('/catalogo/dominios/{clave}', [CatalogoController::class, 'dominioFormulario']);

@@ -20,6 +20,7 @@ final class Vista
         private readonly string $directorioVistas,
         private readonly string $rutaBase,
         private readonly ?Idioma $idioma = null,
+        private readonly ?string $directorioPublico = null,
     ) {
     }
 
@@ -133,6 +134,38 @@ final class Vista
     public function url(string $ruta = ''): string
     {
         return $this->rutaBase . '/' . ltrim($ruta, '/');
+    }
+
+    /**
+     * URL de una hoja de estilos o un guion propio, con sello de versión.
+     *
+     * Apache sirve estos archivos sin Cache-Control, así que el navegador les
+     * aplica su caché heurística: tras editar rivendel.css o principal.js puede
+     * seguir usando la copia vieja durante un rato. Con HTML nuevo y guion
+     * viejo el sitio queda a medias —lo maquetado se ve, lo que necesita
+     * JavaScript no responde— y el error parece del código.
+     *
+     * Añadir la fecha de modificación al final de la URL lo cierra de raíz:
+     * cada edición genera una dirección distinta, y una dirección que el
+     * navegador no tiene en caché la pide al servidor. Recargar deja de ser
+     * parte del procedimiento para ver un cambio.
+     *
+     * Si no se sabe dónde está public/ —o el archivo no existe— se devuelve la
+     * URL sin sello en vez de fallar: el sello es una comodidad, no un
+     * requisito para que la página cargue.
+     */
+    public function recurso(string $ruta): string
+    {
+        $url = $this->url($ruta);
+
+        if ($this->directorioPublico === null) {
+            return $url;
+        }
+
+        $archivo = $this->directorioPublico . '/' . ltrim($ruta, '/');
+        $fecha = is_file($archivo) ? filemtime($archivo) : false;
+
+        return $fecha === false ? $url : $url . '?v=' . $fecha;
     }
 
     /**

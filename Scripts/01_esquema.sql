@@ -1,27 +1,43 @@
 -- ============================================================================
 -- EIF402 · Proyecto Integrador — Evaluación de Riesgo ISO/IEC 27002
 -- Script de creación del esquema (Oracle 21c+)
--- Preparado por Persona 2 — Fase 3 (versión final consolidada, reunión del 2/8)
+-- Preparado por Persona 2 — versión consolidada final
 --
--- 7 tablas. Decisiones que aplican en esta versión:
+-- Reemplaza a los antiguos 01_esquema.sql + 05_rigor_normativo_esquema.sql +
+-- 06_correccion_p17_p16.sql: aquellos tres eran pasos de una MIGRACIÓN sobre
+-- una base de datos que ya existía (por eso usaban ALTER TABLE, con
+-- backfill incluido). Este script crea el esquema completo desde cero, en
+-- su estado final, para quien monta el proyecto por primera vez.
+--
+-- 8 tablas. Decisiones que aplican en esta versión:
 --   - No existe tabla ORGANIZACION: la afiliación institucional es el campo
 --     de texto usuario.organizacion.
 --   - resultado_riesgo.zona es VARCHAR2 con CHECK ('ROJO','AMARILLO','VERDE')
---     — NO se modela como tabla aparte (esto se había planteado y luego se
---     descartó: la fórmula de cálculo sí se confirmó, la tabla de zona no).
---   - evaluacion_control incluye impacto, probabilidad y nivel_riesgo
---     (confirmados como relevantes) y pregunta_personalizada (el auditor
---     puede editar el texto de la pregunta para una evaluación puntual).
+--     — no se modela como tabla aparte (se evaluó y se descartó).
+--   - evaluacion_control incluye impacto, probabilidad, nivel_riesgo y
+--     pregunta_personalizada (el auditor puede editar el texto de la
+--     pregunta para una evaluación puntual).
 --   - Un control puede tener varias dimensiones de riesgo (C/I/D) marcadas a
 --     la vez, y pueden variar de una evaluación a otra del mismo control.
+--   - control.peso (ALTA/MEDIA/BAJA) y proceso.relacion_confidencialidad /
+--     relacion_integridad / relacion_disponibilidad (P/S) usan la misma
+--     notación que COBIT 4.1 (Apéndice II): importancia relativa y relación
+--     primaria/secundaria con cada criterio de información.
+--   - evaluacion_control.evidencia_verificada y calidad_evidencia son
+--     obligatorias cuando estado='SI': la conformidad se prueba con
+--     evidencia, no con la afirmación del auditado (ISO/IEC 27007).
+--   - remediacion registra el plazo de corrección de un hallazgo puntual,
+--     con re-auditoría programable al vencimiento (ciclo PHVA — ISO 9001
+--     §8.5.2 / ISO-IEC 27001, cláusula 10).
 --
 -- Orden de creación (respeta las dependencias de llave foránea):
---   USUARIO, DOMINIO        (sin dependencias)
---   PROCESO                 (depende de DOMINIO)
---   CONTROL                 (depende de PROCESO)
---   AUDITORIA               (depende de USUARIO)
---   EVALUACION_CONTROL      (depende de AUDITORIA, CONTROL)
---   RESULTADO_RIESGO        (depende de AUDITORIA)
+--   USUARIO, DOMINIO           (sin dependencias)
+--   PROCESO                    (depende de DOMINIO)
+--   CONTROL                    (depende de PROCESO)
+--   AUDITORIA                  (depende de USUARIO)
+--   EVALUACION_CONTROL         (depende de AUDITORIA, CONTROL)
+--   RESULTADO_RIESGO           (depende de AUDITORIA)
+--   REMEDIACION                (depende de EVALUACION_CONTROL, AUDITORIA)
 -- ============================================================================
 
 -- ── USUARIO ──────────────────────────────────────────────────────────────
@@ -45,14 +61,8 @@ CREATE TABLE usuario (
 -- ── DOMINIO ──────────────────────────────────────────────────────────────
 -- clave: identificador natural corto, el mismo que usa el frontend
 -- (config/instrumento-bd.php) para las pestañas: 'gobierno', 'accesos', etc.
---
--- orden: posición en que se presenta el dominio (Fase 5 — CRUD del catálogo).
--- Hace falta una columna propia porque ningún otro dato la contiene: ordenar
--- por 'clave' daría un listado alfabético (accesos, almacenamiento,
--- configuración...) que no es el del instrumento. Antes se deducía del menor
--- código de control que colgaba de cada dominio, pero eso deja de valer en
--- cuanto el catálogo se edita desde pantalla: un control nuevo con código alto
--- movería de sitio a todo su dominio.
+-- orden: posición de presentación (no se deduce de 'clave', que daría un
+-- listado alfabético distinto del orden real del instrumento).
 CREATE TABLE dominio (
     clave         VARCHAR2(20)   PRIMARY KEY,
     nombre        VARCHAR2(100)  NOT NULL,
@@ -64,21 +74,37 @@ CREATE TABLE dominio (
 -- ── PROCESO ──────────────────────────────────────────────────────────────
 -- numero: se conserva el número original del catálogo (1-25), no el orden
 -- de presentación, para trazabilidad con el marco de referencia de Persona 1.
--- Por eso 'orden' es una columna aparte, igual que en DOMINIO.
+-- relacion_confidencialidad/integridad/disponibilidad: 'P' (relación
+-- primaria) / 'S' (relación secundaria) / NULL (sin relación relevante) —
+-- notación de COBIT 4.1, Apéndice II. Es la relación DECLARADA del proceso
+-- en el catálogo; no reemplaza lo que el auditor marca en cada evaluación
+-- puntual (evaluacion_control.afecta_*), que sigue siendo lo que se usa
+-- para calcular el riesgo.
 CREATE TABLE proceso (
-    numero         NUMBER(3)      PRIMARY KEY,
-    clave_dominio  VARCHAR2(20)   NOT NULL,
-    nombre         VARCHAR2(200)  NOT NULL,
-    ancla          VARCHAR2(300),
-    orden          NUMBER(3)      DEFAULT 0 NOT NULL,
+    numero                      NUMBER(3)      PRIMARY KEY,
+    clave_dominio                VARCHAR2(20)   NOT NULL,
+    nombre                       VARCHAR2(200)  NOT NULL,
+    ancla                        VARCHAR2(300),
+    orden                        NUMBER(3)      DEFAULT 0 NOT NULL,
+    relacion_confidencialidad    VARCHAR2(1),
+    relacion_integridad          VARCHAR2(1),
+    relacion_disponibilidad      VARCHAR2(1),
     CONSTRAINT fk_proceso_dominio
-        FOREIGN KEY (clave_dominio) REFERENCES dominio (clave)
+        FOREIGN KEY (clave_dominio) REFERENCES dominio (clave),
+    CONSTRAINT ck_proceso_rel_confidencialidad
+        CHECK (relacion_confidencialidad IN ('P', 'S')),
+    CONSTRAINT ck_proceso_rel_integridad
+        CHECK (relacion_integridad IN ('P', 'S')),
+    CONSTRAINT ck_proceso_rel_disponibilidad
+        CHECK (relacion_disponibilidad IN ('P', 'S'))
 );
 
 -- ── CONTROL ──────────────────────────────────────────────────────────────
 -- codigo: identificador natural del catálogo (C-001 ... C-075). Una sola
 -- pregunta por control por defecto; el auditor puede sobrescribirla por
 -- evaluación (ver EVALUACION_CONTROL.pregunta_personalizada).
+-- peso: importancia relativa (COBIT 4.1) usada en el promedio ponderado del
+-- cálculo de riesgo — un control ALTA pesa más que uno BAJA.
 CREATE TABLE control (
     codigo              VARCHAR2(6)    PRIMARY KEY,
     numero_proceso      NUMBER(3)      NOT NULL,
@@ -86,8 +112,11 @@ CREATE TABLE control (
     enunciado           CLOB           NOT NULL,
     evidencia_esperada  CLOB,
     pregunta            CLOB           NOT NULL,
+    peso                VARCHAR2(10)   DEFAULT 'MEDIA' NOT NULL,
     CONSTRAINT fk_control_proceso
-        FOREIGN KEY (numero_proceso) REFERENCES proceso (numero)
+        FOREIGN KEY (numero_proceso) REFERENCES proceso (numero),
+    CONSTRAINT ck_control_peso
+        CHECK (peso IN ('ALTA', 'MEDIA', 'BAJA'))
 );
 
 -- ── AUDITORIA ────────────────────────────────────────────────────────────
@@ -115,11 +144,11 @@ CREATE TABLE auditoria (
 -- estado NULL = control sin evaluar todavía (distinto de 'NA').
 -- afecta_* vive aquí y no en CONTROL: pueden marcarse varias dimensiones a
 -- la vez y variar según lo que encuentre el auditor en cada evaluación.
--- impacto/probabilidad/nivel_riesgo: confirmados como relevantes para el peso
--- del riesgo (metodología de la clase del 27/7: nivel_riesgo = promedio de
--- impacto y probabilidad).
--- pregunta_personalizada: si el auditor edita el texto para esta evaluación;
--- si es NULL, la aplicación debe mostrar CONTROL.pregunta por defecto.
+-- impacto/probabilidad/nivel_riesgo: nivel_riesgo = promedio de impacto y
+-- probabilidad (metodología de la clase del 27/7).
+-- evidencia_verificada/calidad_evidencia: obligatorias cuando estado='SI'
+-- (ck_evalctrl_evidencia_si) — ISO/IEC 27007: la conformidad se determina
+-- contra evidencia verificable, no contra la afirmación del auditado.
 CREATE TABLE evaluacion_control (
     id_evaluacion_control    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_auditoria             NUMBER        NOT NULL,
@@ -136,6 +165,8 @@ CREATE TABLE evaluacion_control (
     nivel_riesgo             NUMBER(4,2),
     hallazgo                 CLOB,
     recomendacion            CLOB,
+    evidencia_verificada     CLOB,
+    calidad_evidencia        VARCHAR2(20),
     CONSTRAINT fk_evalctrl_auditoria
         FOREIGN KEY (id_auditoria) REFERENCES auditoria (id_auditoria),
     CONSTRAINT fk_evalctrl_control
@@ -157,15 +188,18 @@ CREATE TABLE evaluacion_control (
     CONSTRAINT ck_evalctrl_impacto
         CHECK (impacto BETWEEN 1 AND 5),
     CONSTRAINT ck_evalctrl_probabilidad
-        CHECK (probabilidad BETWEEN 1 AND 5)
+        CHECK (probabilidad BETWEEN 1 AND 5),
+    CONSTRAINT ck_evalctrl_calidad_evidencia
+        CHECK (calidad_evidencia IN ('BIEN_IMPLEMENTADO', 'REQUIERE_MEJORA', 'DECLARATIVO')),
+    CONSTRAINT ck_evalctrl_evidencia_si
+        CHECK (estado != 'SI' OR (evidencia_verificada IS NOT NULL AND calidad_evidencia IS NOT NULL))
 );
 
 -- ── RESULTADO_RIESGO ─────────────────────────────────────────────────────
--- promedio_madurez se calcula con la fórmula confirmada en la reunión del
--- 2/8 (promedio de madurez de los controles que afectan cada dimensión,
--- normalizado sobre 1) — NO la fórmula del prototipo instrumento.js.
--- zona es texto con restricción CHECK (se evaluó modelarla como tabla
--- aparte y se descartó: queda como VARCHAR2, igual que tipo_riesgo).
+-- promedio_madurez: promedio PONDERADO (por control.peso) de la madurez de
+-- los controles que afectan cada dimensión, normalizado sobre 1 — no un
+-- promedio simple. zona es texto con restricción CHECK (se evaluó modelarla
+-- como tabla aparte y se descartó).
 CREATE TABLE resultado_riesgo (
     id_resultado_riesgo  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_auditoria         NUMBER         NOT NULL,
@@ -183,6 +217,29 @@ CREATE TABLE resultado_riesgo (
         CHECK (promedio_madurez BETWEEN 0 AND 1),
     CONSTRAINT ck_resriesgo_zona
         CHECK (zona IN ('ROJO', 'AMARILLO', 'VERDE'))
+);
+
+-- ── REMEDIACION ──────────────────────────────────────────────────────────
+-- Cuelga de UNA evaluación de control puntual (el hallazgo concreto que hay
+-- que corregir), no de la auditoría completa. id_auditoria_reauditoria
+-- enlaza hacia la auditoría creada para verificar si se corrigió, cuando ya
+-- se programó. El estado 'VENCIDO' se calcula al vuelo (comparando
+-- fecha_limite contra la fecha actual) y no se guarda como tal — por eso no
+-- hace falta un job que lo actualice.
+CREATE TABLE remediacion (
+    id_remediacion            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_evaluacion_control     NUMBER        NOT NULL,
+    fecha_limite              DATE          NOT NULL,
+    estado                    VARCHAR2(20)  DEFAULT 'PENDIENTE' NOT NULL,
+    responsable               VARCHAR2(150),
+    id_auditoria_reauditoria  NUMBER,
+    fecha_creacion            TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_remediacion_evalctrl
+        FOREIGN KEY (id_evaluacion_control) REFERENCES evaluacion_control (id_evaluacion_control),
+    CONSTRAINT fk_remediacion_reauditoria
+        FOREIGN KEY (id_auditoria_reauditoria) REFERENCES auditoria (id_auditoria),
+    CONSTRAINT ck_remediacion_estado
+        CHECK (estado IN ('PENDIENTE', 'EN_PROCESO', 'CUMPLIDO', 'VENCIDO'))
 );
 
 COMMIT;

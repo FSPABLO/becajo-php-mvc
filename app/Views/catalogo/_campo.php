@@ -28,11 +28,11 @@ $filas = $filas ?? 3;
 $opciones = $opciones ?? [];
 $hayError = ($error ?? null) !== null;
 
-$clases = 'mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-slate-900 outline-none transition '
+$clases = 'mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition '
     . ($hayError
-        ? 'border-alerta-500 focus:border-alerta-500 focus:ring-2 focus:ring-alerta-500/30'
-        : 'border-slate-300 focus:border-acento-500 focus:ring-2 focus:ring-acento-500/30')
-    . ($bloqueado ? ' bg-slate-100 text-slate-500' : '');
+        ? 'border-bad focus:border-bad focus:ring-2 focus:ring-bad/10'
+        : 'border-borde focus:border-primario focus:ring-2 focus:ring-primario/30')
+    . ($bloqueado ? ' bg-elevado text-texto-2' : '');
 
 $atributos = 'id="' . e($campo) . '" name="' . e($campo) . '"'
     . ($obligatorio ? ' required' : '')
@@ -41,7 +41,7 @@ $atributos = 'id="' . e($campo) . '" name="' . e($campo) . '"'
     . ($hayError ? ' aria-invalid="true" aria-describedby="error-' . e($campo) . '"' : '');
 ?>
 <div>
-    <label for="<?= e($campo) ?>" class="block text-sm font-semibold text-marina-950">
+    <label for="<?= e($campo) ?>" class="block text-sm font-semibold text-texto">
         <?= e($etiqueta) ?>
     </label>
 
@@ -65,8 +65,8 @@ $atributos = 'id="' . e($campo) . '" name="' . e($campo) . '"'
     <?php endif; ?>
 
     <?php if ($hayError): ?>
-        <p id="error-<?= e($campo) ?>" class="mt-1.5 text-sm text-alerta-600"><?= e($error) ?></p>
+        <p id="error-<?= e($campo) ?>" class="mt-1.5 text-sm text-bad"><?= e($error) ?></p>
     <?php elseif (!empty($ayuda)): ?>
-        <p class="mt-1.5 text-sm text-slate-500"><?= e($ayuda) ?></p>
+        <p class="mt-1.5 text-sm text-texto-2"><?= e($ayuda) ?></p>
     <?php endif; ?>
 </div>

@@ -24,20 +24,39 @@ final class HomeController extends Controlador
     {
         $repositorio = $this->repositorio();
 
+        /*
+         * El banner enseña el TAMAÑO y la ESTRUCTURA del instrumento, y los saca
+         * de aquí en vez de llevarlos escritos en config/contenido.php. Es la
+         * diferencia entre una cifra que se desincroniza en cuanto alguien
+         * añade un control y una que no puede: el «75» del banner ES el número
+         * de controles que hay, no una copia suya hecha a mano.
+         *
+         * Sirve igual con el instrumento en arreglo que en Oracle: el
+         * contenedor decide cuál, y el controlador solo pide el contrato.
+         */
+        $instrumento = $this->instrumento();
+
         $this->ver('home/index', [
             ...$this->contexto(),
-            'meta'                => $repositorio->meta(),
-            'hero'                => $repositorio->hero(),
-            'retos'               => $repositorio->retos(),
-            'encabezadoServicios' => $repositorio->encabezadoServicios(),
-            'servicios'           => $repositorio->servicios(),
-            'metricas'            => $repositorio->metricas(),
-            'motores'             => $repositorio->motores(),
-            'caso'                => $repositorio->caso(),
-            'equipo'              => $repositorio->equipo(),
-            'contacto'            => $repositorio->contacto(),
-            'erroresContacto'     => $this->leerYOlvidar('contacto.errores'),
-            'valoresContacto'     => $this->leerYOlvidar('contacto.valores'),
+            'meta'                  => $repositorio->meta(),
+            'hero'                  => $repositorio->hero(),
+            'dominios'              => $instrumento->dominios(),
+            'procesos'              => $instrumento->procesos(),
+            'controles'             => $instrumento->controles(),
+            'retos'                 => $repositorio->retos(),
+            'encabezadoServicios'   => $repositorio->encabezadoServicios(),
+            'servicios'             => $repositorio->servicios(),
+            'metricas'              => $repositorio->metricas(),
+            'motores'               => $repositorio->motores(),
+            'stack'                 => $repositorio->stack(),
+            'caso'                  => $repositorio->caso(),
+            'encabezadoTestimonios' => $repositorio->encabezadoTestimonios(),
+            'testimonios'           => $repositorio->testimonios(),
+            'equipo'                => $repositorio->equipo(),
+            'planes'                => $repositorio->planes(),
+            'contacto'              => $repositorio->contacto(),
+            'erroresContacto'       => $this->leerYOlvidar('contacto.errores'),
+            'valoresContacto'       => $this->leerYOlvidar('contacto.valores'),
         ]);
     }
 

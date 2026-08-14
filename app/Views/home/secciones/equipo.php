@@ -2,45 +2,67 @@
 
 declare(strict_types=1);
 
-/** @var list<\App\Models\Entidades\Integrante> $equipo */
+/**
+ * Sección «Equipo».
+ *
+ * Encabezado centrado y rejilla auto-fit con un mínimo de 230 px, así que las
+ * fichas se reacomodan solas sin puntos de quiebre propios.
+ *
+ * Cada ficha es un retrato cuadrado sobre el nombre y el rol. Mientras no haya
+ * fotografías, el hueco rayado (.rv-retrato) muestra las iniciales: es un
+ * espacio reservado explícito, no un adorno. En cuanto un integrante traiga
+ * 'foto' en config/contenido.php, la imagen ocupa el mismo hueco sin tocar
+ * esta vista.
+ *
+ * @var \App\Core\Vista $vista
+ * @var list<\App\Models\Entidades\Integrante> $equipo
+ */
 ?>
-<section id="equipo" class="bg-white py-24">
-    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+<section id="equipo" class="bg-fondo">
+    <div class="mx-auto max-w-[1180px] px-5 py-16">
 
-        <div class="max-w-2xl">
-            <p class="text-sm font-semibold uppercase tracking-widest text-acento-600">
+        <div class="mb-[30px] flex flex-col items-center gap-2 text-center">
+            <span class="text-[11.5px] uppercase tracking-[0.14em] text-texto-2">
                 Equipo
-            </p>
-            <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-marina-950 sm:text-4xl">
-                Quiénes somos
+            </span>
+            <h2 class="rv-titulo m-0 text-[2rem] font-medium leading-[1.15] text-texto sm:text-4xl">
+                Quién audita
             </h2>
-            <p class="mt-4 text-lg leading-relaxed text-slate-600">
-                Consultores especializados en la administración, seguridad y continuidad
-                de bases de datos empresariales.
-            </p>
         </div>
 
-        <!--
-            Cuatro columnas en pantalla ancha y dos en tableta: con cuatro
-            integrantes, una rejilla de tres dejaba a uno solo en la segunda fila.
-        -->
-        <ul class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul class="grid gap-5 grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
             <?php foreach ($equipo as $integrante): ?>
-                <li class="rounded-xl border border-slate-200 p-7 transition hover:border-acento-400">
-                    <span class="grid h-14 w-14 place-items-center rounded-full bg-marina-950 text-lg font-bold text-acento-400">
-                        <?= e($integrante->iniciales) ?>
-                    </span>
-                    <h3 class="mt-5 font-bold text-marina-950">
-                        <?= e($integrante->nombre) ?>
-                    </h3>
-                    <p class="mt-1 text-sm font-semibold text-acento-600">
-                        <?= e($integrante->rol) ?>
-                    </p>
-                    <?php if ($integrante->descripcion !== ''): ?>
-                        <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                            <?= e($integrante->descripcion) ?>
-                        </p>
+                <li class="rv-extruido flex flex-col gap-3.5 rounded-[16px] bg-superficie p-[22px]">
+
+                    <?php if ($integrante->foto !== ''): ?>
+                        <div class="rv-retrato">
+                            <img src="<?= e($vista->recurso($integrante->foto)) ?>"
+                                 alt="<?= e($integrante->nombre) ?>" loading="lazy" width="230" height="230">
+                        </div>
+                    <?php else: ?>
+                        <?php /* Sin foto: el hueco lleva las iniciales, no una etiqueta de relleno. */ ?>
+                        <div class="rv-retrato grid place-items-center" aria-hidden="true">
+                            <span class="font-mono text-2xl text-texto-2"><?= e($integrante->iniciales) ?></span>
+                        </div>
                     <?php endif; ?>
+
+                    <div class="flex flex-col items-center gap-[3px] text-center">
+                        <h3 class="m-0 text-[15.5px] font-semibold leading-snug text-texto">
+                            <?= e($integrante->nombre) ?>
+                        </h3>
+                        <?php
+                        /*
+                         * Solo el rol. El formato pide una línea corta bajo el
+                         * nombre; 'descripcion' es una frase completa y aquí
+                         * llenaría media ficha. Si hace falta ese detalle, va
+                         * dentro de 'rol' («Auditor líder · ISO/IEC 27007»),
+                         * no como segunda línea.
+                         */
+                        ?>
+                        <p class="m-0 text-[12.5px] leading-snug text-texto-2">
+                            <?= e($integrante->rol) ?>
+                        </p>
+                    </div>
                 </li>
             <?php endforeach; ?>
         </ul>

@@ -38,13 +38,31 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
         $catalogo = $this->catalogo();
 
-        $this->ver('catalogo/indice', [
+        $this->verPanel('catalogo/indice', [
             ...$this->contexto(),
             'meta'      => $this->meta('Catálogo de controles'),
             'dominios'  => $catalogo->dominios(),
             'procesos'  => $catalogo->procesos(),
             'controles' => $catalogo->controles(),
             'usosControl' => $catalogo->evaluacionesPorControl(),
+        ]);
+    }
+
+    /**
+     * Mapa de procesos vs C-I-D — la misma idea del Apéndice II
+     * de COBIT 4.1: cada proceso, con su relación Primaria/Secundaria/ninguna
+     * declarada frente a Confidencialidad, Integridad y Disponibilidad.
+     */
+    public function matriz(): void
+    {
+        $this->exigirAdministrador();
+        $catalogo = $this->catalogo();
+
+        $this->verPanel('catalogo/matriz', [
+            ...$this->contexto(),
+            'meta'     => $this->meta('Mapa de procesos vs C-I-D'),
+            'dominios' => $catalogo->dominios(),
+            'procesos' => $catalogo->procesos(),
         ]);
     }
 
@@ -61,7 +79,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/dominio', [
+        $this->verPanel('catalogo/dominio', [
             ...$this->contexto(),
             'meta'     => $this->meta($dominio === null ? 'Nuevo dominio' : 'Dominio ' . $dominio->clave),
             'dominio'  => $dominio,
@@ -162,7 +180,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/proceso', [
+        $this->verPanel('catalogo/proceso', [
             ...$this->contexto(),
             'meta'     => $this->meta($proceso === null ? 'Nuevo proceso' : 'Proceso ' . $proceso->numero),
             'proceso'  => $proceso,
@@ -184,11 +202,14 @@ final class CatalogoController extends Controlador
         $this->exigirToken($destino);
 
         $datos = [
-            'numero'  => (string) $this->peticion()->entrada('numero', ''),
-            'dominio' => (string) $this->peticion()->entrada('dominio', ''),
-            'nombre'  => (string) $this->peticion()->entrada('nombre', ''),
-            'ancla'   => (string) $this->peticion()->entrada('ancla', ''),
-            'orden'   => (string) $this->peticion()->entrada('orden', ''),
+            'numero'    => (string) $this->peticion()->entrada('numero', ''),
+            'dominio'   => (string) $this->peticion()->entrada('dominio', ''),
+            'nombre'    => (string) $this->peticion()->entrada('nombre', ''),
+            'ancla'     => (string) $this->peticion()->entrada('ancla', ''),
+            'orden'     => (string) $this->peticion()->entrada('orden', ''),
+            'relacion_confidencialidad' => (string) $this->peticion()->entrada('relacion_confidencialidad', ''),
+            'relacion_integridad'       => (string) $this->peticion()->entrada('relacion_integridad', ''),
+            'relacion_disponibilidad'   => (string) $this->peticion()->entrada('relacion_disponibilidad', ''),
         ];
 
         if ($existente !== null) {
@@ -208,6 +229,9 @@ final class CatalogoController extends Controlador
             nombre:  $datos['nombre'],
             ancla:   $datos['ancla'],
             orden:   (int) $datos['orden'],
+            relacionConfidencialidad: $datos['relacion_confidencialidad'] === '' ? null : $datos['relacion_confidencialidad'],
+            relacionIntegridad:       $datos['relacion_integridad'] === '' ? null : $datos['relacion_integridad'],
+            relacionDisponibilidad:   $datos['relacion_disponibilidad'] === '' ? null : $datos['relacion_disponibilidad'],
         );
 
         if ($existente === null) {
@@ -262,7 +286,7 @@ final class CatalogoController extends Controlador
             $this->noEncontrado();
         }
 
-        $this->ver('catalogo/control', [
+        $this->verPanel('catalogo/control', [
             ...$this->contexto(),
             'meta'        => $this->meta($control === null ? 'Nuevo control' : 'Control ' . $control->id),
             'control'     => $control,
@@ -291,6 +315,7 @@ final class CatalogoController extends Controlador
             'enunciado' => (string) $this->peticion()->entrada('enunciado', ''),
             'evidencia' => (string) $this->peticion()->entrada('evidencia', ''),
             'pregunta'  => (string) $this->peticion()->entrada('pregunta', ''),
+            'peso'      => (string) $this->peticion()->entrada('peso', Control::PESO_MEDIA),
         ];
 
         if ($existente !== null) {
@@ -311,6 +336,7 @@ final class CatalogoController extends Controlador
             enunciado: $datos['enunciado'],
             evidencia: $datos['evidencia'],
             pregunta:  $datos['pregunta'],
+            peso:      $datos['peso'],
         );
 
         if ($existente === null) {
@@ -422,6 +448,18 @@ final class CatalogoController extends Controlador
 
         $errores += $this->validarOrden($datos['orden']);
 
+        // Notación de COBIT 4.1 (Apéndice II): 'P' relación primaria,
+        // 'S' relación secundaria, vacío = sin relación relevante.
+        foreach ([
+            'relacion_confidencialidad' => 'La relación con Confidencialidad',
+            'relacion_integridad'       => 'La relación con Integridad',
+            'relacion_disponibilidad'   => 'La relación con Disponibilidad',
+        ] as $campo => $etiqueta) {
+            if ($datos[$campo] !== '' && !in_array($datos[$campo], ['P', 'S'], true)) {
+                $errores[$campo] = $etiqueta . ' debe ser Primaria, Secundaria o quedar sin marcar.';
+            }
+        }
+
         return $errores;
     }
 
@@ -460,6 +498,11 @@ final class CatalogoController extends Controlador
             if (trim($datos[$campo]) === '') {
                 $errores[$campo] = $etiqueta . ' es obligatorio.';
             }
+        }
+
+        // Importancia relativa (COBIT 4.1, Apéndice II): Alta, Media o Baja.
+        if (!in_array($datos['peso'], [Control::PESO_ALTA, Control::PESO_MEDIA, Control::PESO_BAJA], true)) {
+            $errores['peso'] = 'La importancia debe ser Alta, Media o Baja.';
         }
 
         return $errores;

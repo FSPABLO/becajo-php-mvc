@@ -18,7 +18,7 @@ declare(strict_types=1);
  * @var list<array{nivel: int, nombre: string, descripcion: string}> $escala
  */
 ?>
-<div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+<div class="rv-extruido overflow-hidden rounded-rv-lg border border-borde bg-superficie">
 
     <?= $vista->renderizar('herramientas/parciales/tabs-dominios', [
         'ambito'          => 'instrumento',
@@ -27,7 +27,7 @@ declare(strict_types=1);
         'totalPorDominio' => $totalPorDominio,
     ]) ?>
 
-    <div class="bg-slate-50 p-5 sm:p-6">
+    <div class="bg-elevado p-5 sm:p-6">
         <?php foreach ($dominios as $indice => $dominio): ?>
             <section id="seccion-instrumento-<?= e($dominio->clave) ?>"
                      role="tabpanel"
@@ -40,12 +40,12 @@ declare(strict_types=1);
                 <?php foreach ($procesosPorDominio[$dominio->clave] ?? [] as $proceso): ?>
                     <div data-grupo-proceso="<?= e((string) $proceso->numero) ?>">
 
-                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-slate-200 pb-3">
-                            <h3 class="text-base font-bold text-marina-950">
-                                <span class="text-acento-600">Proceso <?= e((string) $proceso->numero) ?>.</span>
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borde pb-3">
+                            <h3 class="text-base font-bold text-texto">
+                                <span class="text-primario">Proceso <?= e((string) $proceso->numero) ?>.</span>
                                 <?= e($proceso->nombre) ?>
                             </h3>
-                            <span class="text-xs font-medium text-slate-500"><?= e($proceso->ancla) ?></span>
+                            <span class="text-xs font-medium text-texto-2"><?= e($proceso->ancla) ?></span>
                         </div>
 
                         <div class="mt-4 space-y-4">
@@ -63,15 +63,15 @@ declare(strict_types=1);
         <?php endforeach; ?>
 
         <!-- Navegación entre dominios -->
-        <nav class="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-6 no-imprimir"
+        <nav class="mt-8 flex items-center justify-between gap-3 border-t border-borde pt-6 no-imprimir"
              aria-label="Navegación entre dominios">
             <button type="button" data-nav="anterior"
-                    class="inline-flex max-w-[45%] items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-marina-950 transition hover:border-marina-300 disabled:cursor-not-allowed disabled:opacity-40">
+                    class="rv-extruido-sm rv-interactivo-sm inline-flex max-w-[45%] items-center gap-2 rounded-rv border border-borde bg-superficie px-4 py-2.5 text-sm font-semibold text-texto hover:border-primario disabled:cursor-not-allowed disabled:opacity-40">
                 <span class="rotate-180"><?= icono('flecha', 'h-4 w-4') ?></span>
                 <span class="truncate" data-nav-etiqueta>Dominio anterior</span>
             </button>
             <button type="button" data-nav="siguiente"
-                    class="inline-flex max-w-[45%] items-center gap-2 rounded-lg bg-marina-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marina-900 disabled:cursor-not-allowed disabled:opacity-40">
+                    class="inline-flex max-w-[45%] items-center gap-2 rv-extruido-sm rv-interactivo-sm rounded-rv bg-primario px-4 py-2.5 text-sm font-semibold text-primario-texto disabled:cursor-not-allowed disabled:opacity-40">
                 <span class="truncate" data-nav-etiqueta>Dominio siguiente</span>
                 <?= icono('flecha', 'h-4 w-4') ?>
             </button>
@@ -88,4 +88,7 @@ declare(strict_types=1);
  */
 ?>
 <span hidden aria-hidden="true"
-      class="border-l-exito-500 border-l-alerta-500 border-l-marina-300 border-l-aviso-500 border-l-slate-200"></span>
+      class="border-l-ok border-l-bad border-l-warn border-l-na border-l-borde
+             bg-ok bg-bad bg-warn bg-elevado bg-superficie text-na text-primario-texto
+             bg-primario text-texto text-texto-2 border-primario
+             hover:text-texto hover:border-borde rv-id"></span>

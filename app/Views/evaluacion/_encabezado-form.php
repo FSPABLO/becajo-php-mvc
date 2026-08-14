@@ -17,14 +17,21 @@ declare(strict_types=1);
 $errores = $errores ?? [];
 $valores = $valores ?? [];
 
+/*
+ * Los campos van HUNDIDOS: en el sistema visual el inset significa «aquí se
+ * recibe algo», y es lo que separa a simple vista lo que se rellena de lo que
+ * solo se lee. El fondo se declara (bg-superficie) porque un <select> sin él
+ * se queda con el gris del sistema operativo, que no pertenece a la paleta y
+ * rompe la fila con los dos campos vecinos.
+ */
 $clases = static fn (bool $mal): string =>
-    'mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-slate-900 outline-none transition '
+    'rv-hundido mt-1.5 w-full rounded-rv border bg-superficie px-3.5 py-2.5 text-texto outline-none transition '
     . ($mal
-        ? 'border-alerta-500 focus:border-alerta-500 focus:ring-2 focus:ring-alerta-500/30'
-        : 'border-slate-300 focus:border-acento-500 focus:ring-2 focus:ring-acento-500/30');
+        ? 'border-bad focus:border-bad focus:ring-2 focus:ring-bad/10'
+        : 'border-borde focus:border-primario focus:ring-2 focus:ring-primario/30');
 ?>
 <div>
-    <label for="administrador" class="block text-sm font-semibold text-marina-950">
+    <label for="administrador" class="block text-sm font-semibold text-texto">
         <?= e($vista->t('eval.admin_entrevistado_label')) ?>
     </label>
     <select id="administrador" name="administrador" required
@@ -38,30 +45,30 @@ $clases = static fn (bool $mal): string =>
         <?php endforeach; ?>
     </select>
     <?php if (isset($errores['administrador'])): ?>
-        <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['administrador']) ?></p>
+        <p class="mt-1.5 text-sm text-bad"><?= e($errores['administrador']) ?></p>
     <?php else: ?>
-        <p class="mt-1.5 text-sm text-slate-500">
+        <p class="mt-1.5 text-sm text-texto-2">
             <?= e($vista->t('eval.organizacion_registrada')) ?>
         </p>
     <?php endif; ?>
 </div>
 
 <div>
-    <label for="area" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.area_evaluada')) ?></label>
+    <label for="area" class="block text-sm font-semibold text-texto"><?= e($vista->t('eval.area_evaluada')) ?></label>
     <input type="text" id="area" name="area" required maxlength="200"
            value="<?= e((string) ($valores['area'] ?? '')) ?>"
            class="<?= e($clases(isset($errores['area']))) ?>">
     <?php if (isset($errores['area'])): ?>
-        <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['area']) ?></p>
+        <p class="mt-1.5 text-sm text-bad"><?= e($errores['area']) ?></p>
     <?php endif; ?>
 </div>
 
 <div>
-    <label for="fecha" class="block text-sm font-semibold text-marina-950"><?= e($vista->t('eval.fecha_auditoria')) ?></label>
+    <label for="fecha" class="block text-sm font-semibold text-texto"><?= e($vista->t('eval.fecha_auditoria')) ?></label>
     <input type="date" id="fecha" name="fecha" required
            value="<?= e((string) ($valores['fecha'] ?? date('Y-m-d'))) ?>"
            class="<?= e($clases(isset($errores['fecha']))) ?>">
     <?php if (isset($errores['fecha'])): ?>
-        <p class="mt-1.5 text-sm text-alerta-600"><?= e($errores['fecha']) ?></p>
+        <p class="mt-1.5 text-sm text-bad"><?= e($errores['fecha']) ?></p>
     <?php endif; ?>
 </div>

@@ -1,15 +1,21 @@
 -- ============================================================================
 -- EIF402 · Proyecto Integrador — Evaluación de Riesgo ISO/IEC 27002
--- Datos semilla (Oracle 21c+) — Fase 3 (versión final consolidada)
+-- Datos semilla (Oracle 21c+) — versión consolidada final
 --
 -- Dos bloques:
 --   1. Catálogo REAL (7 dominios, 25 procesos, 75 controles), extraído
---      directamente de config/instrumento-bd.php.
+--      directamente de config/instrumento-bd.php. peso y relacion_* de
+--      cada fila quedan en su valor por defecto (MEDIA / sin marcar); se
+--      ajustan desde el catálogo administrable, no aquí.
 --   2. Datos de PRUEBA — usuarios (con organización), una auditoría, dos
 --      evaluaciones de ejemplo con impacto/probabilidad/nivel_riesgo, y un
---      resultado de riesgo ya calculado con la fórmula confirmada.
+--      resultado de riesgo ya calculado con la fórmula confirmada. La
+--      evaluación de C-001 ('SI') ya trae evidencia_verificada y
+--      calidad_evidencia directamente: como el esquema se crea desde cero
+--      con ck_evalctrl_evidencia_si activa desde el principio, no hace
+--      falta el backfill que sí necesitaba la migración original.
 --
--- Ejecutar después de 01_esquema_final.sql.
+-- Ejecutar después de 01_esquema.sql.
 -- ============================================================================
 
 -- ==========================================================================
@@ -130,66 +136,20 @@ INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidenci
 INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidencia_esperada, pregunta) VALUES ('C-074', 24, 'ISO/IEC 27002:2022 A.5.22; ISO/IEC 27011:2016', 'El desempeño y el cumplimiento de seguridad del proveedor se supervisan con evidencia periódica y con validación por parte de la organización.', 'Informes de servicio recibidos y minutas de seguimiento del último año.', '¿Con qué frecuencia se revisa el cumplimiento del proveedor, qué evidencia entrega y quién la valida dentro de la organización?');
 INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidencia_esperada, pregunta) VALUES ('C-075', 24, 'ISO/IEC 27002:2022 A.5.23, A.5.21', 'Para los servicios de base de datos en la nube están definidas la matriz de responsabilidad compartida, la ubicación de los datos y el mecanismo de recuperación al terminar el servicio.', 'Matriz de responsabilidad compartida firmada y cláusula contractual de portabilidad o salida.', '¿En qué país residen los datos alojados en la nube, qué tareas de seguridad ejecuta el proveedor y cómo se recuperan los datos si termina el contrato?');
 
--- ==========================================================================
--- Orden de presentación inicial (columna 'orden' de DOMINIO y PROCESO)
---
--- Se deduce una sola vez del catálogo recién cargado, en lugar de repetirlo a
--- mano en 32 INSERT donde un número mal tecleado pasaría inadvertido. Los
--- códigos C-001..C-075 sí siguen el orden del instrumento, así que ordenar
--- cada dominio y cada proceso por el menor código que le cuelga reconstruye
--- la secuencia correcta.
---
--- A partir de aquí manda la columna: el CRUD del catálogo la edita y ya no se
--- vuelve a derivar de los códigos.
--- ==========================================================================
-
-MERGE INTO dominio d
-USING (
-    SELECT p.clave_dominio AS clave,
-           ROW_NUMBER() OVER (ORDER BY MIN(c.codigo)) AS posicion
-      FROM proceso p
-      JOIN control c ON c.numero_proceso = p.numero
-     GROUP BY p.clave_dominio
-) o ON (d.clave = o.clave)
-WHEN MATCHED THEN UPDATE SET d.orden = o.posicion;
-
-MERGE INTO proceso p
-USING (
-    SELECT c.numero_proceso AS numero,
-           ROW_NUMBER() OVER (ORDER BY MIN(c.codigo)) AS posicion
-      FROM control c
-     GROUP BY c.numero_proceso
-) o ON (p.numero = o.numero)
-WHEN MATCHED THEN UPDATE SET p.orden = o.posicion;
-
-COMMIT;
-
 -- ============================================================================
 -- Datos de PRUEBA — usuarios (con organización), auditoría y evaluaciones
 -- ============================================================================
 
--- Hashes reales generados con password_hash($clave, PASSWORD_DEFAULT) de PHP.
--- Los de la versión anterior eran texto de relleno y no correspondían a
--- ninguna contraseña: password_verify() siempre devolvía false contra ellos.
---
---   ana.alfaro@consultora.example  ->  auditor2026
---   luis.rojas@empresa.example     ->  adminbd2026
---
--- Son credenciales de DESARROLLO, publicadas aquí a propósito para que
--- cualquiera del equipo pueda entrar tras cargar la semilla. Antes de mostrar
--- el sistema fuera del equipo hay que cambiarlas.
---
--- La cuenta ADMIN_BD se crea aquí y no desde el formulario de registro: el
--- alta pública siempre produce cuentas AUDITOR, porque ADMIN_BD administra el
--- catálogo maestro que evalúan todos los demás.
+-- Contraseña de ambos usuarios de prueba: "cambiar123" (hash de ejemplo,
+-- NO usar en producción — Persona 3 debe generarlo con password_hash()).
 INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
     ('Ana Alfaro', 'ana.alfaro@consultora.example',
-     '$2y$10$bABCcFk3HofIa..igYjdf.mdtdg4i.QUhGm4k6ivu0RWMPRFblbUi', 'AUDITOR',
+     '$2y$10$X8yZ0h1qFh8yYQeQABCDEuQ9m1r8T2p6v3n5j7k9l1M2n3O4p5Q6R', 'AUDITOR',
      'Consultora de Auditoría Ejemplo S.A.');
 
 INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
     ('Luis Rojas', 'luis.rojas@empresa.example',
-     '$2y$10$etR..zhP36VNYYNoxWzmF.XaV3gtc5y5k8Qs4TzWK6Zw9FpjXioMu', 'ADMIN_BD',
+     '$2y$10$X8yZ0h1qFh8yYQeQABCDEuQ9m1r8T2p6v3n5j7k9l1M2n3O4p5Q6R', 'ADMIN_BD',
      'Cooperativa de Ejemplo R.L.');
 
 -- id_auditor = 1 (Ana), id_administrador_bd = 2 (Luis) -> organización
@@ -205,11 +165,13 @@ VALUES (1, 2, 'Administración de Bases de Datos', DATE '2026-08-01', 'EN_PROGRE
 INSERT INTO evaluacion_control
     (id_auditoria, codigo_control, estado, madurez, criterio,
      afecta_confidencialidad, impacto, probabilidad, nivel_riesgo,
-     hallazgo, recomendacion)
+     hallazgo, recomendacion, evidencia_verificada, calidad_evidencia)
 VALUES
     (1, 'C-001', 'SI', 3, 'DOCUMENTADO', 0, 2, 2, 2.00,
      'Política vigente firmada en 2025, con revisión anual documentada.',
-     'Ninguna acción crítica; mantener la revisión anual programada.');
+     'Ninguna acción crítica; mantener la revisión anual programada.',
+     'Política de seguridad de la información v3, firmada por la gerencia general el 14/01/2025, con acta de revisión anual adjunta.',
+     'BIEN_IMPLEMENTADO');
 
 INSERT INTO evaluacion_control
     (id_auditoria, codigo_control, estado, madurez, criterio,

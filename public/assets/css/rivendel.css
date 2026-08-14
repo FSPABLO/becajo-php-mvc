@@ -1,0 +1,1024 @@
+/*
+ * Rivendel — sistema visual
+ *
+ * Implementa documentacion/design/rivendel-sistema-visual-prompt.md y las
+ * decisiones de documentacion/design/diseño-general.md.
+ *
+ * DESVIACIÓN DECLARADA respecto del bloque §6 del sistema visual: allí los
+ * tokens se declaran en hexadecimal. Aquí se declaran como TERNAS DE CANALES
+ * RGB ("12 22 17") porque Tailwind necesita ese formato para aceptar el
+ * modificador de opacidad (bg-primario/10). Los valores son idénticos a los
+ * del documento; solo cambia la notación. En CSS propio se usan envueltos:
+ * rgb(var(--rv-text)). Cada token tiene además su alias --rv-*-hex para los
+ * pocos sitios donde hace falta un color literal (mask, outline, ::selection).
+ */
+
+/* ── Tipografías ─────────────────────────────────────────────────────────
+ * Prototipo: Google Fonts (aceptable según §2 del sistema visual).
+ * Producción: auto-hospedar .woff2 con subconjunto latin-ext.
+ * Se cargan desde head.php con preconnect; aquí solo se declaran las pilas.
+ */
+
+:root {
+    --rv-font-marca:  'Cinzel', Georgia, serif;
+    --rv-font-titulo: 'EB Garamond', Georgia, serif;
+    --rv-font-ui:     'Inter', system-ui, 'Segoe UI', sans-serif;
+    --rv-font-mono:   'JetBrains Mono', Consolas, monospace;
+    --rv-track-marca: 0.09em;
+    --rv-radio:       8px;
+    --rv-radio-lg:    12px;
+}
+
+/* ── «Imladris de noche» — paleta base ───────────────────────────────────
+ *
+ * Sigue sin haber CONMUTADOR: nadie puede poner el producto en claro desde la
+ * interfaz, no hay data-tema ni persistencia de tema. Lo que sí hay son tres
+ * REGIONES declaradas por el diseño, y cada una nace con su paleta:
+ *
+ *   :root        oscuro. El sitio público entero y todo lo que no diga otra cosa.
+ *   .rv-claro    pergamino. El lienzo del módulo interno (layouts/panel).
+ *   .rv-oscuro   vuelve a la noche dentro de una región clara. Hoy: la barra
+ *                lateral del módulo, que es oscura sobre un cuerpo claro.
+ *
+ * .rv-oscuro acompaña a :root en este bloque —y en el de neumorfismo, más
+ * abajo— para que la paleta oscura siga teniendo UNA sola definición. Sin él,
+ * la barra lateral necesitaría su propia copia de los quince tokens, que es
+ * exactamente como se desincronizan las paletas.
+ *
+ * Queda una excepción al final del archivo: @media print fuerza fondo claro
+ * para el reporte ejecutivo. No es un tema — es tinta.
+ */
+:root,
+.rv-oscuro {
+    --rv-bg:            12 22 17;      /* #0C1611 */
+    --rv-surface:       19 33 25;      /* #132119 */
+    --rv-elev:          27 46 35;      /* #1B2E23 */
+    --rv-border:        42 68 54;      /* #2A4436 */
+    --rv-text:         237 233 220;    /* #EDE9DC */
+    --rv-text-2:       179 174 158;    /* #B3AE9E */
+    --rv-nav:           12 22 17;      /* la barra navega sobre el propio lienzo */
+    /*
+     * DERIVADO (§1 permite derivar lo no cubierto, declarándolo): tokens del
+     * texto sobre la barra. Se conservan como tokens propios aunque hoy
+     * coincidan con --rv-text: la barra es la única superficie que podría
+     * volver a separarse del lienzo sin arrastrar al resto del producto.
+     * Contraste sobre #0C1611: 15,4:1 y 8,4:1.
+     */
+    --rv-nav-text:     237 233 220;
+    --rv-nav-text-2:   179 174 158;
+    --rv-primary:       62 142 107;    /* #3E8E6B */
+    --rv-primary-hover: 78 165 126;    /* #4EA57E */
+    /*
+     * DERIVADO: texto SOBRE el relleno primario. No es --rv-text: sobre
+     * #3E8E6B el blanco hueso da 3,3:1 y no llega al 4,5:1 de texto normal.
+     * El lienzo sí: #0C1611 sobre #3E8E6B = 4,7:1.
+     */
+    --rv-on-primary:    12  22  17;
+    --rv-gold:         217 182  95;    /* #D9B65F */
+    --rv-gold-text:    217 182  95;    /* en oscuro el oro sí alcanza como texto */
+    --rv-gold-tint:     42  36  21;    /* #2A2415 */
+
+    --rv-ok:            62 142 107;    /* #3E8E6B */
+    --rv-warn:         201 178  92;    /* #C9B25C */
+    --rv-bad:          224 122 114;    /* #E07A72 */
+    --rv-na:           138 137 127;    /* #8A897F */
+
+    --rv-bg-hex:       #0C1611;
+    --rv-surface-hex:  #132119;
+    --rv-gold-hex:     #D9B65F;
+    --rv-text-hex:     #EDE9DC;
+
+    color-scheme: dark;
+}
+
+/* ── «Pergamino élfico» — paleta clara ───────────────────────────────────
+ *
+ * Dos sitios de uso, con intenciones distintas y la MISMA definición:
+ *
+ *   .rv-alterno  estilo de sección. Aplicado en secciones alternas produce el
+ *                ritmo oscuro-claro-oscuro de la portada (§3 del diseño
+ *                general). Sigue sin ser un tema: es cadencia.
+ *   .rv-claro    lienzo del módulo interno. El cuerpo del panel de trabajo va
+ *                en pergamino y la barra lateral se queda de noche (.rv-oscuro),
+ *                que es el contraste que separa la navegación del trabajo.
+ *
+ * Van en la misma regla a propósito. Si mañana se corrige un valor —y son
+ * valores verificados contra WCAG en ambos sentidos— se corrige una vez y
+ * vale para los dos usos. Una copia por uso es una copia que se queda atrás.
+ *
+ * Re-declara la paleta COMPLETA —incluido el texto— porque sobre pergamino
+ * el blanco hueso desaparecería.
+ */
+.rv-alterno,
+.rv-claro {
+    --rv-bg:           245 242 233;    /* #F5F2E9 */
+    --rv-surface:      251 249 243;    /* #FBF9F3 */
+    --rv-elev:         232 240 234;    /* #E8F0EA */
+    --rv-border:       224 218 202;    /* #E0DACA */
+    --rv-text:          26  43  35;    /* #1A2B23 — 14,0:1 */
+    --rv-text-2:        74  93  83;    /* #4A5D53 —  7,2:1 */
+    --rv-nav:           31  77  58;    /* #1F4D3A */
+    --rv-nav-text:     245 242 233;
+    --rv-nav-text-2:   201 214 205;
+    --rv-primary:       44 107  78;    /* #2C6B4E —  5,7:1 */
+    --rv-primary-hover: 34  86  62;    /* #22563E */
+    /* Sobre #2C6B4E el lienzo claro da 5,6:1; el texto oscuro, 2,7:1. */
+    --rv-on-primary:   245 242 233;
+    --rv-gold:         154 112   0;    /* #9A7000 — solo componentes */
+    --rv-gold-text:    122  93   0;    /* #7A5D00 — el oro cuando es TEXTO:
+                                          #9A7000 cumple 3:1 de componente
+                                          pero no el 4,5:1 de texto normal */
+    --rv-gold-tint:    245 235 207;    /* #F5EBCF */
+
+    --rv-ok:            44 107  78;    /* #2C6B4E */
+    --rv-warn:         122  93   0;    /* #7A5D00 */
+    --rv-bad:          163  45  45;    /* #A32D2D */
+    --rv-na:           107 106  98;    /* #6B6A62 */
+
+    --rv-bg-hex:       #F5F2E9;
+    --rv-surface-hex:  #FBF9F3;
+    --rv-gold-hex:     #9A7000;
+    --rv-text-hex:     #1A2B23;
+
+    /*
+     * El relieve también cambia de lado: sobre pergamino la sombra se deriva
+     * del texto y el realce del blanco, no del negro puro (§4 del diseño
+     * general). Sin esto, las tarjetas claras llevarían la sombra del tema
+     * oscuro y se verían sucias.
+     */
+    --nm-sombra: 26 43 35;
+    --nm-realce: 255 253 246;
+    --nm-o: 0.13;
+    --nm-h: 0.95;
+
+    color-scheme: light;
+}
+
+.rv-alterno .rv-relieve-sutil,
+.rv-claro .rv-relieve-sutil {
+    --nm-o: 0.08;
+    --nm-h: 0.85;
+}
+
+.rv-alterno .rv-relieve-pleno,
+.rv-claro .rv-relieve-pleno {
+    --nm-o: 0.19;
+    --nm-h: 1.00;
+}
+
+/* ── «Pergamino y oro» — variante de acento ──────────────────────────────
+ *
+ * NO es una paleta nueva. Es .rv-claro con el ACENTO repuntado, y se escribe
+ * siempre junto a ella (class="rv-claro rv-oro"): de ahí hereda el lienzo, el
+ * texto, la escala de estado y el relieve. Corregir el pergamino sigue siendo
+ * tocar un solo sitio, que es justo lo que se pierde al copiar una paleta.
+ *
+ * Por qué existe: en el módulo interno la barra lateral ya es verde de noche, y
+ * el verde de marca volvía a aparecer RELLENO en cada pastilla, cada botón y
+ * cada barra del instrumento. Dos verdes distintos a un palmo compiten sin
+ * decir nada. Aquí el relleno de acción pasa al oro y --rv-elev pierde el tinte
+ * de menta, de modo que el único verde que queda en pantalla es el de la escala
+ * de estado (bg-ok, text-ok), que sí significa algo.
+ *
+ * DESVIACIÓN DECLARADA respecto de §5.2 —el oro significa referencia normativa
+ * y nada más—: dentro de esta región significa además «acción primaria y
+ * selección». La referencia normativa se sigue distinguiendo por FORMA, no solo
+ * por color: .rv-id y .rv-badge-norma van en monoespaciada y sobre
+ * --rv-gold-tint, que ninguna acción usa.
+ *
+ * Se repuntan TOKENS y no se reescriben las vistas a propósito: bg-primario,
+ * ring-primario y las clases que alterna instrumento.js siguen diciendo
+ * «acento», y aquí ese acento es oro sin que ninguna vista se entere.
+ */
+.rv-oro {
+    /* #F0EBDE — pergamino elevado. .rv-claro lo tiñe de menta (#E8F0EA) y ese
+       es el verde de fondo que esta región retira. Texto: 12,5:1. */
+    --rv-elev:         240 235 222;
+    --rv-border:       224 214 190;    /* #E0D6BE — el borde acompaña al lienzo */
+
+    /*
+     * Acento. #7A5D00 y no el #9A7000 de --rv-gold: sobre oro relleno el
+     * pergamino da 4,0:1 con el segundo y 5,5:1 con este, y un botón lleva
+     * texto normal, no texto grande.
+     */
+    --rv-primary:       122  93   0;   /* #7A5D00 — 5,9:1 como texto */
+    --rv-primary-hover:  92  70   0;   /* #5C4600 */
+    --rv-on-primary:    245 242 233;   /* pergamino sobre el oro: 5,5:1 */
+}
+
+/* ── Base ────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: rgb(var(--rv-bg));
+    color: rgb(var(--rv-text));
+    font-family: var(--rv-font-ui);
+    /* Evita el desbordamiento horizontal en pantallas angostas */
+    overflow-x: hidden;
+}
+
+/* Compensa el encabezado fijo al navegar con anclas (#servicios, #equipo...) */
+[id] {
+    scroll-margin-top: 5rem;
+}
+
+/*
+ * Las cajas de texto tienen tamaño FIJO. Decisión de diseño general, no del
+ * formulario que la use: el tirador de la esquina deja estirar el campo hasta
+ * romper la columna donde vive —en la tarjeta de control son dos campos uno
+ * sobre otro, y en el pie el formulario comparte fila con los datos de la
+ * empresa—, y esa maqueta rota no la ve quien la provoca.
+ *
+ * El alto lo fija el atributo 'rows' de cada vista, que es donde se sabe
+ * cuánto texto se espera. Lo que no cabe se recorre con la barra del propio
+ * campo: no se pierde ni se recorta nada.
+ */
+textarea {
+    resize: none;
+}
+
+/*
+ * Foco visible en oro: §10 del diseño general lo elige porque es el único
+ * acento con contraste suficiente contra AMBOS lienzos. Se usa el alias hex
+ * porque outline no admite el modificador de opacidad de Tailwind.
+ */
+:focus-visible {
+    outline: 2px solid var(--rv-gold-hex);
+    outline-offset: 3px;
+}
+
+::selection {
+    background-color: rgb(var(--rv-primary));
+    color: rgb(var(--rv-text));
+}
+
+/* ── Las cuatro voces tipográficas (§2 del sistema visual) ───────────── */
+
+/*
+ * Cinzel: solo logotipo, portada y encabezado de informe exportado.
+ * Nunca en cadenas de más de tres palabras.
+ */
+.rv-marca {
+    font-family: var(--rv-font-marca);
+    font-weight: 600;
+    letter-spacing: var(--rv-track-marca);
+    text-transform: uppercase;
+}
+
+/* EB Garamond: títulos de sección, texto explicativo, cuerpo de informes.
+   Nunca por debajo de 16px: sus trazos finos se degradan. */
+.rv-titulo {
+    font-family: var(--rv-font-titulo);
+}
+
+/* Inter con cifras tabulares: sin esto las columnas de porcentaje cambian
+   de ancho fila a fila. */
+.rv-dato {
+    font-family: var(--rv-font-ui);
+    font-variant-numeric: tabular-nums;
+}
+
+/* JetBrains Mono: identificadores de control (C-001), marcas de tiempo.
+   El oro es la referencia normativa, y por eso vive aquí. */
+.rv-id {
+    font-family: var(--rv-font-mono);
+    color: rgb(var(--rv-gold-text));
+}
+
+/* ── Neumorfismo (§4 del diseño general) ─────────────────────────────────
+ *
+ * El sistema visual prohíbe gradientes y sombras de color. El relieve se
+ * construye con PARES DE SOMBRAS NEUTRAS derivadas del lienzo de cada tema:
+ * una sombra en el negro/verde del fondo y un realce en el blanco hueso. No
+ * introduce ningún color nuevo.
+ *
+ * Tres niveles vía la clase .rv-relieve-{sutil,pleno}; «equilibrado» es el
+ * valor por defecto y no necesita clase.
+ */
+
+/*
+ * Los valores de la noche. .rv-oscuro los repite por la misma razón que repite
+ * la paleta: una región oscura dentro de una clara tiene que recuperar TAMBIÉN
+ * el relieve, o la barra lateral llevaría la sombra del pergamino —derivada del
+ * texto y no del negro— y se vería lavada sobre su propio fondo.
+ */
+:root,
+.rv-oscuro {
+    --nm-sombra: 0 0 0;
+    --nm-realce: 255 255 255;
+    --nm-o: 0.55;
+    --nm-h: 0.035;
+}
+
+/* Nivel «sutil»: el de las tablas densas, donde el relieve no debe competir
+   con la lectura del dato. */
+.rv-relieve-sutil {
+    --nm-o: 0.38;
+    --nm-h: 0.020;
+}
+
+.rv-relieve-pleno {
+    --nm-o: 0.70;
+    --nm-h: 0.050;
+}
+
+/*
+ * Extruido: tarjetas, botones, pills. Desplazamiento según jerarquía.
+ * Hundido (inset): campos de formulario, pistas de barras de progreso,
+ * franja de mensajes. El hundido señala «aquí se recibe algo».
+ */
+.rv-extruido {
+    box-shadow:
+         7px  7px 18px rgba(var(--nm-sombra) / var(--nm-o)),
+        -5px -5px 14px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-extruido-lg {
+    box-shadow:
+         11px  11px 24px rgba(var(--nm-sombra) / var(--nm-o)),
+         -7px  -7px 18px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * Relieve corto: piezas pequeñas y MUY juntas —las celdas de la matriz de
+ * riesgo, separadas por 6 px—. El desplazamiento de una tarjeta caería entero
+ * sobre la casilla vecina, y veinticinco sombras invadiéndose unas a otras no
+ * son relieve: son suciedad entre las celdas.
+ */
+.rv-extruido-sm {
+    box-shadow:
+         3px  3px 7px rgba(var(--nm-sombra) / var(--nm-o)),
+        -2px -2px 5px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/* Relieve menudo: muestras de leyenda y piezas de pocos píxeles, donde el
+   desplazamiento de una tarjeta se saldría de la pieza en vez de levantarla. */
+.rv-extruido-xs {
+    box-shadow:
+         2px  2px 4px rgba(var(--nm-sombra) / var(--nm-o)),
+        -1px -1px 3px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-hundido {
+    box-shadow:
+        inset  5px  5px 12px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -4px -4px 10px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/* Hover de tarjeta: mismo par de sombras, mayor desplazamiento — sin
+   desplazar el layout. Estado activo de botón: inversión a inset. */
+.rv-interactivo {
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.rv-interactivo:hover {
+    box-shadow:
+         12px  12px 26px rgba(var(--nm-sombra) / var(--nm-o)),
+         -8px  -8px 20px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-interactivo:active {
+    box-shadow:
+        inset  5px  5px 12px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -4px -4px 10px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * El mismo gesto en escala corta, para lo que nace con .rv-extruido-sm: una
+ * fila de seis botones de 38 px de alto y 10 de separación. Con el hover de
+ * .rv-interactivo —12 px de desplazamiento— cada botón proyecta sombra sobre
+ * su vecino en vez de levantarse, que es el mismo problema que ya resolvía
+ * .rv-extruido-sm en reposo.
+ */
+.rv-interactivo-sm {
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.rv-interactivo-sm:hover {
+    box-shadow:
+         5px  5px 11px rgba(var(--nm-sombra) / var(--nm-o)),
+        -4px -4px  9px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-interactivo-sm:active {
+    box-shadow:
+        inset  3px  3px 6px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -2px -2px 4px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * En tablas densas el relieve compite con la lectura del dato. Las filas
+ * nunca llevan sombra propia; el relieve vive en el contenedor de la tabla.
+ */
+.rv-tabla tbody tr {
+    box-shadow: none;
+}
+
+/* ── Relieve dentro de un SVG ────────────────────────────────────────────
+ *
+ * box-shadow no llega a las marcas de un gráfico, así que su relieve se dibuja
+ * con filtros. Lo que NO cambia es de dónde salen los valores: las mismas
+ * ternas --nm-* de arriba, aquí como flood-color / flood-opacity de cada
+ * primitiva. Cambiar la paleta o el nivel de relieve sigue siendo tocar un solo
+ * sitio, y el gráfico acompaña.
+ *
+ * Van en CSS y no como atributos del SVG porque var() dentro de un atributo de
+ * presentación no es de fiar en todos los navegadores; como propiedad CSS sí lo
+ * es. Los desplazamientos y desenfoques viven en el propio SVG, en unidades de
+ * su viewBox: una sombra de 7 px como la de una tarjeta, sobre una columna de
+ * 38 de ancho, no es relieve sino un borrón.
+ */
+.rv-nm-sombra {
+    flood-color: rgb(var(--nm-sombra));
+    flood-opacity: var(--nm-o);
+}
+
+.rv-nm-realce {
+    flood-color: rgb(var(--nm-realce));
+    flood-opacity: var(--nm-h);
+}
+
+/* ── Enlaces de la barra ─────────────────────────────────────────────────
+ *
+ * Al pasar el puntero, el enlace se HUNDE y su texto pasa a oro. Es un
+ * hundido más leve que .rv-hundido: sobre una pieza de 34 px de alto, el
+ * relieve de una tarjeta tapa el propio texto.
+ */
+.rv-enlace-nav {
+    transition: color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rv-enlace-nav:hover {
+    color: rgb(var(--rv-gold));
+    box-shadow:
+        inset  3px  3px 7px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -3px -3px 7px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/* ── Armazón del módulo interno ──────────────────────────────────────────
+ *
+ * La barra lateral se pliega hacia la izquierda y el contenido recupera el
+ * ancho. El estado vive en data-lateral sobre <html>, y lo escribe el SERVIDOR
+ * a partir de una cookie: así la página nace ya plegada en vez de plegarse de
+ * un salto cuando arranca el guion.
+ *
+ * Se resuelve aquí en CSS y no alternando utilidades de Tailwind porque el
+ * padding de la columna y la posición de la barra tienen que cambiar juntos, y
+ * dos utilidades opuestas (lg:pl-[264px] y lg:pl-0) dependerían del orden en
+ * que el CDN las genera, que no es algo sobre lo que se pueda construir.
+ *
+ * Todo va dentro de la consulta de medios: por debajo de lg la barra es un
+ * cajón y lo gobierna el guion con -translate-x-full, sin tocar data-lateral.
+ * Los dos mecanismos no se cruzan nunca porque viven en anchos distintos.
+ */
+@media (min-width: 1024px) {
+    .rv-panel-columna {
+        padding-left: 264px;
+        transition: padding-left 0.3s ease;
+    }
+
+    /* Gana a la utilidad lg:translate-x-0 de la barra por especificidad. */
+    [data-lateral='oculta'] .rv-panel-lateral {
+        transform: translateX(-100%);
+    }
+
+    [data-lateral='oculta'] .rv-panel-columna {
+        padding-left: 0;
+    }
+
+    /*
+     * El botón de la barra superior solo aparece cuando no hay barra lateral a
+     * la vista: mientras está desplegada, quien quiera plegarla usa el botón
+     * que vive dentro de ella.
+     */
+    [data-lateral='oculta'] .rv-panel-mostrar {
+        display: inline-flex;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rv-panel-columna {
+        transition: none;
+    }
+}
+
+/* ── Enlaces de la barra lateral del módulo ──────────────────────────────
+ *
+ * Mismo gesto que la barra del sitio —el enlace se hunde al pasar el puntero—
+ * pero SIN el viraje a oro: aquí hay hasta nueve enlaces a la vez y el oro
+ * significa referencia normativa, no «tiene el ratón encima». El realce del
+ * elemento activo lo pone el tinte verde y el indicador vertical, que la vista
+ * dibuja junto a aria-current.
+ */
+.rv-lateral-enlace {
+    transition: color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.rv-lateral-enlace:hover {
+    color: rgb(var(--rv-text));
+    box-shadow:
+        inset  3px  3px 7px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -3px -3px 7px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-lateral-enlace[aria-current] {
+    box-shadow:
+        inset  4px  4px 9px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -3px -3px 8px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/* ── Retrato del equipo ──────────────────────────────────────────────────
+ *
+ * Hueco cuadrado con textura rayada donde va el retrato. El rayado es de
+ * tokens (elevado sobre superficie), no un color nuevo, y el relieve es
+ * HUNDIDO: es un hueco a la espera de una foto, no una pieza que sobresale.
+ *
+ * Se queda debajo de la imagen cuando la hay, así que el hueco sigue
+ * marcando la caja mientras el archivo carga.
+ */
+.rv-retrato {
+    aspect-ratio: 1;
+    border-radius: 13px;
+    overflow: hidden;
+    background: repeating-linear-gradient(
+        135deg,
+        rgb(var(--rv-elev))    0    7px,
+        rgb(var(--rv-surface)) 7px 14px
+    );
+    box-shadow: inset 5px 5px 12px rgba(var(--nm-sombra) / var(--nm-o));
+}
+
+/* Modificador redondo: lo usan los retratos de los testimonios. */
+.rv-retrato--redondo {
+    aspect-ratio: auto;
+    border-radius: 50%;
+}
+
+.rv-retrato > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ── Pills de estado (§5.5 del sistema visual) ───────────────────────────
+ *
+ * Contorno y texto teñido, NUNCA relleno sólido: cuatro rellenos saturados
+ * compitiendo en una tabla densa destruyen la jerarquía de lectura.
+ *
+ * El color nunca es el único canal: cada pill lleva color + ícono + etiqueta.
+ * La etiqueta la pone la vista; el ícono se pasa con icono().
+ */
+.rv-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.625rem;
+    border: 1px solid currentColor;
+    border-radius: 9999px;
+    font-family: var(--rv-font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.rv-pill--ok   { color: rgb(var(--rv-ok)); }
+.rv-pill--warn { color: rgb(var(--rv-warn)); }
+.rv-pill--bad  { color: rgb(var(--rv-bad)); }
+.rv-pill--na   { color: rgb(var(--rv-na)); }
+
+/*
+ * Badge de referencia normativa. Es el ÚNICO uso del oro junto con .rv-id:
+ * IDs de control, badges de norma (27002), enlaces a cláusulas. Nada más.
+ * Un badge dorado nunca puede significar «riesgo medio».
+ */
+.rv-badge-norma {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.625rem;
+    border: 1px solid rgb(var(--rv-gold) / 0.45);
+    border-radius: 9999px;
+    background-color: rgb(var(--rv-gold-tint));
+    color: rgb(var(--rv-gold-text));
+    font-family: var(--rv-font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+}
+
+/*
+ * Icono de mapa de bits pintado como MÁSCARA (home/secciones/portada).
+ *
+ * Los PNG de assets/images/icons son siluetas negras sobre transparente, y
+ * sobre el lienzo de noche una imagen negra no se ve. Enmascarando en vez de
+ * insertar la imagen, el color sale de currentColor —o sea, de un token— y el
+ * icono acompaña a la paleta de su región en lugar de quedarse clavado en
+ * negro. Eso es lo que permite pintarlos en oro sin tocar los archivos, y lo
+ * que hará que se inviertan solos si algún día se usan sobre pergamino.
+ *
+ * La vista pasa el archivo en --rv-icono y el tamaño con utilidades.
+ */
+.rv-icono-masc {
+    background-color: currentColor;
+    -webkit-mask-image: var(--rv-icono);
+    mask-image: var(--rv-icono);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
+/* ── Formato numérico español (§2.3): 68,0 % ─────────────────────────── */
+.tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Movimiento ─────────────────────────────────────────────────────────
+ * §9: prefers-reduced-motion anula animaciones, transiciones y el
+ * desplazamiento suave.
+ */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ── Carrusel de logotipos del stack ────────────────────────────────────
+ *
+ * La pista contiene la lista DOS veces. Al desplazarla un 50 % de su ancho,
+ * el segundo juego queda donde empezó el primero, así que el salto al
+ * reiniciar es invisible. El segundo juego lleva aria-hidden: es una copia
+ * visual, no contenido nuevo.
+ *
+ * Se hace con CSS y no con JavaScript a propósito: el navegador lo anima en
+ * el compositor y funciona aunque el script no cargue.
+ */
+.carrusel-logos {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.carrusel-logos__pista {
+    display: flex;
+    width: max-content;
+    animation: desplazar-logos 72s linear infinite;
+}
+
+@keyframes desplazar-logos {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/*
+ * Con movimiento reducido no basta la regla general: una animación infinita
+ * de 0.01ms parpadearía. Se detiene del todo y la lista se acomoda centrada
+ * en varias líneas, con la copia oculta para no repetir logotipos.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .carrusel-logos__pista,
+    .carrusel-logos__grupo {
+        animation: none !important;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .carrusel-logos__copia {
+        display: none;
+    }
+}
+
+/* ── Carrusel de testimonios ────────────────────────────────────────────
+ *
+ * Tres huecos: el testimonio anterior atenuado a la izquierda, el activo en
+ * el centro y el siguiente atenuado a la derecha.
+ *
+ * Los CINCO testimonios están en el HTML desde el servidor; el guion solo
+ * decide qué papel juega cada uno (data-posicion) y CSS los coloca. Por eso
+ * la sección se ve completa aunque el guion no cargue, y por eso el contenido
+ * de los laterales no hay que rellenarlo desde JavaScript.
+ *
+ * La vuelta es CIRCULAR: estando en el primero, el hueco de la izquierda
+ * muestra el ÚLTIMO, y estando en el último el de la derecha muestra el
+ * primero. Eso lo resuelve el módulo en principal.js; aquí solo se dibuja.
+ */
+.rv-tst {
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.25fr) minmax(0, 0.82fr);
+    gap: 22px;
+    align-items: center;
+    justify-items: center;
+}
+
+/* El orden visual lo fija la posición, no el orden del HTML: con la vuelta
+   circular el anterior puede ser el último del listado. */
+.rv-tst > [data-posicion='anterior']  { order: 1; }
+.rv-tst > [data-posicion='activo']    { order: 2; }
+.rv-tst > [data-posicion='siguiente'] { order: 3; }
+.rv-tst > [data-posicion='oculto']    { display: none; }
+
+.rv-tst__ficha {
+    position: relative;
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* ── Laterales ─────────────────────────────────────────────────────────
+ * Atenuadas pero legibles: por debajo de 0.48 de opacidad con el
+ * desaturado, el texto secundario baja del contraste mínimo y la ficha se
+ * vuelve decorado en vez de contenido.
+ */
+.rv-tst > [data-posicion='anterior'] .rv-tst__ficha,
+.rv-tst > [data-posicion='siguiente'] .rv-tst__ficha {
+    max-width: 320px;
+    gap: 16px;
+    padding: 26px 22px;
+    border-radius: 18px;
+    background: rgb(var(--rv-bg));
+    box-shadow:
+         7px  7px 16px rgba(var(--nm-sombra) / var(--nm-o)),
+        -7px -7px 16px rgba(var(--nm-realce) / var(--nm-h));
+    opacity: 0.48;
+    filter: saturate(0.55);
+    transform: scale(0.94);
+    transition: opacity 0.25s ease;
+}
+
+.rv-tst > [data-posicion='anterior'] .rv-tst__ficha:hover,
+.rv-tst > [data-posicion='siguiente'] .rv-tst__ficha:hover {
+    opacity: 0.72;
+}
+
+/* ── Ficha central ─────────────────────────────────────────────────────── */
+.rv-tst > [data-posicion='activo'] .rv-tst__ficha {
+    max-width: 440px;
+    gap: 18px;
+    padding: 34px 30px;
+    border-radius: 22px;
+    background: rgb(var(--rv-surface));
+    box-shadow:
+         16px  16px 34px rgba(var(--nm-sombra) / var(--nm-o)),
+        -13px -13px 30px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * Cada ficha trae TODO su contenido; lo que cambia es qué se muestra según el
+ * papel. Ocultar con display:none —y no con opacidad— es lo que mantiene la
+ * accesibilidad: los puntos de navegación de las fichas laterales no quedan
+ * en el orden de tabulación ni los anuncia un lector de pantalla.
+ */
+.rv-tst > [data-posicion='anterior']  .rv-tst__solo-activo,
+.rv-tst > [data-posicion='siguiente'] .rv-tst__solo-activo,
+.rv-tst > [data-posicion='activo']    .rv-tst__solo-lateral {
+    display: none;
+}
+
+/*
+ * Estrellas de calificación.
+ *
+ * Dos filas superpuestas: la de abajo apagada y la de arriba encendida,
+ * recortada al porcentaje del puntaje. Es lo que permite ver medio punto sin
+ * un glifo de media estrella —que no existe con soporte fiable— y sin un SVG.
+ *
+ * El ancho lo fija siempre la fila de abajo, así que un 4,0 y un 5,0 ocupan
+ * exactamente lo mismo y las fichas no bailan al pasar de una a otra.
+ *
+ * Va con aria-hidden: la calificación la comunica la cifra de al lado. El
+ * color nunca es el único canal, tampoco aquí.
+ */
+.rv-estrellas {
+    position: relative;
+    display: inline-block;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: rgb(var(--rv-border));
+    white-space: nowrap;
+}
+
+.rv-estrellas__lleno {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    color: rgb(var(--rv-primary));
+}
+
+/* La cita crece y gana contraste al llegar al centro. */
+.rv-tst__cita {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: rgb(var(--rv-text-2));
+}
+
+.rv-tst > [data-posicion='activo'] .rv-tst__cita {
+    font-size: 21px;
+    color: rgb(var(--rv-text));
+    text-wrap: pretty;
+}
+
+/*
+ * Pistas «← anterior» / «siguiente →». Cada ficha imprime las dos y aquí se
+ * enseña la del lado que ocupa: al girar el carrusel una ficha pasa de un
+ * lado al otro, así que el texto no puede quedar fijado en el HTML.
+ */
+.rv-tst__pista {
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(var(--rv-text-2));
+}
+
+.rv-tst > [data-posicion='activo'] .rv-tst__pista,
+.rv-tst > [data-posicion='anterior']  .rv-tst__pista--siguiente,
+.rv-tst > [data-posicion='siguiente'] .rv-tst__pista--anterior {
+    display: none;
+}
+
+/* El botón que cubre la ficha lateral: pulsar en cualquier punto navega.
+   En la ficha central estorbaría, así que ahí desaparece. */
+.rv-tst__ir {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    cursor: pointer;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+}
+
+.rv-tst > [data-posicion='activo'] .rv-tst__ir {
+    display: none;
+}
+
+/* ── Retratos ───────────────────────────────────────────────────────────
+ * Redondos, y con la misma textura rayada que los del equipo cuando falta la
+ * fotografía. El tamaño lo pone la posición: 96 px en el centro, 66 en los
+ * laterales.
+ */
+.rv-tst__retrato {
+    width: 96px;
+    height: 96px;
+}
+
+.rv-tst > [data-posicion='anterior']  .rv-tst__retrato,
+.rv-tst > [data-posicion='siguiente'] .rv-tst__retrato {
+    width: 66px;
+    height: 66px;
+}
+
+/* ── Puntos de navegación ─────────────────────────────────────────────── */
+.rv-tst__punto {
+    width: 30px;
+    height: 9px;
+    cursor: pointer;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(var(--rv-elev));
+    box-shadow: inset 3px 3px 6px rgba(var(--nm-sombra) / var(--nm-o));
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* El activo va extruido y en verde; los inactivos, hundidos. */
+.rv-tst__punto[aria-selected='true'] {
+    background: rgb(var(--rv-primary));
+    box-shadow:
+         3px  3px 7px rgba(var(--nm-sombra) / var(--nm-o)),
+        -2px -2px 5px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/* ── Movimiento ─────────────────────────────────────────────────────────
+ *
+ * Al cambiar de testimonio, la ficha central entra desde el lado que
+ * corresponde al sentido de la navegación; las laterales hacen un fundido
+ * desde una escala menor.
+ *
+ * Los pares de fotogramas IDÉNTICOS (…-a / …-b) no son un descuido: una
+ * animación no se reinicia si se le vuelve a asignar el mismo nombre, así que
+ * el guion alterna entre los dos para que cada cambio se anime de nuevo.
+ */
+@keyframes rv-tst-sig-a {
+    from { opacity: 0; transform: translateX(46px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0)    scale(1); }
+}
+@keyframes rv-tst-sig-b {
+    from { opacity: 0; transform: translateX(46px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0)    scale(1); }
+}
+@keyframes rv-tst-ant-a {
+    from { opacity: 0; transform: translateX(-46px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0)     scale(1); }
+}
+@keyframes rv-tst-ant-b {
+    from { opacity: 0; transform: translateX(-46px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0)     scale(1); }
+}
+@keyframes rv-tst-lat-a {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 0.48; transform: scale(0.94); }
+}
+@keyframes rv-tst-lat-b {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 0.48; transform: scale(0.94); }
+}
+
+.rv-tst[data-sentido='siguiente'][data-turno='a'] > [data-posicion='activo'] .rv-tst__ficha { animation: rv-tst-sig-a 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+.rv-tst[data-sentido='siguiente'][data-turno='b'] > [data-posicion='activo'] .rv-tst__ficha { animation: rv-tst-sig-b 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+.rv-tst[data-sentido='anterior'][data-turno='a']  > [data-posicion='activo'] .rv-tst__ficha { animation: rv-tst-ant-a 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+.rv-tst[data-sentido='anterior'][data-turno='b']  > [data-posicion='activo'] .rv-tst__ficha { animation: rv-tst-ant-b 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+
+.rv-tst[data-turno='a'] > [data-posicion='anterior'] .rv-tst__ficha,
+.rv-tst[data-turno='a'] > [data-posicion='siguiente'] .rv-tst__ficha { animation: rv-tst-lat-a 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+.rv-tst[data-turno='b'] > [data-posicion='anterior'] .rv-tst__ficha,
+.rv-tst[data-turno='b'] > [data-posicion='siguiente'] .rv-tst__ficha { animation: rv-tst-lat-b 0.44s cubic-bezier(0.22, 0.7, 0.2, 1); }
+
+/* ── Pantallas angostas ─────────────────────────────────────────────────
+ * Los laterales se van y queda la ficha central; las flechas y los puntos
+ * siguen siendo la forma de recorrer el carrusel.
+ */
+@media (max-width: 860px) {
+    .rv-tst {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .rv-tst > [data-posicion='anterior'],
+    .rv-tst > [data-posicion='siguiente'] {
+        display: none;
+    }
+}
+
+/*
+ * Con movimiento reducido se anula el desplazamiento pero NO el atenuado de
+ * las laterales: eso es color y tamaño, no movimiento, y es lo que distingue
+ * a la ficha del centro.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rv-tst .rv-tst__ficha {
+        animation: none !important;
+        transition: none;
+    }
+}
+
+/* ── Impresión ──────────────────────────────────────────────────────────
+ * El reporte ejecutivo se guarda como PDF. Única superficie clara que queda
+ * en el producto, y no es un tema: imprimir el lienzo oscuro gastaría un
+ * cartucho por informe. Se quita además todo relieve — el neumorfismo sobre
+ * papel es tinta sin información.
+ *
+ * Los valores son los del retirado «Pergamino élfico», que ya estaban
+ * verificados contra WCAG; se conservan aquí y en ningún otro sitio.
+ */
+@media print {
+    :root {
+        --rv-bg:      255 255 255;
+        --rv-surface: 255 255 255;
+        --rv-text:      26  43  35;
+        --rv-text-2:    74  93  83;
+        --rv-border:   224 218 202;
+        --rv-primary:   44 107  78;
+        --rv-gold-text: 122 93   0;
+        --rv-ok:        44 107  78;
+        --rv-warn:     122  93   0;
+        --rv-bad:      163  45  45;
+        --rv-na:       107 106  98;
+    }
+
+    .rv-extruido,
+    .rv-extruido-lg,
+    .rv-extruido-sm,
+    .rv-extruido-xs,
+    .rv-hundido,
+    .rv-interactivo,
+    .rv-interactivo-sm {
+        box-shadow: none !important;
+    }
+
+    /* El relieve de los gráficos se apaga por la misma razón, y se apaga en su
+       propio idioma: aquí no hay box-shadow que anular, hay un caudal de tinta
+       que llevar a cero. */
+    .rv-nm-sombra,
+    .rv-nm-realce {
+        flood-opacity: 0 !important;
+    }
+}

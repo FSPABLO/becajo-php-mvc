@@ -59,8 +59,28 @@ $pestanas = [
     ['clave' => 'marco',        'etiqueta' => 'Marco ISO',    'icono' => 'escudo'],
     ['clave' => 'referencias',  'etiqueta' => 'Referencias',  'icono' => 'libro'],
 ];
+
+/*
+ * Esta página se sirve en dos marcos (ver HerramientasController). El relleno
+ * superior de la portadilla existe SOLO para dejar pasar la barra fija del
+ * sitio público; la barra del panel es pegajosa y ocupa su propio sitio, así
+ * que ahí ese hueco sería una franja vacía bajo el encabezado.
+ */
+$enPanel = $enPanel ?? false;
 ?>
-<div class="bg-slate-50 pb-24 pt-16">
+<?php
+/*
+ * El instrumento vive SIEMPRE en pergamino con acento de oro, venga por el
+ * marco público (lienzo de noche) o por el del módulo (que ya es claro). Es una
+ * región declarada, no un tema: rv-claro pone el lienzo y rv-oro solo repunta
+ * el acento al oro y retira el tinte de menta de --rv-elev, para que el único
+ * verde de la pantalla siga siendo el de la escala de estado. Ver rivendel.css.
+ *
+ * Que se declaren las dos clases juntas es el contrato de rv-oro: sola no trae
+ * paleta, y en el marco público no habría ninguna clara que heredar.
+ */
+?>
+<div class="rv-claro rv-oro bg-elevado pb-24 <?= $enPanel ? 'pt-10' : 'pt-16' ?>">
 
     <?= $vista->renderizar('herramientas/parciales/encabezado-instrumento', [
         'instrumento' => $instrumento,
@@ -71,16 +91,18 @@ $pestanas = [
 
     <?php if ($usuarioActual === null): ?>
         <div class="mx-auto max-w-7xl px-6 pt-6 lg:px-8 no-imprimir">
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-acento-500/30 bg-acento-500/10 px-4 py-3 text-sm text-marina-950">
+            <?php /* Franja de mensaje: hundida, que es como el sistema marca
+                     «aquí se recibe algo» (§4 del diseño general). */ ?>
+            <div class="rv-hundido flex flex-wrap items-center justify-between gap-3 rounded-rv-lg border border-oro/30 bg-oro-tinte px-4 py-3 text-sm text-texto">
                 <span>
                     Esto queda solo en este navegador y se puede perder. Si va a dar seguimiento a esta
                     consultoría, cree una cuenta y guarde sus auditorías de verdad.
                 </span>
                 <span class="flex shrink-0 gap-3">
-                    <a href="<?= e($vista->url('ingresar')) ?>" class="font-semibold text-acento-700 hover:underline">
+                    <a href="<?= e($vista->url('ingresar')) ?>" class="font-semibold text-oro-texto hover:underline">
                         Iniciar sesión
                     </a>
-                    <a href="<?= e($vista->url('registrarse')) ?>" class="font-semibold text-acento-700 hover:underline">
+                    <a href="<?= e($vista->url('registrarse')) ?>" class="font-semibold text-oro-texto hover:underline">
                         Crear cuenta
                     </a>
                 </span>
@@ -89,7 +111,7 @@ $pestanas = [
     <?php endif; ?>
 
     <!-- Barra de pestañas: adherida bajo el encabezado fijo del sitio (h-16). -->
-    <div class="sticky top-16 z-30 border-b border-slate-200 bg-white/95 backdrop-blur no-imprimir">
+    <div class="sticky top-16 z-30 border-b border-borde bg-elevado/95 backdrop-blur no-imprimir">
         <div class="mx-auto max-w-7xl px-6 lg:px-8">
             <div class="flex gap-1.5 overflow-x-auto py-3" role="tablist"
                  aria-label="Secciones del instrumento">
@@ -101,10 +123,13 @@ $pestanas = [
                             aria-controls="panel-<?= e($pestana['clave']) ?>"
                             aria-selected="<?= $indice === 0 ? 'true' : 'false' ?>"
                             tabindex="<?= $indice === 0 ? '0' : '-1' ?>"
-                            class="flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition
+                            <?php /* Tecla: suelta sobresale, elegida se hunde y se
+                                     llena de oro. El hundido lo dispara
+                                     aria-selected, que el guion ya mantiene. */ ?>
+                            class="rv-opcion flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold
                                    <?= $indice === 0
-                                       ? 'bg-acento-500 text-marina-950'
-                                       : 'text-slate-600 hover:bg-slate-100 hover:text-marina-950' ?>">
+                                       ? 'bg-primario text-primario-texto'
+                                       : 'bg-superficie text-texto-2 hover:text-texto' ?>">
                         <?= icono($pestana['icono'], 'h-4 w-4') ?>
                         <?= e($pestana['etiqueta']) ?>
                     </button>

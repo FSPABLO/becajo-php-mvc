@@ -14,6 +14,11 @@ namespace App\Models\Entidades;
  */
 final class Control
 {
+    /** Importancia relativa del control (COBIT 4.1, Apéndice II). */
+    public const PESO_ALTA = 'ALTA';
+    public const PESO_MEDIA = 'MEDIA';
+    public const PESO_BAJA = 'BAJA';
+
     public function __construct(
         public readonly string $id,
         public readonly int $proceso,
@@ -21,6 +26,7 @@ final class Control
         public readonly string $enunciado,
         public readonly string $evidencia,
         public readonly string $pregunta,
+        public readonly string $peso = self::PESO_MEDIA,
     ) {
     }
 
@@ -34,6 +40,7 @@ final class Control
             enunciado: (string) ($fila['enunciado'] ?? ''),
             evidencia: (string) ($fila['evidencia'] ?? ''),
             pregunta:  (string) ($fila['pregunta'] ?? ''),
+            peso:      (string) ($fila['peso'] ?? self::PESO_MEDIA),
         );
     }
 }

@@ -3,67 +3,181 @@
 declare(strict_types=1);
 
 /**
+ * Banner de la portada: hero tipográfico sobre el instrumento.
+ *
+ * UNA SOLA COLUMNA, CENTRADA. No hay tarjeta a la derecha y no es un olvido.
+ * Aquí hubo una de índice de riesgo —un 3,4 sobre 5,0 en rojo, de 52 px, con el
+ * expediente inventado AUD-0042— y se retiró por tres razones que conviene que
+ * no se deshagan:
+ *
+ *   - Era el objeto más pesado de la pantalla. Tamaño, color único y
+ *     aislamiento apilados le ganaban la primera fijación al botón, que es lo
+ *     único que la portada tiene que conseguir.
+ *   - La cifra no tenía sujeto. Sin nadie a quien atribuirla, el mal resultado
+ *     se lee del emisor: la consultora abría su sitio con un suspenso.
+ *   - Contradecía a «Retos», que reprocha el «cumplimiento declarado sin
+ *     evidencia». Exhibir un expediente inventado es exactamente eso, y el
+ *     comprador de esta casa es justamente quien lo nota.
+ *
+ * Lo que queda debajo del argumento NO es un resultado: es la estructura del
+ * método. El tamaño del instrumento y sus dominios dicen QUÉ se mide, nunca
+ * cómo le salió a nadie. Un tablero es la salida del trabajo del cliente; la
+ * portada vende el método.
+ *
+ * LAS CIFRAS SE CUENTAN, NO SE ESCRIBEN. Salen del repositorio que entrega el
+ * controlador, así que el «75» del banner ES el número de controles que hay. Si
+ * alguien añade uno, el banner lo refleja sin que nadie se acuerde de venir a
+ * cambiarlo — que es justo lo que no pasaría con un valor en config.
+ *
+ * @var \App\Core\Vista $vista
  * @var array<string, mixed> $hero
- * @var list<string>         $motores
+ * @var list<\App\Models\Entidades\Dominio> $dominios
+ * @var list<\App\Models\Entidades\Proceso> $procesos
+ * @var list<\App\Models\Entidades\Control> $controles
  */
+$dominios = $dominios ?? [];
+$procesos = $procesos ?? [];
+$controles = $controles ?? [];
+
+/*
+ * Controles por dominio. La cadena es control -> proceso -> dominio: el control
+ * solo conoce el número de su proceso, y es el proceso el que sabe a qué
+ * dominio pertenece. De ahí el índice intermedio, que evita recorrer los
+ * procesos una vez por cada uno de los setenta y cinco controles.
+ */
+$dominioDelProceso = [];
+foreach ($procesos as $proceso) {
+    $dominioDelProceso[$proceso->numero] = $proceso->dominio;
+}
+
+$controlesPorDominio = [];
+foreach ($controles as $control) {
+    $clave = $dominioDelProceso[$control->proceso] ?? null;
+
+    if ($clave !== null) {
+        $controlesPorDominio[$clave] = ($controlesPorDominio[$clave] ?? 0) + 1;
+    }
+}
+
+/** Las tres cifras del instrumento, contadas y no declaradas. */
+$totales = [
+    'controles' => count($controles),
+    'procesos'  => count($procesos),
+    'dominios'  => count($dominios),
+];
+
+/** Los iconos son máscaras; aquí solo se compone su ruta. */
+$rutaIcono = static fn (string $archivo): string =>
+    $vista->recurso('assets/images/icons/' . $archivo);
 ?>
-<section id="inicio" class="relative overflow-hidden bg-marina-950 pt-16">
+<section id="inicio" class="relative overflow-hidden bg-fondo pt-16">
 
-    <div class="pointer-events-none absolute inset-0 opacity-[0.07]" aria-hidden="true">
-        <svg class="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <pattern id="reticula" width="48" height="48" patternUnits="userSpaceOnUse">
-                    <path d="M48 0H0V48" fill="none" stroke="currentColor" stroke-width="1"
-                          class="text-acento-400"/>
-                </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#reticula)"/>
-        </svg>
-    </div>
+    <?php
+    /*
+     * El relleno inferior es deliberadamente menor que el superior: así asoma
+     * el borde de «Retos» y la portada se lee como el principio de una página
+     * y no como una pantalla completa. Sin ese corte, una composición aireada
+     * en escritorio parece una página que no terminó de cargar.
+     */
+    ?>
+    <div class="mx-auto max-w-[1180px] px-5 pb-[72px] pt-[86px]">
 
-    <div class="pointer-events-none absolute -right-40 -top-40 h-[32rem] w-[32rem] rounded-full bg-acento-500/10 blur-3xl"
-         aria-hidden="true"></div>
+        <div class="mx-auto flex max-w-[760px] flex-col items-center gap-[26px] text-center">
 
-    <div class="relative mx-auto max-w-7xl px-6 py-24 lg:px-8 lg:py-32">
-        <div class="max-w-3xl">
+            <?php /* Badge normativo: oro y mono, extruido. */ ?>
+            <span class="rv-extruido rv-badge-norma px-[13px] py-[7px]">
+                <?= e($hero['norma']) ?>
+            </span>
 
-            <p class="inline-flex items-center gap-2 rounded-full border border-acento-400/30 bg-acento-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-acento-400">
-                <?= e($hero['etiqueta']) ?>
-            </p>
-
-            <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-                <?= e($hero['titulo']) ?><br>
-                <span class="text-acento-400"><?= e($hero['resaltado']) ?></span>
+            <h1 class="rv-titulo m-0 text-[2.5rem] font-medium leading-[1.08] tracking-[-0.01em] text-texto sm:text-5xl lg:text-[58px]">
+                <?= e($hero['titulo']) ?>
             </h1>
 
-            <p class="mt-6 max-w-2xl text-lg leading-relaxed text-marina-200">
+            <p class="rv-titulo m-0 max-w-[56ch] text-xl leading-[1.55] text-texto-2">
                 <?= e($hero['texto']) ?>
             </p>
 
-            <div class="mt-10 flex flex-col gap-3 sm:flex-row">
-                <a href="<?= e($hero['cta_primario']['destino']) ?>"
-                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-acento-500 px-7 py-3.5 text-base font-semibold text-marina-950 transition hover:bg-acento-400">
+            <div class="flex flex-wrap justify-center gap-3">
+                <a href="<?= e($vista->destino($hero['cta_primario']['destino'])) ?>"
+                   class="rv-extruido rv-interactivo rounded-rv-lg bg-primario px-[26px] py-[15px] text-[15px] font-semibold text-primario-texto">
                     <?= e($hero['cta_primario']['etiqueta']) ?>
-                    <?= icono('flecha', 'h-4 w-4') ?>
                 </a>
-                <a href="<?= e($hero['cta_secundario']['destino']) ?>"
-                   class="inline-flex items-center justify-center rounded-lg border border-white/20 px-7 py-3.5 text-base font-semibold text-white transition hover:border-white/40 hover:bg-white/5">
+                <a href="<?= e($vista->destino($hero['cta_secundario']['destino'])) ?>"
+                   class="rv-extruido rv-interactivo rounded-rv-lg bg-superficie px-[26px] py-[15px] text-[15px] font-medium text-texto">
                     <?= e($hero['cta_secundario']['etiqueta']) ?>
                 </a>
             </div>
         </div>
-    </div>
 
-    <div class="relative border-t border-white/10">
-        <div class="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-            <p class="text-center text-xs font-semibold uppercase tracking-widest text-marina-300">
-                Experiencia en los principales motores de base de datos
-            </p>
-            <ul class="mt-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-                <?php foreach ($motores as $motor): ?>
-                    <li class="text-base font-semibold text-marina-300/70"><?= e($motor) ?></li>
+        <?php if (($hero['cifras'] ?? []) !== [] && $totales['controles'] > 0): ?>
+            <?php
+            /*
+             * El tamaño del instrumento. El icono va en ORO porque lo que
+             * rotula es referencia normativa —controles, procesos y dominios de
+             * ISO/IEC 27002—, que es el único significado que el sistema visual
+             * le concede al oro (§5.2). Por eso mismo esta fila no puede
+             * ganar nunca un pill de estado al lado: un icono dorado junto a
+             * una escala de estado se leería como «riesgo medio».
+             *
+             * El PNG entra como máscara (.rv-icono-masc), así que el oro sale
+             * del token y no del archivo: los iconos siguen la paleta.
+             */
+            ?>
+            <dl class="mx-auto mt-[54px] grid max-w-[760px] grid-cols-3 gap-6 border-t border-borde pt-9">
+                <?php foreach ($hero['cifras'] as $cifra): ?>
+                    <?php $valor = $totales[$cifra['clave']] ?? null; ?>
+                    <?php if ($valor !== null): ?>
+                        <div class="flex flex-col items-center gap-1.5 text-center">
+
+                            <span class="rv-icono-masc h-8 w-8 text-oro-texto"
+                                  style="--rv-icono: url('<?= e($rutaIcono($cifra['icono'])) ?>')"
+                                  aria-hidden="true"></span>
+
+                            <dd class="tabular m-0 text-[26px] font-semibold leading-none text-texto">
+                                <?= e((string) $valor) ?>
+                            </dd>
+                            <dt class="text-[11.5px] uppercase tracking-[0.05em] text-texto-2">
+                                <?= e($cifra['etiqueta']) ?>
+                            </dt>
+                        </div>
+                    <?php endif; ?>
                 <?php endforeach; ?>
-            </ul>
-        </div>
+            </dl>
+        <?php endif; ?>
+
+        <?php if ($dominios !== []): ?>
+            <?php
+            /*
+             * Los siete dominios con su número de controles: el índice del
+             * método. Es lo que sustituye al tablero de resultados — enseña
+             * densidad y orden, que es como se comunica competencia sin pedirle
+             * al lector que juzgue el resultado de otro.
+             *
+             * Se usa el nombre corto porque el largo no cabe en una fila de
+             * siete; si un dominio no lo trae, la entidad ya devuelve el
+             * completo en su lugar.
+             */
+            ?>
+            <div class="mx-auto mt-11 max-w-[900px] text-center">
+
+                <span class="text-[11.5px] uppercase tracking-[0.05em] text-texto-2">
+                    <?= e((string) ($hero['dominios_rotulo'] ?? '')) ?>
+                </span>
+
+                <ul class="m-0 mt-4 flex list-none flex-wrap justify-center gap-2 p-0">
+                    <?php foreach ($dominios as $dominio): ?>
+                        <li class="rv-extruido-sm flex items-baseline gap-2 rounded-rv bg-superficie px-3.5 py-2">
+                            <span class="text-[13px] text-texto">
+                                <?= e($dominio->corto) ?>
+                            </span>
+                            <?php /* Neutro, no oro: es un conteo, no una cláusula. */ ?>
+                            <span class="tabular text-[12px] font-semibold text-texto-2">
+                                <?= e((string) ($controlesPorDominio[$dominio->clave] ?? 0)) ?>
+                            </span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
     </div>
 </section>

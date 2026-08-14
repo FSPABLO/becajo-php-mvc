@@ -36,7 +36,28 @@ final class Contenedor
          * funcionando igual. Ver el mensaje de auditorias() más abajo.
          */
         private readonly ?RepositorioAuditorias $auditorias = null,
+        /**
+         * Registro de bases de datos conectadas (config/conexiones.php).
+         *
+         * Llega como arreglo y no detrás de un contrato porque hoy no hay nada
+         * que consultar: es configuración, igual que las rutas. Cuando el
+         * monitoreo tenga tabla propia, esto pasa a ser un repositorio y solo
+         * cambia public/index.php. Ver la cabecera de config/conexiones.php.
+         *
+         * @var list<array<string, mixed>>
+         */
+        private readonly array $conexiones = [],
     ) {
+    }
+
+    /**
+     * Bases de datos conectadas, agrupadas por motor.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function conexiones(): array
+    {
+        return $this->conexiones;
     }
 
     /**

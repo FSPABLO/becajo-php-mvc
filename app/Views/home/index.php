@@ -12,11 +12,19 @@ declare(strict_types=1);
  * @var \App\Core\Vista $vista
  */
 ?>
-<?= $vista->renderizar('home/secciones/portada',    compact('hero', 'motores')) ?>
+<?= $vista->renderizar('home/secciones/portada',    compact('hero', 'dominios', 'procesos', 'controles')) ?>
 <?= $vista->renderizar('home/secciones/retos',      compact('retos')) ?>
 <?= $vista->renderizar('home/secciones/servicios',  ['encabezado' => $encabezadoServicios, 'servicios' => $servicios]) ?>
+<?= $vista->renderizar('home/secciones/stack',      compact('stack')) ?>
 <?= $vista->renderizar('home/secciones/resultados', compact('metricas', 'caso')) ?>
+<?= $vista->renderizar('home/secciones/testimonios', ['encabezado' => $encabezadoTestimonios, 'testimonios' => $testimonios]) ?>
 <?= $vista->renderizar('home/secciones/equipo',     compact('equipo')) ?>
-<?= $vista->renderizar('home/secciones/contacto',   compact(
-    'contacto', 'empresa', 'motores', 'mensajes', 'erroresContacto', 'valoresContacto'
-)) ?>
+<?= $vista->renderizar('home/secciones/planes',     compact('planes')) ?>
+<?php
+/*
+ * La sección de contacto ya no se renderiza aquí: el formulario vive dentro
+ * del pie (partials/pie.php), que es quien lleva el ancla #contacto. El
+ * controlador sigue enviando 'contacto', 'motores' y los valores del intento
+ * porque el layout se los pasa al pie.
+ */
+?>

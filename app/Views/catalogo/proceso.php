@@ -24,13 +24,13 @@ $opcionesDominio = array_map(
     $dominios,
 );
 ?>
-<section class="mx-auto w-full max-w-xl px-6 pt-24 pb-14">
+<section class="mx-auto w-full max-w-xl px-6 py-8 lg:px-8">
 
     <nav class="mb-6 text-sm">
-        <a href="<?= e($vista->url('catalogo')) ?>" class="text-acento-600 hover:underline">← Catálogo</a>
+        <a href="<?= e($vista->url('catalogo')) ?>" class="text-primario hover:underline">← Catálogo</a>
     </nav>
 
-    <h1 class="mb-8 text-3xl font-extrabold text-marina-950">
+    <h1 class="mb-8 text-3xl font-extrabold text-texto">
         <?= $esNuevo ? 'Nuevo proceso' : 'Editar proceso' ?>
     </h1>
 
@@ -89,8 +89,51 @@ $opcionesDominio = array_map(
             'obligatorio' => true,
         ]) ?>
 
+        <div class="rounded-rv-lg border border-borde p-4">
+            <p class="text-sm font-semibold text-texto">Relación con C-I-D</p>
+            <p class="mt-1 text-xs text-texto-2">
+                Notación de COBIT 4.1 (Apéndice II): Primaria (P) o Secundaria (S).
+                Declarativo — no reemplaza lo que el auditor marca en cada evaluación.
+            </p>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                <?php
+                $opcionesRelacion = [
+                    ['valor' => 'P', 'texto' => 'Primaria'],
+                    ['valor' => 'S', 'texto' => 'Secundaria'],
+                ];
+                ?>
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_confidencialidad',
+                    'etiqueta' => 'Confidencialidad',
+                    'valor'    => $v('relacion_confidencialidad', $proceso->relacionConfidencialidad ?? ''),
+                    'error'    => $errores['relacion_confidencialidad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_integridad',
+                    'etiqueta' => 'Integridad',
+                    'valor'    => $v('relacion_integridad', $proceso->relacionIntegridad ?? ''),
+                    'error'    => $errores['relacion_integridad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+
+                <?= $vista->renderizar('catalogo/_campo', [
+                    'campo'    => 'relacion_disponibilidad',
+                    'etiqueta' => 'Disponibilidad',
+                    'valor'    => $v('relacion_disponibilidad', $proceso->relacionDisponibilidad ?? ''),
+                    'error'    => $errores['relacion_disponibilidad'] ?? null,
+                    'tipo'     => 'select',
+                    'opciones' => $opcionesRelacion,
+                ]) ?>
+            </div>
+        </div>
+
         <button type="submit"
-                class="w-full rounded-lg bg-marina-950 px-4 py-3 font-semibold text-white transition hover:bg-marina-900">
+                class="w-full rv-extruido rv-interactivo rounded-rv bg-primario px-4 py-3 font-semibold text-primario-texto">
             <?= $esNuevo ? 'Crear proceso' : 'Guardar cambios' ?>
         </button>
     </form>

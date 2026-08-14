@@ -67,6 +67,25 @@ final class Peticion
     }
 
     /**
+     * Lee una cookie del navegador.
+     *
+     * Existe por la misma razón que entrada(): que $_COOKIE quede encapsulado
+     * aquí y no aparezca en un controlador ni, mucho menos, en una vista. La
+     * usa el marco del módulo para saber si el auditor dejó plegada la barra
+     * lateral, de modo que la página nazca ya plegada en lugar de plegarse de
+     * un salto cuando arranca el guion.
+     *
+     * Lo que llega en una cookie es texto que escribió el cliente: quien la lea
+     * debe compararla contra valores conocidos, nunca imprimirla tal cual.
+     */
+    public function cookie(string $clave, ?string $porDefecto = null): ?string
+    {
+        $valor = $_COOKIE[$clave] ?? null;
+
+        return is_string($valor) ? $valor : $porDefecto;
+    }
+
+    /**
      * Lee un dato enviado por el usuario, venga del formulario o de la URL.
      *
      * Devuelve SIEMPRE una cadena (o el valor por defecto): la conversión a

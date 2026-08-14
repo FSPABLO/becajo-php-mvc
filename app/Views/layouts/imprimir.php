@@ -13,7 +13,14 @@ declare(strict_types=1);
  */
 ?>
 <!DOCTYPE html>
-<html lang="es-CR">
+<?php
+/*
+ * El reporte se ve en el mismo tono oscuro que el resto del producto; es al
+ * IMPRIMIRLO cuando cambia, por la regla @media print de rivendel.css, que
+ * fuerza fondo claro. Eso no es un tema: es no gastar tinta en el fondo.
+ */
+?>
+<html lang="<?= e($vista->idiomaActual() === 'en' ? 'en' : 'es-CR') ?>">
 <head>
     <?= $vista->renderizar('partials/head', compact('meta', 'empresa')) ?>
     <style>
@@ -22,15 +29,16 @@ declare(strict_types=1);
         }
     </style>
 </head>
-<body class="bg-slate-100 font-sans antialiased print:bg-white">
-    <div class="no-imprimir sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-3">
+<body class="bg-fondo font-sans text-texto antialiased print:bg-superficie">
+    <div class="no-imprimir sticky top-0 z-10 border-b border-borde bg-superficie px-6 py-3">
         <div class="mx-auto flex max-w-3xl items-center justify-between">
-            <a href="javascript:history.back()" class="text-sm font-medium text-slate-500 hover:text-marina-950">
-                ← Volver
+            <a href="javascript:history.back()" class="text-sm font-medium text-texto-2 hover:text-texto">
+                ← <?= e($vista->t('eval.volver')) ?>
             </a>
             <button type="button" onclick="window.print()"
-                    class="rounded-lg bg-acento-500 px-4 py-2 text-sm font-semibold text-marina-950 transition hover:bg-acento-400">
-                Descargar / imprimir PDF
+                    class="rv-extruido rv-interactivo inline-flex items-center gap-2 rounded-rv bg-primario px-4 py-2 text-sm font-semibold text-primario-texto">
+                <?= icono('imprimir', 'h-4 w-4') ?>
+                <?= e($vista->t('eval.reporte_pdf')) ?>
             </button>
         </div>
     </div>

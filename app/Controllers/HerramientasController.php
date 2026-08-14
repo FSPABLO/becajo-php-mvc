@@ -22,9 +22,21 @@ final class HerramientasController extends Controlador
         $instrumento = $this->instrumento();
 
         $meta = $instrumento->meta();
+        $contexto = $this->contexto();
+
+        /*
+         * Misma página, dos marcos. El instrumento es un documento PÚBLICO —se
+         * llega a él desde el menú del sitio sin cuenta— pero es además la
+         * referencia que el auditor consulta mientras responde el cuestionario,
+         * y por eso aparece en la barra lateral del módulo. Devolver al marco
+         * público a quien tiene sesión abierta le quitaría esa barra de debajo
+         * de los pies a mitad de trabajo, así que el marco lo decide la sesión
+         * y no la ruta.
+         */
+        $plantilla = $contexto['usuarioActual'] !== null ? 'panel' : 'principal';
 
         $this->ver('herramientas/instrumento-bd', [
-            ...$this->contexto(),
+            ...$contexto,
             'meta'         => [
                 'titulo'      => $meta['titulo'] . ' | ' . $repositorio->empresa()['nombre'],
                 'descripcion' => $meta['descripcion'],
@@ -38,6 +50,9 @@ final class HerramientasController extends Controlador
             'referencias'  => $instrumento->referencias(),
             'hojas'        => ['assets/css/instrumento.css'],
             'guiones'      => ['assets/js/instrumento.js'],
-        ]);
+            // La vista ajusta su portadilla según el marco: la barra fija del
+            // sitio público pide un hueco arriba que la del panel no necesita.
+            'enPanel'      => $plantilla === 'panel',
+        ], $plantilla);
     }
 }
