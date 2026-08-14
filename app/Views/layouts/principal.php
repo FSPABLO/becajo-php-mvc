@@ -13,6 +13,7 @@ declare(strict_types=1);
  * @var array<string, mixed>   $empresa
  * @var array<string, string>  $meta
  * @var list<array{etiqueta: string, destino: string}> $navegacion
+ * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $nosotros
  * @var list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> $herramientas
  * @var list<string>|null     $hojas    Hojas de estilo propias de la página.
  * @var list<string>|null     $guiones  Guiones (scripts) propios de la página.
@@ -20,6 +21,7 @@ declare(strict_types=1);
  */
 $hojas = $hojas ?? [];
 $guiones = $guiones ?? [];
+$nosotros = $nosotros ?? [];
 $herramientas = $herramientas ?? [];
 $usuarioActual = $usuarioActual ?? null;
 $rutaActual = $rutaActual ?? '/';
@@ -36,7 +38,7 @@ $rutaActual = $rutaActual ?? '/';
         <?= e($vista->t('nav.saltar_contenido')) ?>
     </a>
 
-    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'herramientas', 'usuarioActual', 'rutaActual')) ?>
+    <?= $vista->renderizar('partials/encabezado', compact('empresa', 'navegacion', 'nosotros', 'herramientas', 'usuarioActual', 'rutaActual')) ?>
 
     <main id="contenido"><?= $contenido ?></main>
 

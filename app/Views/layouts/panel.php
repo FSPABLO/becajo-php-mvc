@@ -165,9 +165,16 @@ foreach ($grupos as $grupo) {
      * La columna se aparta el ancho de la barra solo a partir de lg, y vuelve a
      * ocupar todo cuando la barra se pliega. Las dos cosas las resuelve
      * .rv-panel-columna en rivendel.css; ver ahí por qué no son utilidades.
+     *
+     * Columna flexible de alto mínimo igual a la ventana, con el <main> como
+     * única pieza que crece: así el pie queda SUJETO AL BORDE INFERIOR cuando
+     * la pantalla es corta —el alta de una auditoría son tres campos— en vez de
+     * quedar flotando a media altura con medio lienzo vacío debajo. Cuando el
+     * contenido es largo (las 75 filas del instrumento) no cambia nada: el pie
+     * vuelve a empujarse hacia abajo con el documento.
      */
     ?>
-    <div class="rv-panel-columna">
+    <div class="rv-panel-columna flex min-h-screen flex-col">
 
         <?= $vista->renderizar('partials/panel/barra-superior', [
             'migaGrupo'     => $migaGrupo,
@@ -177,7 +184,7 @@ foreach ($grupos as $grupo) {
             'lateralOculta' => $lateralOculta,
         ]) ?>
 
-        <main id="contenido"><?= $contenido ?></main>
+        <main id="contenido" class="flex-1"><?= $contenido ?></main>
 
         <?php
         /*

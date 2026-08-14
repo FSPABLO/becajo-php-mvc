@@ -166,6 +166,46 @@
     --nm-h: 1.00;
 }
 
+/* ── «Pergamino y oro» — variante de acento ──────────────────────────────
+ *
+ * NO es una paleta nueva. Es .rv-claro con el ACENTO repuntado, y se escribe
+ * siempre junto a ella (class="rv-claro rv-oro"): de ahí hereda el lienzo, el
+ * texto, la escala de estado y el relieve. Corregir el pergamino sigue siendo
+ * tocar un solo sitio, que es justo lo que se pierde al copiar una paleta.
+ *
+ * Por qué existe: en el módulo interno la barra lateral ya es verde de noche, y
+ * el verde de marca volvía a aparecer RELLENO en cada pastilla, cada botón y
+ * cada barra del instrumento. Dos verdes distintos a un palmo compiten sin
+ * decir nada. Aquí el relleno de acción pasa al oro y --rv-elev pierde el tinte
+ * de menta, de modo que el único verde que queda en pantalla es el de la escala
+ * de estado (bg-ok, text-ok), que sí significa algo.
+ *
+ * DESVIACIÓN DECLARADA respecto de §5.2 —el oro significa referencia normativa
+ * y nada más—: dentro de esta región significa además «acción primaria y
+ * selección». La referencia normativa se sigue distinguiendo por FORMA, no solo
+ * por color: .rv-id y .rv-badge-norma van en monoespaciada y sobre
+ * --rv-gold-tint, que ninguna acción usa.
+ *
+ * Se repuntan TOKENS y no se reescriben las vistas a propósito: bg-primario,
+ * ring-primario y las clases que alterna instrumento.js siguen diciendo
+ * «acento», y aquí ese acento es oro sin que ninguna vista se entere.
+ */
+.rv-oro {
+    /* #F0EBDE — pergamino elevado. .rv-claro lo tiñe de menta (#E8F0EA) y ese
+       es el verde de fondo que esta región retira. Texto: 12,5:1. */
+    --rv-elev:         240 235 222;
+    --rv-border:       224 214 190;    /* #E0D6BE — el borde acompaña al lienzo */
+
+    /*
+     * Acento. #7A5D00 y no el #9A7000 de --rv-gold: sobre oro relleno el
+     * pergamino da 4,0:1 con el segundo y 5,5:1 con este, y un botón lleva
+     * texto normal, no texto grande.
+     */
+    --rv-primary:       122  93   0;   /* #7A5D00 — 5,9:1 como texto */
+    --rv-primary-hover:  92  70   0;   /* #5C4600 */
+    --rv-on-primary:    245 242 233;   /* pergamino sobre el oro: 5,5:1 */
+}
+
 /* ── Base ────────────────────────────────────────────────────────────── */
 
 *,
@@ -350,6 +390,29 @@ textarea {
     box-shadow:
         inset  5px  5px 12px rgba(var(--nm-sombra) / var(--nm-o)),
         inset -4px -4px 10px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * El mismo gesto en escala corta, para lo que nace con .rv-extruido-sm: una
+ * fila de seis botones de 38 px de alto y 10 de separación. Con el hover de
+ * .rv-interactivo —12 px de desplazamiento— cada botón proyecta sombra sobre
+ * su vecino en vez de levantarse, que es el mismo problema que ya resolvía
+ * .rv-extruido-sm en reposo.
+ */
+.rv-interactivo-sm {
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.rv-interactivo-sm:hover {
+    box-shadow:
+         5px  5px 11px rgba(var(--nm-sombra) / var(--nm-o)),
+        -4px -4px  9px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+.rv-interactivo-sm:active {
+    box-shadow:
+        inset  3px  3px 6px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -2px -2px 4px rgba(var(--nm-realce) / var(--nm-h));
 }
 
 /*
@@ -550,6 +613,30 @@ textarea {
     font-family: var(--rv-font-mono);
     font-size: 0.6875rem;
     line-height: 1.6;
+}
+
+/*
+ * Icono de mapa de bits pintado como MÁSCARA (home/secciones/portada).
+ *
+ * Los PNG de assets/images/icons son siluetas negras sobre transparente, y
+ * sobre el lienzo de noche una imagen negra no se ve. Enmascarando en vez de
+ * insertar la imagen, el color sale de currentColor —o sea, de un token— y el
+ * icono acompaña a la paleta de su región en lugar de quedarse clavado en
+ * negro. Eso es lo que permite pintarlos en oro sin tocar los archivos, y lo
+ * que hará que se inviertan solos si algún día se usan sobre pergamino.
+ *
+ * La vista pasa el archivo en --rv-icono y el tamaño con utilidades.
+ */
+.rv-icono-masc {
+    background-color: currentColor;
+    -webkit-mask-image: var(--rv-icono);
+    mask-image: var(--rv-icono);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
 }
 
 /* ── Formato numérico español (§2.3): 68,0 % ─────────────────────────── */
@@ -922,7 +1009,8 @@ textarea {
     .rv-extruido-sm,
     .rv-extruido-xs,
     .rv-hundido,
-    .rv-interactivo {
+    .rv-interactivo,
+    .rv-interactivo-sm {
         box-shadow: none !important;
     }
 

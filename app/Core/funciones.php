@@ -79,6 +79,7 @@ if (!function_exists('icono')) {
             'imprimir'    => '<path d="M7 8V3h10v5"/><path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/>',
             'basura'      => '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M9 7V4h6v3"/>',
             'chispa'      => '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/>',
+            'pregunta'    => '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3 2.4c-.6.2-1 .8-1 1.4v.4"/><path d="M11.5 17h.01"/>',
             'alerta'      => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
 
             /*
@@ -105,6 +106,32 @@ if (!function_exists('icono')) {
         return '<svg class="' . e($clases) . '" width="24" height="24" viewBox="0 0 24 24" fill="none" '
              . 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
              . 'stroke-linejoin="round" aria-hidden="true">' . $trazo . '</svg>';
+    }
+}
+
+if (!function_exists('iniciales')) {
+    /**
+     * Iniciales para el avatar: la primera letra de las dos primeras palabras.
+     *
+     * No hay fotografía de usuario en el esquema, así que el retrato del
+     * producto son las iniciales sobre un disco. Vive aquí y no en cada barra
+     * porque lo pintan dos —la lateral del módulo y el encabezado público— y
+     * dos copias se separan en cuanto alguien decida que son tres letras.
+     *
+     * Con mb_* porque «Ángela» empieza por dos bytes y substr() la partiría a
+     * la mitad, imprimiendo un carácter roto.
+     */
+    function iniciales(string $nombre): string
+    {
+        $letras = '';
+
+        foreach (array_slice(preg_split('/\s+/u', trim($nombre)) ?: [], 0, 2) as $palabra) {
+            if ($palabra !== '') {
+                $letras .= mb_strtoupper(mb_substr($palabra, 0, 1, 'UTF-8'), 'UTF-8');
+            }
+        }
+
+        return $letras;
     }
 }
 

@@ -53,6 +53,12 @@ final class RepositorioArreglo implements RepositorioContenido
     }
 
     /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
+    public function nosotros(): array
+    {
+        return $this->datos['nosotros'];
+    }
+
+    /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
     public function herramientas(): array
     {
         return $this->datos['herramientas'];
@@ -150,5 +156,11 @@ final class RepositorioArreglo implements RepositorioContenido
     public function contacto(): array
     {
         return $this->datos['contacto'];
+    }
+
+    /** @return array<string, mixed> */
+    public function preguntas(): array
+    {
+        return $this->datos['preguntas'];
     }
 }

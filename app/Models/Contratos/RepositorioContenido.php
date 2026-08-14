@@ -30,6 +30,9 @@ interface RepositorioContenido
     public function navegacion(): array;
 
     /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
+    public function nosotros(): array;
+
+    /** @return list<array{etiqueta: string, descripcion: string, destino: string, icono: string}> */
     public function herramientas(): array;
 
     /** @return array<string, mixed> */
@@ -70,4 +73,7 @@ interface RepositorioContenido
 
     /** @return array{titulo: string, texto: string} */
     public function contacto(): array;
+
+    /** @return array<string, mixed> */
+    public function preguntas(): array;
 }

@@ -25,20 +25,9 @@ $rutaActiva    = $rutaActiva ?? '';
 $usuarioActual = $usuarioActual ?? null;
 $lateralOculta = $lateralOculta ?? false;
 
-/*
- * Iniciales del avatar: la primera letra de las dos primeras palabras del
- * nombre. Con mb_* porque "Ángela" empieza por dos bytes y substr() la partiría
- * a la mitad, imprimiendo un carácter roto.
- */
-$iniciales = '';
-
-if ($usuarioActual !== null) {
-    foreach (array_slice(preg_split('/\s+/u', trim($usuarioActual->nombre)) ?: [], 0, 2) as $palabra) {
-        if ($palabra !== '') {
-            $iniciales .= mb_strtoupper(mb_substr($palabra, 0, 1, 'UTF-8'), 'UTF-8');
-        }
-    }
-}
+// Iniciales del avatar. La regla vive en funciones.php porque el encabezado
+// público pinta el mismo retrato en su botón de perfil.
+$iniciales = $usuarioActual !== null ? iniciales($usuarioActual->nombre) : '';
 ?>
 <?php
 /*

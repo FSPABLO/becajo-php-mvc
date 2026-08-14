@@ -163,6 +163,9 @@ abstract class Controlador
         return [
             'empresa'       => $this->repositorio()->empresa(),
             'navegacion'    => $this->repositorio()->navegacion(),
+            // Los dos desplegables del encabezado. Llegan como listas aparte
+            // porque son menús distintos, no dos secciones de uno solo.
+            'nosotros'      => $this->repositorio()->nosotros(),
             'herramientas'  => $this->repositorio()->herramientas(),
             // El selector de idioma son enlaces, no un <select> con guion, así
             // que necesita saber a dónde volver después de cambiar de idioma.

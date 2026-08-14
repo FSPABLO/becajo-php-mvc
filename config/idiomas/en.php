@@ -5,9 +5,11 @@ declare(strict_types=1);
 /** Diccionario en inglés. Mismas claves que config/idiomas/es.php. */
 return [
     // Navegación / encabezado
+    'nav.nosotros'        => 'About us',
     'nav.herramientas'    => 'Tools',
     'nav.mis_auditorias'  => 'My Audits',
     'nav.catalogo'        => 'Catalog',
+    'nav.perfil'          => 'Profile',
     'nav.salir'           => 'Log out',
     'nav.ingresar'        => 'Log in',
     'nav.contactar'       => 'Contact',
@@ -249,10 +251,51 @@ return [
     'eval.solo_una_auditoria'    => 'There is only one audit so far. At least two are needed to see a trend.',
     'eval.riesgo'                 => 'risk',
 
+    // Historical comparison — overall index columns, one per audit.
+    'eval.auditorias_de_organizacion' => 'Audits: %s · latest on %s',
+    'eval.indice_por_auditoria'  => 'Overall index by audit',
+    'eval.indice_por_auditoria_texto' => 'Oldest to most recent. The latest one stands out; each column opens its audit.',
+    // Decimal comma even here: the figures the chart draws use the Spanish
+    // format across the whole product, and a threshold written «0.80» next to
+    // an axis that reads «0,80» looks like a different number.
+    'eval.umbral_verde'          => 'Green-zone threshold (0,80)',
+    'eval.columna_indice'        => 'Audit of %s · index %s',
+    'eval.indice_resumen'        => 'Overall index by audit. Audits with a calculated index: %s. Latest value: %s.',
+    'eval.sin_indice_calculado'  => 'No audit of this organization has its index calculated yet.',
+    'eval.auditorias_sin_indice' => 'Audits with no calculated index, and therefore no column: %s.',
+
+    // Historical comparison — maturity profile by domain (radar chart).
+    'eval.perfil_dominios'       => 'Maturity profile by domain',
+    'eval.perfil_dominios_texto' => 'Latest audit with a breakdown (%s).',
+    'eval.sin_desglose_dominio'  => 'No controls with a maturity level have been assessed for this organization yet.',
+    'eval.radar_vertice'         => '%s · maturity %s of %s',
+    'eval.radar_resumen'         => 'Maturity profile by domain for the audit of %s: %s.',
+    'eval.radar_insuficiente'    => 'At least three assessed domains are needed to draw the profile. This audit has %s.',
+    'eval.radar_pie'             => '%s domains assessed · maturity scale from 0 to %s, one ring per level.',
+
+    // Historical comparison — breakdown table.
+    'eval.dominio'               => 'Domain',
+    'eval.madurez_por_dominio'   => 'Weighted maturity by domain',
+    'eval.madurez_por_dominio_pie' => 'Average weighted by each control\'s weight. A dash marks a domain that audit did not assess.',
+
     // Header form (audit create/edit)
     'eval.admin_entrevistado_label' => 'Database administrator interviewed',
     'eval.seleccione'               => '— Select —',
     'eval.organizacion_registrada'  => 'Their organization is the one recorded as the audited entity.',
     'eval.area_evaluada'            => 'Area assessed',
     'eval.fecha_auditoria'          => 'Audit date',
+
+    // Audit type (assessment model) and legend on the creation screen
+    'eval.tipo_auditoria'        => 'Audit type',
+    'eval.tipo_proximamente'     => 'coming soon',
+    'eval.tipo_ayuda'            => 'The model it is measured against. Today the 75 controls belong to the ISO 27000 family.',
+    'eval.nueva_subtitulo'       => 'Open a dated assessment for the organization you are about to audit.',
+    'eval.nueva_leyenda_titulo'  => 'What is this for?',
+    'eval.nueva_leyenda_texto'   => 'An audit is the dated assessment of one organization: you go through the '
+                                  . 'instrument control by control, and the answers produce the risk index, '
+                                  . 'the C-I-A matrix and the remediations. Repeating it is what makes comparison possible.',
+    'eval.nueva_modelos_proximos' => 'Coming in future updates',
+    'eval.nueva_modelos_texto'   => 'Assessment models other than ISO 27000. They ship with the Deluxe plan, '
+                                  . 'which cross-references the three frameworks.',
+    'eval.nueva_ver_plan'        => 'See the Deluxe plan →',
 ];

@@ -17,8 +17,15 @@ declare(strict_types=1);
 $errores = $errores ?? [];
 $valores = $valores ?? [];
 
+/*
+ * Los campos van HUNDIDOS: en el sistema visual el inset significa «aquí se
+ * recibe algo», y es lo que separa a simple vista lo que se rellena de lo que
+ * solo se lee. El fondo se declara (bg-superficie) porque un <select> sin él
+ * se queda con el gris del sistema operativo, que no pertenece a la paleta y
+ * rompe la fila con los dos campos vecinos.
+ */
 $clases = static fn (bool $mal): string =>
-    'mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition '
+    'rv-hundido mt-1.5 w-full rounded-rv border bg-superficie px-3.5 py-2.5 text-texto outline-none transition '
     . ($mal
         ? 'border-bad focus:border-bad focus:ring-2 focus:ring-bad/10'
         : 'border-borde focus:border-primario focus:ring-2 focus:ring-primario/30');

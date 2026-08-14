@@ -41,7 +41,7 @@ $criterios = [
          data-dominio="<?= e($dominio) ?>"
          data-proceso="<?= e((string) $control->proceso) ?>"
          data-estado=""
-         class="rv-extruido rv-interactivo rounded-rv-lg border border-l-4 border-borde border-l-borde bg-superficie p-5">
+         class="rv-extruido rv-interactivo rounded-rv-lg border border-l-4 border-borde border-l-borde bg-superficie p-5 sm:p-6">
 
     <div class="flex flex-wrap items-center gap-2">
         <span class="rv-badge-norma">
@@ -62,7 +62,7 @@ $criterios = [
     </p>
 
     <div data-referencia-cuestionario hidden
-             class="mt-4 rounded-rv border border-borde bg-elevado p-4">
+             class="rv-hundido mt-4 rounded-rv border border-borde bg-elevado p-4">
             <p class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-texto-2">
                 <?= icono('documento', 'h-3.5 w-3.5') ?>
                 Referencia del cuestionario
@@ -105,7 +105,7 @@ $criterios = [
                                value="<?= e($riesgo['clave']) ?>"
                                aria-label="<?= e($riesgo['etiqueta']) ?> — control <?= e($control->id) ?>">
                         <span title="<?= e($riesgo['etiqueta']) ?>"
-                              class="grid h-9 w-9 place-items-center rounded-rv border border-borde text-sm font-bold text-texto-2 transition peer-checked:border-borde peer-checked:bg-fondo peer-checked:text-primario-hover peer-focus-visible:ring-2 peer-focus-visible:ring-primario peer-focus-visible:ring-offset-2">
+                              class="rv-opcion grid h-9 w-9 place-items-center rounded-rv border border-borde bg-superficie text-sm font-bold text-texto-2 peer-checked:border-primario peer-checked:bg-elevado peer-checked:text-primario peer-focus-visible:ring-2 peer-focus-visible:ring-primario peer-focus-visible:ring-offset-2">
                             <?= e($riesgo['letra']) ?>
                         </span>
                     </label>
@@ -120,7 +120,7 @@ $criterios = [
             <select id="madurez-<?= e($control->id) ?>"
                     data-control="<?= e($control->id) ?>"
                     data-campo="madurez"
-                    class="mt-1.5 h-9 rv-hundido w-full rounded-rv border border-borde bg-superficie px-2 text-sm text-texto focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
+                    class="mt-1.5 h-9 rv-hundido w-full rounded-rv border border-borde bg-elevado px-2 text-sm text-texto focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
                 <option value="">Sin calificar</option>
                 <?php foreach ($escala as $nivel): ?>
                     <option value="<?= e((string) $nivel['nivel']) ?>">
@@ -137,7 +137,7 @@ $criterios = [
             <select id="criterio-<?= e($control->id) ?>"
                     data-control="<?= e($control->id) ?>"
                     data-campo="criterio"
-                    class="mt-1.5 h-9 rv-hundido w-full rounded-rv border border-borde bg-superficie px-2 text-sm text-texto focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
+                    class="mt-1.5 h-9 rv-hundido w-full rounded-rv border border-borde bg-elevado px-2 text-sm text-texto focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
                 <?php foreach ($criterios as $criterio): ?>
                     <option value="<?= e($criterio['valor']) ?>"><?= e($criterio['etiqueta']) ?></option>
                 <?php endforeach; ?>
@@ -146,7 +146,9 @@ $criterios = [
 
         <fieldset>
             <legend class="text-xs font-medium text-texto-2">¿El control existe?</legend>
-            <div class="mt-1.5 grid grid-cols-3 gap-1 rounded-rv bg-elevado p-1">
+            <?php /* Cubeta hundida con las tres teclas dentro: el hundido dice
+                     «aquí se recibe algo» y da a las teclas dónde apoyarse. */ ?>
+            <div class="rv-hundido mt-1.5 grid grid-cols-3 gap-1.5 rounded-rv bg-elevado p-1.5">
                 <?php foreach ($estados as $estado): ?>
                     <label class="cursor-pointer">
                         <input type="radio"
@@ -157,7 +159,7 @@ $criterios = [
                                value="<?= e($estado['valor']) ?>">
                         <?php /* El borde base es transparente para que al marcar
                                  aparezca el contorno sin mover el layout. */ ?>
-                        <span class="block rounded-md border border-transparent px-1 py-1.5 text-center text-xs font-semibold text-texto-2 transition <?= e($estado['activo']) ?> peer-focus-visible:ring-2 peer-focus-visible:ring-primario">
+                        <span class="rv-opcion block rounded-md border border-transparent bg-superficie px-1 py-1.5 text-center text-xs font-semibold text-texto-2 <?= e($estado['activo']) ?> peer-focus-visible:ring-2 peer-focus-visible:ring-primario">
                             <?= e($estado['etiqueta']) ?>
                         </span>
                     </label>
@@ -176,7 +178,7 @@ $criterios = [
                       data-control="<?= e($control->id) ?>"
                       data-campo="hallazgo"
                       placeholder="Lo observado durante la verificación"
-                      class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-superficie px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
+                      class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
         </div>
         <div>
             <label for="recomendacion-<?= e($control->id) ?>" class="block text-xs font-medium text-texto-2">
@@ -187,7 +189,7 @@ $criterios = [
                       data-control="<?= e($control->id) ?>"
                       data-campo="recomendacion"
                       placeholder="Acción sugerida y su prioridad"
-                      class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-superficie px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
+                      class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
         </div>
     </div>
 

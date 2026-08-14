@@ -244,10 +244,16 @@
 
             pestana.setAttribute('aria-selected', String(activa));
             pestana.tabIndex = activa ? 0 : -1;
+            /*
+             * El hundido de la tecla lo pone el CSS a partir de aria-selected;
+             * aquí solo cambia el relleno. Las dos clases de fondo se alternan
+             * juntas: dejar bg-superficie puesta bajo bg-primario haría que el
+             * relleno dependiera del orden en que el CDN genera las utilidades.
+             */
             pestana.classList.toggle('bg-primario', activa);
             pestana.classList.toggle('text-primario-texto', activa);
+            pestana.classList.toggle('bg-superficie', !activa);
             pestana.classList.toggle('text-texto-2', !activa);
-            pestana.classList.toggle('hover:bg-elevado', !activa);
             pestana.classList.toggle('hover:text-texto', !activa);
 
             if (activa && moverFoco) {
@@ -321,8 +327,14 @@
 
             tab.setAttribute('aria-selected', String(activo));
             tab.tabIndex = activo ? 0 : -1;
+            /*
+             * text-texto y no text-primario-texto: este último es el texto que
+             * va SOBRE el relleno de acento, y la pestaña de dominio no lleva
+             * relleno —es un subrayado—. Puesto aquí, la pestaña elegida se
+             * escribía en el color del lienzo sobre el propio lienzo.
+             */
             tab.classList.toggle('border-primario', activo);
-            tab.classList.toggle('text-primario-texto', activo);
+            tab.classList.toggle('text-texto', activo);
             tab.classList.toggle('border-transparent', !activo);
             tab.classList.toggle('text-texto-2', !activo);
             tab.classList.toggle('hover:border-borde', !activo);
@@ -395,9 +407,14 @@
                 const completo = datos.total > 0 && datos.hechos === datos.total;
 
                 nodo.textContent = datos.hechos + '/' + datos.total;
-                nodo.classList.toggle('bg-ok', completo);
+                /*
+                 * Oro y no bg-ok: que un dominio esté CONTESTADO no dice que
+                 * cumpla, y el verde de la escala de estado significa
+                 * exactamente lo segundo.
+                 */
+                nodo.classList.toggle('bg-primario', completo);
                 nodo.classList.toggle('text-primario-texto', completo);
-                nodo.classList.toggle('bg-elevado', !completo);
+                nodo.classList.toggle('bg-superficie', !completo);
                 nodo.classList.toggle('text-texto-2', !completo);
             });
         });
@@ -671,15 +688,23 @@
     }
 
     const ZONA_RIESGO = {
-        rojo:     { etiqueta: 'Zona roja',     fondo: 'bg-bad', texto: 'text-primario-texto' },
-        amarillo: { etiqueta: 'Zona amarilla', fondo: 'bg-warn',  texto: 'text-primario-texto' },
-        verde:    { etiqueta: 'Zona verde',    fondo: 'bg-ok', texto: 'text-primario-texto' },
+        rojo:     { etiqueta: 'Zona roja',     fondo: 'bg-bad',     texto: 'text-primario-texto' },
+        amarillo: { etiqueta: 'Zona amarilla', fondo: 'bg-warn',    texto: 'text-primario-texto' },
+        verde:    { etiqueta: 'Zona verde',    fondo: 'bg-ok',      texto: 'text-primario-texto' },
         sin:      { etiqueta: 'Sin datos',     fondo: 'bg-elevado', texto: 'text-na' }
     };
-    
+
+    /*
+     * El color de reposo del semáforo y de la celda del mapa de calor entra en
+     * esta lista aunque ninguna zona lo use: es el que trae la plantilla, y sin
+     * quitarlo quedaban DOS utilidades de color de texto sobre el mismo
+     * elemento. Con la misma especificidad decide el orden en que el CDN las
+     * emita, y ganaba la tinta oscura: la cifra se leía casi del color de su
+     * propio relleno.
+     */
     const CLASES_ZONA_RIESGO = Object.keys(ZONA_RIESGO).reduce(function (clases, clave) {
         return clases.concat(ZONA_RIESGO[clave].fondo, ZONA_RIESGO[clave].texto);
-    }, []);
+    }, ['text-texto-2']);
 
     function pintarZonaRiesgo(elemento, promedio) {
         const zona = ZONA_RIESGO[zonaDeRiesgo(promedio)];

@@ -21,9 +21,12 @@ declare(strict_types=1);
 
     <div class="mt-8 grid gap-4 lg:grid-cols-2">
         <?php foreach ($marco as $norma): ?>
-            <article class="rounded-rv-lg border border-borde bg-superficie p-6">
+            <article class="rv-extruido rv-interactivo rounded-rv-lg border border-borde bg-superficie p-6">
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-md bg-fondo px-2.5 py-1 font-mono text-xs font-bold text-primario-hover">
+                    <?php /* Es literalmente una referencia normativa: le
+                             corresponde el badge del sistema, no una pastilla
+                             propia con el color de acento. */ ?>
+                    <span class="rv-badge-norma">
                         <?= e($norma['norma']) ?>
                     </span>
                 </div>
@@ -44,10 +47,10 @@ declare(strict_types=1);
         correcta esté ese día.
     </p>
 
-    <div class="mt-8 overflow-hidden rounded-rv-lg border border-borde bg-superficie">
+    <div class="rv-extruido mt-8 overflow-hidden rounded-rv-lg border border-borde bg-superficie">
         <?php foreach ($escala as $nivel): ?>
             <div class="flex gap-4 border-b border-borde px-6 py-5 last:border-b-0">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-rv bg-elevado text-lg font-extrabold text-texto">
+                <span class="rv-extruido-sm tabular grid h-10 w-10 shrink-0 place-items-center rounded-rv bg-elevado text-lg font-extrabold text-texto">
                     <?= e((string) $nivel['nivel']) ?>
                 </span>
                 <div>

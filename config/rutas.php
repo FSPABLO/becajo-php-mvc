@@ -9,6 +9,7 @@ use App\Controllers\ContactoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
+use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
 /**
@@ -23,6 +24,9 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/', [HomeController::class, 'index']);
     $enrutador->post('/contacto', [ContactoController::class, 'enviar']);
     $enrutador->get('/idioma', [IdiomaController::class, 'cambiar']);
+
+    // Página institucional del menú "Nosotros".
+    $enrutador->get('/preguntas-frecuentes', [PreguntasController::class, 'index']);
 
     // Herramientas internas (menú "Herramientas" del encabezado).
     $enrutador->get('/herramientas/instrumento-bd', [HerramientasController::class, 'instrumentoBd']);

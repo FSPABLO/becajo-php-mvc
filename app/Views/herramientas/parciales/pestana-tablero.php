@@ -30,7 +30,10 @@ $proporciones = [
     ['clave' => 'si',  'etiqueta' => 'Existe',      'fondo' => 'bg-ok'],
     ['clave' => 'no',  'etiqueta' => 'No existe',   'fondo' => 'bg-bad'],
     ['clave' => 'na',  'etiqueta' => 'No aplica',   'fondo' => 'bg-texto-2'],
-    ['clave' => 'sin', 'etiqueta' => 'Sin evaluar', 'fondo' => 'bg-elevado'],
+    /* El segmento «sin evaluar» iba en bg-elevado, que es el color de la propia
+       pista: el tramo pendiente no se distinguía del hueco vacío. El borde es
+       el siguiente escalón de la misma familia neutra, sin inventar color. */
+    ['clave' => 'sin', 'etiqueta' => 'Sin evaluar', 'fondo' => 'bg-borde'],
 ];
 
 $dimensionesRiesgo = [
@@ -43,11 +46,11 @@ $dimensionesRiesgo = [
 <!-- Tarjetas de resumen -->
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
     <?php foreach ($tarjetas as $tarjeta): ?>
-        <div class="rounded-rv-lg border border-borde bg-superficie p-5">
+        <div class="rv-extruido rounded-rv-lg border border-borde bg-superficie p-5">
             <p class="text-xs font-semibold uppercase tracking-wider text-texto-2">
                 <?= e($tarjeta['etiqueta']) ?>
             </p>
-            <p class="mt-2 text-3xl font-extrabold tracking-tight text-texto"
+            <p class="tabular mt-2 text-3xl font-extrabold tracking-tight text-texto"
                data-resumen="<?= e($tarjeta['clave']) ?>">—</p>
             <p class="mt-1.5 text-xs leading-relaxed text-texto-2"><?= e($tarjeta['ayuda']) ?></p>
         </div>
@@ -57,7 +60,7 @@ $dimensionesRiesgo = [
 <!--
     E. Semáforos de exposición al riesgo por dimensión: (madurez promedio de los controles marcados con esa dimensión, normalizada entre 0 y 1)
 -->
-<div class="mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
+<div class="rv-extruido mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
     <h2 class="text-sm font-semibold uppercase tracking-wider text-texto-2">
         Exposición al riesgo por dimensión
     </h2>
@@ -68,8 +71,12 @@ $dimensionesRiesgo = [
 
     <div class="mt-4 grid gap-4 sm:grid-cols-3">
         <?php foreach ($dimensionesRiesgo as $dimension): ?>
-            <div class="rounded-rv-lg border border-borde p-4 text-center">
-                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-elevado text-base font-extrabold text-texto-2 transition-colors duration-300"
+            <div class="rv-hundido rounded-rv-lg border border-borde bg-elevado p-4 text-center">
+                <?php /* El disco conserva bg-elevado como fondo base: esa misma
+                         clase es el relleno de la zona «sin datos» que el guion
+                         quita y pone, y una segunda clase de fondo debajo haría
+                         que el color dependiera del orden de las utilidades. */ ?>
+                <div class="rv-extruido-sm tabular mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-elevado text-lg font-extrabold text-texto-2 transition-colors duration-300"
                      data-semaforo="<?= e($dimension['clave']) ?>">—</div>
                 <p class="mt-3 text-sm font-semibold text-texto"><?= e($dimension['etiqueta']) ?></p>
                 <p class="mt-0.5 text-xs uppercase tracking-wide text-texto-2"
@@ -80,7 +87,7 @@ $dimensionesRiesgo = [
 </div>
 
 <!-- F. Mapa de calor: dominio × dimensión de riesgo, misma fórmula que los semáforos, desagregada por dominio. -->
-<div class="mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
+<div class="rv-extruido mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
     <h2 class="text-sm font-semibold uppercase tracking-wider text-texto-2">
         Mapa de calor: dominio × dimensión de riesgo
     </h2>
@@ -89,7 +96,7 @@ $dimensionesRiesgo = [
     </p>
 
     <div class="mt-4 overflow-x-auto">
-        <table class="w-full min-w-[36rem] text-sm">
+        <table class="tabular w-full min-w-[36rem] text-sm">
             <caption class="sr-only">Mapa de calor de riesgo por dominio y dimensión</caption>
             <thead>
                 <tr class="text-left text-xs uppercase tracking-wider text-texto-2">
@@ -106,15 +113,15 @@ $dimensionesRiesgo = [
                             <?= e($dominio->nombre) ?>
                         </th>
                         <td class="px-3 py-3 text-center">
-                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-texto-2"
+                            <span class="rv-extruido-xs tabular inline-flex min-w-[3.75rem] justify-center rounded-md px-2.5 py-1 font-bold text-texto-2 transition-colors duration-300"
                                   data-celda-calor="confidencialidad">—</span>
                         </td>
                         <td class="px-3 py-3 text-center">
-                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-texto-2"
+                            <span class="rv-extruido-xs tabular inline-flex min-w-[3.75rem] justify-center rounded-md px-2.5 py-1 font-bold text-texto-2 transition-colors duration-300"
                                   data-celda-calor="integridad">—</span>
                         </td>
                         <td class="px-3 py-3 text-center">
-                            <span class="inline-flex min-w-[3.5rem] justify-center rounded-md px-2 py-1 font-semibold text-texto-2"
+                            <span class="rv-extruido-xs tabular inline-flex min-w-[3.75rem] justify-center rounded-md px-2.5 py-1 font-bold text-texto-2 transition-colors duration-300"
                                   data-celda-calor="disponibilidad">—</span>
                         </td>
                     </tr>
@@ -140,7 +147,7 @@ $dimensionesRiesgo = [
 </div>
 
 <!-- G. Ranking de los controles con menor madurez entre los ya calificados. -->
-<div class="mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
+<div class="rv-extruido mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-texto-2">
             Controles con menor madurez
@@ -161,12 +168,12 @@ $dimensionesRiesgo = [
 
 
 <!-- Barra apilada de proporción entre estados -->
-<div class="mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
+<div class="rv-extruido mt-6 rounded-rv-lg border border-borde bg-superficie p-6">
     <h2 class="text-sm font-semibold uppercase tracking-wider text-texto-2">
         Proporción entre estados
     </h2>
 
-    <div class="mt-4 flex h-4 w-full overflow-hidden rounded-full bg-elevado"
+    <div class="rv-hundido mt-4 flex h-4 w-full overflow-hidden rounded-full bg-elevado"
          role="img" aria-label="Distribución de los 75 controles entre los cuatro estados"
          data-barra-apilada>
         <?php foreach ($proporciones as $proporcion): ?>
@@ -187,7 +194,9 @@ $dimensionesRiesgo = [
 </div>
 
 <!-- Tabla de los 25 procesos -->
-<div class="mt-6 rounded-rv-lg border border-borde bg-superficie">
+<?php /* Relieve sutil: en una tabla de 25 filas el relieve pleno compite con
+         la lectura de la cifra (§4 del diseño general). */ ?>
+<div class="rv-extruido rv-relieve-sutil mt-6 rounded-rv-lg border border-borde bg-superficie">
     <div class="border-b border-borde px-6 py-5">
         <h2 class="rv-titulo text-lg font-semibold tracking-tight text-texto">
             Cumplimiento por proceso
@@ -200,7 +209,7 @@ $dimensionesRiesgo = [
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[64rem] text-sm">
+        <table class="tabular w-full min-w-[64rem] text-sm">
             <caption class="sr-only">
                 Resultado por proceso: controles, estados, cumplimiento, madurez y cobertura de riesgo
             </caption>
@@ -238,7 +247,7 @@ $dimensionesRiesgo = [
                         <td class="px-3 py-3 text-center font-semibold text-texto-2" data-celda="na">0</td>
                         <td class="px-6 py-3">
                             <div class="flex items-center gap-3">
-                                <div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-elevado">
+                                <div class="rv-hundido h-2 w-24 shrink-0 overflow-hidden rounded-full bg-elevado">
                                     <div class="h-full rounded-full bg-primario transition-all duration-300"
                                          data-celda="barra" style="width: 0%"></div>
                                 </div>
@@ -264,7 +273,10 @@ $dimensionesRiesgo = [
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-elevado">
-                                <div class="h-full rounded-full bg-fondo transition-all duration-300"
+                                <?php /* bg-primario y no bg-fondo: la barra del
+                                         total llevaba el color del lienzo y
+                                         sobre pergamino no se veía crecer. */ ?>
+                                <div class="h-full rounded-full bg-primario transition-all duration-300"
                                      data-celda="barra" style="width: 0%"></div>
                             </div>
                             <span class="w-12 shrink-0" data-celda="cumplimiento">—</span>

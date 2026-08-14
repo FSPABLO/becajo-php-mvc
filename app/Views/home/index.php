@@ -12,7 +12,7 @@ declare(strict_types=1);
  * @var \App\Core\Vista $vista
  */
 ?>
-<?= $vista->renderizar('home/secciones/portada',    compact('hero')) ?>
+<?= $vista->renderizar('home/secciones/portada',    compact('hero', 'dominios', 'procesos', 'controles')) ?>
 <?= $vista->renderizar('home/secciones/retos',      compact('retos')) ?>
 <?= $vista->renderizar('home/secciones/servicios',  ['encabezado' => $encabezadoServicios, 'servicios' => $servicios]) ?>
 <?= $vista->renderizar('home/secciones/stack',      compact('stack')) ?>

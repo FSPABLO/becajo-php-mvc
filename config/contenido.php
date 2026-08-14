@@ -31,13 +31,42 @@ return [
                        . 'empresariales. Reducimos el riesgo operativo de su información crítica.',
     ],
 
+    /**
+     * Enlaces sueltos del encabezado.
+     *
+     * Solo las secciones que se visitan directamente. Retos, Servicios y
+     * Resultados se leen de corrido al bajar por la portada y no necesitaban
+     * entrada propia: una barra con seis anclas obliga a elegir antes de saber
+     * qué hay. Lo institucional pasó al desplegable «Nosotros».
+     */
     'navegacion' => [
-        ['etiqueta' => 'Retos',      'destino' => '#retos'],
-        ['etiqueta' => 'Servicios',  'destino' => '#servicios'],
-        ['etiqueta' => 'Stack',      'destino' => '#stack'],
-        ['etiqueta' => 'Resultados', 'destino' => '#resultados'],
-        ['etiqueta' => 'Equipo',     'destino' => '#equipo'],
-        ['etiqueta' => 'Planes',     'destino' => '#planes'],
+        ['etiqueta' => 'Stack',  'destino' => '#stack'],
+        ['etiqueta' => 'Planes', 'destino' => '#planes'],
+    ],
+
+    /**
+     * Menú desplegable "Nosotros" del encabezado.
+     *
+     * Misma forma que 'herramientas' —etiqueta, descripción, destino, icono—
+     * porque el encabezado pinta los dos con el mismo bloque. Aquí va quién
+     * hace el trabajo y cómo funciona lo que se ofrece; en 'herramientas', lo
+     * que el visitante puede usar.
+     */
+    'nosotros' => [
+        [
+            'etiqueta'    => 'Equipo',
+            'descripcion' => 'Quién audita: los consultores a cargo del instrumento y de '
+                           . 'las auditorías.',
+            'destino'     => '#equipo',
+            'icono'       => 'usuarios',
+        ],
+        [
+            'etiqueta'    => 'Preguntas frecuentes',
+            'descripcion' => 'Cómo funciona el sistema, a quién está dirigido y hacia dónde '
+                           . 'va el producto.',
+            'destino'     => '/preguntas-frecuentes',
+            'icono'       => 'pregunta',
+        ],
     ],
 
     /**
@@ -63,56 +92,62 @@ return [
         ],
     ],
 
+    /**
+     * Banner de la portada: hero tipográfico.
+     *
+     * Aquí hubo antes una tarjeta de índice de riesgo que abría el sitio con un
+     * 3,4 sobre 5,0 en rojo y el expediente inventado AUD-0042. No vuelve, y la
+     * razón se hereda con este bloque: aquella cifra no tenía sujeto, así que el
+     * mal resultado se leía del emisor, y además contradecía a «Retos», que
+     * reprocha el cumplimiento declarado sin evidencia.
+     *
+     * NO SE PUBLICA NINGÚN DATO FABRICADO EN EL BANNER. Las únicas cifras que
+     * aparecen son el tamaño del instrumento, y NO se escriben aquí: la vista
+     * las cuenta sobre lo que devuelve el repositorio. Si el catálogo cambia,
+     * el banner cambia solo. Por eso 'cifras' lleva rótulo e icono pero no
+     * valor — el valor sería justo la clase de dato que se desincroniza.
+     *
+     * Los iconos viven en public/assets/images/icons y se pintan como MÁSCARA,
+     * de modo que toman su color de un token; aquí solo va el nombre del
+     * archivo. Los originales, con su cuadriculado de falsa transparencia,
+     * quedaron en documentacion/design/iconos-origen.
+     */
     'hero' => [
         // Badge normativo. Es referencia a norma, así que la vista lo pinta en
         // oro y en mono: el único uso que el sistema visual permite del oro.
         'norma'  => 'ISO/IEC 27002 · 27007 · COBIT 4.1',
         'titulo' => 'Su base de datos guarda lo que la organización no puede perder.',
         'texto'  => 'Consultoría en administración de bases de datos con una auditoría de '
-                  . 'seguridad de la información medible: 75 controles, 25 procesos, 7 dominios '
-                  . 'y un índice de riesgo que se puede seguir en el tiempo.',
+                  . 'seguridad de la información medible, sobre ISO/IEC 27002, 27007 y '
+                  . 'COBIT 4.1.',
 
         'cta_primario'   => ['etiqueta' => 'Solicitar una auditoría', 'destino' => '#contacto'],
         'cta_secundario' => ['etiqueta' => 'Ver el instrumento',      'destino' => '/herramientas/instrumento-bd'],
 
-        // Tamaño del instrumento, en cifras tabulares.
+        /**
+         * Tamaño del instrumento. Sin 'valor' A PROPÓSITO: lo cuenta la vista
+         * sobre el repositorio, que es la única forma de que estas tres cifras
+         * no mientan el día que alguien añada un control.
+         *
+         * El icono va en oro porque lo que rotula ES referencia normativa —los
+         * controles, procesos y dominios del instrumento ISO/IEC 27002—, que es
+         * el único significado que el sistema visual le concede al oro (§5.2).
+         */
         'cifras' => [
-            ['valor' => '75', 'etiqueta' => 'Controles'],
-            ['valor' => '25', 'etiqueta' => 'Procesos'],
-            ['valor' => '7',  'etiqueta' => 'Dominios'],
+            ['clave' => 'controles', 'etiqueta' => 'Controles', 'icono' => 'auditoria.png'],
+            ['clave' => 'procesos',  'etiqueta' => 'Procesos',  'icono' => 'monitoreo.png'],
+            ['clave' => 'dominios',  'etiqueta' => 'Dominios',  'icono' => 'base-datos.png'],
         ],
 
         /**
-         * Tarjeta de índice de riesgo: enseña el producto real en vez de
-         * describirlo.
+         * Pie del banner: los dominios del instrumento con su número de
+         * controles. Es la estructura del método, no el resultado de nadie —
+         * enseña QUÉ se mide en vez de afirmar cómo salió una auditoría.
          *
-         * Los campos 'estado' solo admiten los tonos de la escala semántica
-         * (ok, warn, bad, crit, na): la vista los pasa por pill(), que exige
-         * ícono y etiqueta, de modo que un valor inventado aquí degrada a un
-         * pill neutro en vez de colar clases arbitrarias en el HTML.
-         *
-         * Los porcentajes van aparte del texto porque uno dibuja la barra y el
-         * otro se lee: 'Madurez promedio' se muestra como «2,6 / 5,0» pero la
-         * barra ocupa el 52 %.
+         * La lista la arma la vista desde el repositorio; aquí solo va el
+         * rótulo que la encabeza.
          */
-        'panel' => [
-            'titulo'          => 'Índice general de riesgo',
-            'referencia'      => 'AUD-0042',
-            'indice'          => '3,4',
-            'indice_maximo'   => 'de 5,0',
-            'estado'          => 'bad',
-            'estado_etiqueta' => 'Requiere atención',
-            'barras' => [
-                ['etiqueta' => 'Cumplimiento general',  'valor' => '68,0 %',    'porcentaje' => 68],
-                ['etiqueta' => 'Madurez promedio',      'valor' => '2,6 / 5,0', 'porcentaje' => 52],
-                ['etiqueta' => 'Controles respondidos', 'valor' => '61 / 75',   'porcentaje' => 81],
-            ],
-            'conteos' => [
-                ['estado' => 'ok',  'etiqueta' => 'Cumple 41'],
-                ['estado' => 'bad', 'etiqueta' => 'No cumple 14'],
-                ['estado' => 'na',  'etiqueta' => 'No aplica 6'],
-            ],
-        ],
+        'dominios_rotulo' => 'Lo que se audita',
     ],
 
     /**
@@ -413,5 +448,205 @@ return [
         'titulo' => '¿Hablamos de sus bases de datos?',
         'texto'  => 'Realizamos un diagnóstico inicial sin costo: revisamos configuración, '
                   . 'respaldos y accesos, y entregamos un informe con hallazgos priorizados.',
+    ],
+
+    /**
+     * Preguntas frecuentes (/preguntas-frecuentes).
+     *
+     * Quince preguntas repartidas en tres grupos, y el reparto es la respuesta
+     * a tres dudas distintas que llegan juntas: qué hace el sistema, si le sirve
+     * a quien pregunta, y si va a seguir existiendo el año que viene.
+     *
+     * Las del tercer grupo son PROPUESTAS, no compromisos con fecha. Se
+     * redactan en condicional a propósito: prometer un módulo que todavía no
+     * tiene esquema es la forma más barata de perder la confianza que las otras
+     * catorce respuestas acaban de ganar.
+     */
+    'preguntas' => [
+        'eyebrow' => 'Preguntas frecuentes',
+        'titulo'  => 'Cómo funciona, para quién es y hacia dónde va',
+        'texto'   => 'Quince respuestas sobre el instrumento de 75 controles, el módulo de '
+                   . 'evaluación de riesgo y el camino que sigue el producto. Si la suya no '
+                   . 'está aquí, el formulario de contacto llega al mismo equipo que audita.',
+
+        // Rótulo del índice de la página. Es copia, no cadena de interfaz: por
+        // eso vive aquí, junto al texto que encabeza, y no en config/idiomas.
+        'indice' => 'En esta página',
+
+        // Cierre: la pregunta que falta. Un listado de respuestas termina
+        // siempre en la que no estaba, y dejarla sin salida obliga a volver a
+        // buscar el pie con la vista.
+        'cierre' => [
+            'titulo'    => '¿Su pregunta no está en la lista?',
+            'texto'     => 'Escríbanos y le responde quien audita, no un formulario. Si prefiere '
+                         . 'empezar por su cuenta, el instrumento de 75 controles está abierto y '
+                         . 'no pide datos de nadie.',
+            'principal' => ['etiqueta' => 'Escribir al equipo',  'destino' => '#contacto'],
+            'secundaria' => ['etiqueta' => 'Ver el instrumento', 'destino' => '/herramientas/instrumento-bd'],
+        ],
+
+        'grupos' => [
+            [
+                'clave'  => 'funcionamiento',
+                'titulo' => 'Cómo funciona el sistema',
+                'texto'  => 'Del cuestionario al índice de riesgo, y de ahí al plan de '
+                          . 'remediación.',
+                'lista'  => [
+                    [
+                        'pregunta'  => '¿Qué es exactamente Rivendel?',
+                        'respuesta' => 'Es una consultoría en administración de bases de datos y, '
+                                     . 'a la vez, el sistema con el que se ejecuta su auditoría. '
+                                     . 'No entregamos una opinión escrita a mano: aplicamos un '
+                                     . 'instrumento de 75 controles agrupados en 25 procesos y 7 '
+                                     . 'dominios, y de esas respuestas sale un índice de riesgo '
+                                     . 'que puede volver a calcularse meses después con el mismo '
+                                     . 'método.',
+                    ],
+                    [
+                        'pregunta'  => '¿En qué se basa el instrumento de 75 controles?',
+                        'respuesta' => 'En la familia ISO/IEC 27000 —27002 para los controles y '
+                                     . '27007 para cómo se auditan— con el aporte de COBIT 4.1 en '
+                                     . 'la parte de gobierno. Cada control declara de qué norma '
+                                     . 'viene, y esa referencia se imprime en el reporte: quien '
+                                     . 'lea el hallazgo puede ir a la fuente sin preguntarnos.',
+                    ],
+                    [
+                        'pregunta'  => '¿Cómo se responde una auditoría?',
+                        'respuesta' => 'El auditor abre una auditoría sobre una organización y un '
+                                     . 'alcance concretos, y recorre los controles uno por uno. '
+                                     . 'Cada control se responde con cumple, no cumple o no aplica, '
+                                     . 'un nivel de madurez de 1 a 5 y el hallazgo que sustenta esa '
+                                     . 'respuesta. Nada obliga a terminarla de una sentada: el '
+                                     . 'avance queda guardado control por control.',
+                    ],
+                    [
+                        'pregunta'  => '¿Cómo se calcula el índice de riesgo?',
+                        'respuesta' => 'Con procedimientos almacenados en la base de datos, no con '
+                                     . 'una fórmula escondida en la aplicación. El cumplimiento es '
+                                     . 'la razón entre controles que cumplen y controles aplicables '
+                                     . '—los marcados «no aplica» salen del divisor, no cuentan como '
+                                     . 'falla—, y el índice combina ese cumplimiento con la madurez '
+                                     . 'promedio en una escala de 1 a 5.',
+                    ],
+                    [
+                        'pregunta'  => '¿Qué pasa después de cerrar una auditoría?',
+                        'respuesta' => 'Empieza la parte que de verdad reduce el riesgo. Cada '
+                                     . 'control incumplido puede abrir una remediación con '
+                                     . 'responsable y fecha comprometida; el sistema avisa cuando '
+                                     . 'una vence, y al programar la re-auditoría se vuelve a '
+                                     . 'evaluar solo lo remediado. La comparación entre dos '
+                                     . 'auditorías de la misma organización muestra qué se movió y '
+                                     . 'qué quedó igual.',
+                    ],
+                    [
+                        'pregunta'  => '¿Qué entrega el sistema al final?',
+                        'respuesta' => 'Un reporte ejecutivo escrito para dos lectores a la vez: '
+                                     . 'abre con el índice general, la matriz de dominios y los '
+                                     . 'hallazgos críticos —para quien firma el presupuesto— y '
+                                     . 'sigue con el plan de remediación control por control, con '
+                                     . 'su norma de origen, para quien tiene que arreglarlo. Se '
+                                     . 'imprime o se guarda en PDF sin los controles de navegación, '
+                                     . 'y el instrumento público además exporta el avance en CSV y '
+                                     . 'JSON.',
+                    ],
+                ],
+            ],
+            [
+                'clave'  => 'publico',
+                'titulo' => 'A quién está dirigido',
+                'texto'  => 'Quién lo usa, quién lo lee y qué hace falta para empezar.',
+                'lista'  => [
+                    [
+                        'pregunta'  => '¿A qué tipo de organización le sirve?',
+                        'respuesta' => 'A la que ya depende de sus bases de datos y no sabe decir '
+                                     . 'cuánto riesgo carga: cooperativas, instituciones públicas, '
+                                     . 'empresas medianas con un ERP encima de un motor que nadie '
+                                     . 'audita desde hace años. No hace falta un departamento de '
+                                     . 'seguridad; hace falta alguien que pueda responder cómo se '
+                                     . 'respaldan y quién tiene acceso.',
+                    ],
+                    [
+                        'pregunta'  => '¿Quién usa el sistema y con qué rol?',
+                        'respuesta' => 'Hay dos roles. El auditor levanta auditorías, responde '
+                                     . 'controles y da seguimiento a las remediaciones de su propia '
+                                     . 'cartera: no ve el trabajo de otro consultor. El '
+                                     . 'administrador de base de datos mantiene además el catálogo '
+                                     . 'maestro —dominios, procesos y controles—, que es lo que '
+                                     . 'todos los demás evalúan.',
+                    ],
+                    [
+                        'pregunta'  => '¿Sirve si soy el DBA de la organización y no un consultor?',
+                        'respuesta' => 'Sí, y es uno de los usos previstos. El instrumento público '
+                                     . 'se responde sin cuenta y sin enviar nada a ningún servidor: '
+                                     . 'sirve como autodiagnóstico antes de contratar a nadie. Lo '
+                                     . 'que cambia con el módulo interno es la memoria —histórico, '
+                                     . 'comparación y remediaciones—, no el contenido de las '
+                                     . 'preguntas.',
+                    ],
+                    [
+                        'pregunta'  => '¿Qué se necesita para empezar?',
+                        'respuesta' => 'Para el instrumento público, un navegador. Para el módulo '
+                                     . 'de evaluación, una cuenta de auditor y los datos de la '
+                                     . 'organización que se va a auditar. No pedimos acceso a sus '
+                                     . 'bases de datos: la auditoría se levanta con entrevista y '
+                                     . 'evidencia, y las credenciales de producción no salen de su '
+                                     . 'organización.',
+                    ],
+                ],
+            ],
+            [
+                'clave'  => 'futuro',
+                'titulo' => 'Propuestas de futuros proyectos',
+                'texto'  => 'Lo que está en estudio para las próximas etapas. Son propuestas, '
+                          . 'no funciones disponibles hoy.',
+                'lista'  => [
+                    [
+                        'pregunta'  => '¿Habrá monitoreo continuo de las bases de datos?',
+                        'respuesta' => 'Es la propuesta principal. Hoy el panel ya lleva la ficha '
+                                     . 'de bases de datos conectadas, que es la previsualización de '
+                                     . 'ese módulo: la misma lista de instancias que alimentaría el '
+                                     . 'monitoreo. Lo que falta es leer de cada una la latencia, el '
+                                     . 'espacio, los bloqueos y el último respaldo, para que el '
+                                     . 'diagnóstico deje de ser una foto trimestral y pase a ser una '
+                                     . 'señal continua.',
+                    ],
+                    [
+                        'pregunta'  => '¿Se ampliará a otros motores además de Oracle?',
+                        'respuesta' => 'El instrumento ya es independiente del motor: los 75 '
+                                     . 'controles preguntan por respaldos, accesos y cifrado, no '
+                                     . 'por la sintaxis de un fabricante. Lo que está en estudio es '
+                                     . 'que el propio sistema pueda apoyarse en PostgreSQL o SQL '
+                                     . 'Server además de Oracle, cambiando la capa de acceso a datos '
+                                     . 'sin tocar las vistas.',
+                    ],
+                    [
+                        'pregunta'  => '¿Se podrá adjuntar evidencia a cada hallazgo?',
+                        'respuesta' => 'Está propuesto. Hoy el hallazgo es texto, y eso obliga a '
+                                     . 'describir con palabras una captura de pantalla o la salida '
+                                     . 'de una consulta. Adjuntar el archivo al control cerraría esa '
+                                     . 'distancia, con la condición de que la evidencia herede el '
+                                     . 'mismo control de acceso que la auditoría a la que pertenece.',
+                    ],
+                    [
+                        'pregunta'  => '¿Habrá alertas y avisos automáticos?',
+                        'respuesta' => 'El sistema ya sabe qué remediaciones están vencidas y las '
+                                     . 'muestra al entrar. El paso siguiente propuesto es que ese '
+                                     . 'aviso salga del sistema —correo al responsable antes del '
+                                     . 'vencimiento, no después— y que la re-auditoría se proponga '
+                                     . 'sola cuando todas las remediaciones de una auditoría queden '
+                                     . 'cerradas.',
+                    ],
+                    [
+                        'pregunta'  => '¿Se abrirá una interfaz para integrarlo con otros sistemas?',
+                        'respuesta' => 'Es la propuesta de más largo plazo, y la que menos sentido '
+                                     . 'tiene apresurar. Publicar el índice de riesgo y el estado de '
+                                     . 'las remediaciones hacia un tablero corporativo o un sistema '
+                                     . 'de tiquetes solo vale la pena cuando el modelo de datos esté '
+                                     . 'asentado; hacerlo antes obliga a mantener una interfaz '
+                                     . 'pública encima de un esquema que todavía se mueve.',
+                    ],
+                ],
+            ],
+        ],
     ],
 ];

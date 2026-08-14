@@ -683,9 +683,27 @@ final class AuditoriaController extends Controlador
         // cada organización que este auditor ya evaluó. Complementa las
         // barras de índice general que ya se mostraban con el desglose por
         // dominio, para ver en qué áreas mejoró o empeoró cada auditoría.
+        //
+        // El procedimiento agrega por ORGANIZACIÓN y no sabe de auditores: si
+        // dos consultoras auditaron a la misma empresa, devuelve las dos
+        // carteras mezcladas. Aquí se recorta a las auditorías propias, que es
+        // el mismo criterio de auditoriaPropia() frente a /evaluacion/9 —
+        // filtrar la lista por auditor no basta si el desglose de al lado
+        // sigue enseñando el trabajo de otro. Además la pantalla se
+        // contradecía sola: la cabecera fechaba la última auditoría del
+        // auditor y la tabla llegaba hasta la de otra consultora.
         $historicoPorOrganizacion = [];
-        foreach (array_keys($porOrganizacion) as $organizacion) {
-            $historicoPorOrganizacion[$organizacion] = $this->auditorias()->historicoPorDominio($organizacion);
+
+        foreach ($porOrganizacion as $organizacion => $grupo) {
+            $propias = array_flip(array_map(
+                static fn (Auditoria $auditoria): int => $auditoria->id,
+                $grupo,
+            ));
+
+            $historicoPorOrganizacion[$organizacion] = array_values(array_filter(
+                $this->auditorias()->historicoPorDominio($organizacion),
+                static fn (array $fila): bool => isset($propias[(int) $fila['id_auditoria']]),
+            ));
         }
 
         $this->verPanel('evaluacion/comparar', [

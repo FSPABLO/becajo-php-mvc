@@ -21,6 +21,46 @@
 }
 
 /*
+ * Llaves de captura.
+ *
+ * Las pestañas, las letras de riesgo, los tres estados y las cuatro respuestas
+ * son teclas físicas: sueltas sobresalen, elegidas se hunden. Es el mismo par
+ * de sombras de .rv-extruido-sm —el relieve corto—, porque son piezas de menos
+ * de 40 px separadas por 4: el desplazamiento de una tarjeta caería entero
+ * sobre la tecla vecina.
+ *
+ * El hundido lo dispara el propio estado del control (:checked) o el que ya
+ * mantiene la pestaña (aria-selected), no una clase que tenga que escribir el
+ * guion. Así la tecla se hunde también cuando el avance se restaura desde el
+ * almacenamiento, que es cuando se marcan sin que nadie pulse nada.
+ *
+ * El combinador es ~ y no +: entre el input y su etiqueta hay comentarios de
+ * plantilla, y un comentario no es hermano adyacente para el selector.
+ */
+.rv-opcion {
+    box-shadow:
+         3px  3px 7px rgba(var(--nm-sombra) / var(--nm-o)),
+        -2px -2px 5px rgba(var(--nm-realce) / var(--nm-h));
+    transition: box-shadow 0.2s ease, border-color 0.2s ease,
+                color 0.2s ease, background-color 0.2s ease;
+}
+
+input:checked ~ .rv-opcion {
+    box-shadow:
+        inset  3px  3px 6px rgba(var(--nm-sombra) / var(--nm-o)),
+        inset -2px -2px 4px rgba(var(--nm-realce) / var(--nm-h));
+}
+
+/*
+ * La pestaña elegida se hunde SIN el realce. Es la única tecla que además se
+ * llena de acento, y sobre el oro el blanco del realce —que en pergamino va al
+ * 0,95— no se lee como luz sino como un bisel sucio en el canto interior.
+ */
+.rv-opcion[aria-selected='true'] {
+    box-shadow: inset 3px 3px 7px rgba(var(--nm-sombra) / 0.28);
+}
+
+/*
  * Alto mínimo de los campos de texto largo. NO se les devuelve el tirador de
  * redimensionado: rivendel.css lo retira en todo el producto (decisión de
  * diseño general) y aquí la excepción sería justo la peor, porque son campos

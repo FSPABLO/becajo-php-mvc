@@ -26,12 +26,25 @@ return [
     ],
 
     'navegacion' => [
-        ['etiqueta' => 'Challenges', 'destino' => '#retos'],
-        ['etiqueta' => 'Services',   'destino' => '#servicios'],
-        ['etiqueta' => 'Stack',      'destino' => '#stack'],
-        ['etiqueta' => 'Results',    'destino' => '#resultados'],
-        ['etiqueta' => 'Team',       'destino' => '#equipo'],
-        ['etiqueta' => 'Pricing',    'destino' => '#planes'],
+        ['etiqueta' => 'Stack',   'destino' => '#stack'],
+        ['etiqueta' => 'Pricing', 'destino' => '#planes'],
+    ],
+
+    'nosotros' => [
+        [
+            'etiqueta'    => 'Team',
+            'descripcion' => 'Who audits: the consultants behind the instrument and the '
+                           . 'audits themselves.',
+            'destino'     => '#equipo',
+            'icono'       => 'usuarios',
+        ],
+        [
+            'etiqueta'    => 'Frequently asked questions',
+            'descripcion' => 'How the system works, who it is for, and where the product '
+                           . 'is heading.',
+            'destino'     => '/preguntas-frecuentes',
+            'icono'       => 'pregunta',
+        ],
     ],
 
     'herramientas' => [
@@ -51,41 +64,30 @@ return [
         ],
     ],
 
+    /**
+     * Typographic banner. See the Spanish file for the notes — including the
+     * rule that inherits with this block: NO fabricated figures and no client
+     * data in the banner, ever. The only numbers shown are the size of the
+     * instrument, and the view counts them off the repository rather than
+     * reading them from here.
+     */
     'hero' => [
         'norma'  => 'ISO/IEC 27002 · 27007 · COBIT 4.1',
         'titulo' => 'Your database holds what the organization cannot afford to lose.',
-        'texto'  => 'Database administration consulting with a measurable information security '
-                  . 'audit: 75 controls, 25 processes, 7 domains and a risk index you can track '
-                  . 'over time.',
+        'texto'  => 'Database administration consulting with a measurable information '
+                  . 'security audit, built on ISO/IEC 27002, 27007 and COBIT 4.1.',
 
         'cta_primario'   => ['etiqueta' => 'Request an audit',   'destino' => '#contacto'],
         'cta_secundario' => ['etiqueta' => 'See the instrument', 'destino' => '/herramientas/instrumento-bd'],
 
+        /** No 'valor' on purpose — the view counts these off the repository. */
         'cifras' => [
-            ['valor' => '75', 'etiqueta' => 'Controls'],
-            ['valor' => '25', 'etiqueta' => 'Processes'],
-            ['valor' => '7',  'etiqueta' => 'Domains'],
+            ['clave' => 'controles', 'etiqueta' => 'Controls',  'icono' => 'auditoria.png'],
+            ['clave' => 'procesos',  'etiqueta' => 'Processes', 'icono' => 'monitoreo.png'],
+            ['clave' => 'dominios',  'etiqueta' => 'Domains',   'icono' => 'base-datos.png'],
         ],
 
-        /** Risk index card illustrating the hero. See the Spanish file for the notes. */
-        'panel' => [
-            'titulo'          => 'Overall risk index',
-            'referencia'      => 'AUD-0042',
-            'indice'          => '3.4',
-            'indice_maximo'   => 'of 5.0',
-            'estado'          => 'bad',
-            'estado_etiqueta' => 'Needs attention',
-            'barras' => [
-                ['etiqueta' => 'Overall compliance', 'valor' => '68.0 %',    'porcentaje' => 68],
-                ['etiqueta' => 'Average maturity',   'valor' => '2.6 / 5.0', 'porcentaje' => 52],
-                ['etiqueta' => 'Controls answered',  'valor' => '61 / 75',   'porcentaje' => 81],
-            ],
-            'conteos' => [
-                ['estado' => 'ok',  'etiqueta' => 'Compliant 41'],
-                ['estado' => 'bad', 'etiqueta' => 'Non-compliant 14'],
-                ['estado' => 'na',  'etiqueta' => 'Not applicable 6'],
-            ],
-        ],
+        'dominios_rotulo' => 'What gets audited',
     ],
 
     /** See the Spanish file for the notes on 'eyebrow' and the numbering. */
@@ -347,5 +349,185 @@ return [
         'titulo' => 'Let\'s talk about your databases',
         'texto'  => 'We run a free initial assessment: we review configuration, '
                   . 'backups and access, and deliver a report with prioritized findings.',
+    ],
+
+    /** Frequently asked questions (/preguntas-frecuentes). See the Spanish file for the notes. */
+    'preguntas' => [
+        'eyebrow' => 'Frequently asked questions',
+        'titulo'  => 'How it works, who it is for, and where it is heading',
+        'texto'   => 'Fifteen answers about the 75-control instrument, the risk assessment '
+                   . 'module and the road ahead for the product. If yours is not here, the '
+                   . 'contact form reaches the same team that runs the audits.',
+
+        'indice' => 'On this page',
+
+        'cierre' => [
+            'titulo'    => 'Is your question missing from the list?',
+            'texto'     => 'Write to us and the person who audits will answer, not a form. If you '
+                         . 'would rather start on your own, the 75-control instrument is open and '
+                         . 'asks nobody for their details.',
+            'principal' => ['etiqueta' => 'Write to the team',   'destino' => '#contacto'],
+            'secundaria' => ['etiqueta' => 'See the instrument', 'destino' => '/herramientas/instrumento-bd'],
+        ],
+
+        'grupos' => [
+            [
+                'clave'  => 'funcionamiento',
+                'titulo' => 'How the system works',
+                'texto'  => 'From the questionnaire to the risk index, and from there to the '
+                          . 'remediation plan.',
+                'lista'  => [
+                    [
+                        'pregunta'  => 'What exactly is Rivendel?',
+                        'respuesta' => 'It is a database administration consultancy and, at the '
+                                     . 'same time, the system your audit runs on. We do not hand '
+                                     . 'over a hand-written opinion: we apply an instrument of 75 '
+                                     . 'controls grouped into 25 processes and 7 domains, and those '
+                                     . 'answers produce a risk index that can be recalculated '
+                                     . 'months later with the very same method.',
+                    ],
+                    [
+                        'pregunta'  => 'What is the instrument of 75 controls based on?',
+                        'respuesta' => 'On the ISO/IEC 27000 family — 27002 for the controls and '
+                                     . '27007 for how they are audited — with COBIT 4.1 covering '
+                                     . 'governance. Every control states which standard it comes '
+                                     . 'from, and that reference is printed in the report: whoever '
+                                     . 'reads a finding can go to the source without asking us.',
+                    ],
+                    [
+                        'pregunta'  => 'How is an audit answered?',
+                        'respuesta' => 'The auditor opens an audit for a specific organization and '
+                                     . 'scope, then walks the controls one by one. Each control is '
+                                     . 'answered with complies, does not comply or not applicable, '
+                                     . 'a maturity level from 1 to 5, and the finding that backs '
+                                     . 'that answer. Nothing forces you to finish in one sitting: '
+                                     . 'progress is saved control by control.',
+                    ],
+                    [
+                        'pregunta'  => 'How is the risk index calculated?',
+                        'respuesta' => 'With stored procedures in the database, not with a formula '
+                                     . 'hidden in the application. Compliance is the ratio of '
+                                     . 'complying controls to applicable controls — those marked '
+                                     . '«not applicable» leave the divisor, they do not count as '
+                                     . 'failures — and the index combines that compliance with '
+                                     . 'average maturity on a 1 to 5 scale.',
+                    ],
+                    [
+                        'pregunta'  => 'What happens after an audit is closed?',
+                        'respuesta' => 'The part that actually reduces risk begins. Every failed '
+                                     . 'control can open a remediation with an owner and a '
+                                     . 'committed date; the system flags the ones that fall due, '
+                                     . 'and scheduling the re-audit re-evaluates only what was '
+                                     . 'remediated. Comparing two audits of the same organization '
+                                     . 'shows what moved and what stayed put.',
+                    ],
+                    [
+                        'pregunta'  => 'What does the system deliver in the end?',
+                        'respuesta' => 'An executive report written for two readers at once: it '
+                                     . 'opens with the overall index, the domain matrix and the '
+                                     . 'critical findings — for whoever signs the budget — and '
+                                     . 'continues with the remediation plan control by control, '
+                                     . 'each with its source standard, for whoever has to fix it. '
+                                     . 'It prints or saves as PDF without the navigation chrome, '
+                                     . 'and the public instrument also exports progress as CSV and '
+                                     . 'JSON.',
+                    ],
+                ],
+            ],
+            [
+                'clave'  => 'publico',
+                'titulo' => 'Who it is for',
+                'texto'  => 'Who uses it, who reads it, and what it takes to start.',
+                'lista'  => [
+                    [
+                        'pregunta'  => 'What kind of organization does it serve?',
+                        'respuesta' => 'The one that already depends on its databases and cannot '
+                                     . 'say how much risk it carries: credit unions, public '
+                                     . 'institutions, mid-sized companies running an ERP on an '
+                                     . 'engine nobody has audited in years. You do not need a '
+                                     . 'security department; you need someone who can answer how '
+                                     . 'backups are taken and who holds access.',
+                    ],
+                    [
+                        'pregunta'  => 'Who uses the system, and in which role?',
+                        'respuesta' => 'There are two roles. The auditor opens audits, answers '
+                                     . 'controls and follows up remediations in their own '
+                                     . 'portfolio: they cannot see another consultant\'s work. The '
+                                     . 'database administrator additionally maintains the master '
+                                     . 'catalog — domains, processes and controls — which is what '
+                                     . 'everyone else is evaluated against.',
+                    ],
+                    [
+                        'pregunta'  => 'Is it useful if I am the in-house DBA rather than a consultant?',
+                        'respuesta' => 'Yes, and that is one of the intended uses. The public '
+                                     . 'instrument is answered without an account and without '
+                                     . 'sending anything to any server: it works as a self-diagnosis '
+                                     . 'before hiring anyone. What the internal module adds is '
+                                     . 'memory — history, comparison and remediations — not '
+                                     . 'different questions.',
+                    ],
+                    [
+                        'pregunta'  => 'What do I need to get started?',
+                        'respuesta' => 'For the public instrument, a browser. For the assessment '
+                                     . 'module, an auditor account and the details of the '
+                                     . 'organization to be audited. We do not ask for access to '
+                                     . 'your databases: the audit is built from interviews and '
+                                     . 'evidence, and production credentials never leave your '
+                                     . 'organization.',
+                    ],
+                ],
+            ],
+            [
+                'clave'  => 'futuro',
+                'titulo' => 'Proposals for future projects',
+                'texto'  => 'What is under study for the coming stages. These are proposals, '
+                          . 'not features available today.',
+                'lista'  => [
+                    [
+                        'pregunta'  => 'Will there be continuous database monitoring?',
+                        'respuesta' => 'That is the main proposal. The panel already carries the '
+                                     . 'connected databases card, which is the preview of that '
+                                     . 'module: the very list of instances monitoring would feed '
+                                     . 'on. What is missing is reading latency, space, locks and '
+                                     . 'last backup from each one, so the diagnosis stops being a '
+                                     . 'quarterly snapshot and becomes a continuous signal.',
+                    ],
+                    [
+                        'pregunta'  => 'Will it extend to engines other than Oracle?',
+                        'respuesta' => 'The instrument is already engine-independent: the 75 '
+                                     . 'controls ask about backups, access and encryption, not '
+                                     . 'about one vendor\'s syntax. What is under study is whether '
+                                     . 'the system itself can run on PostgreSQL or SQL Server '
+                                     . 'besides Oracle, swapping the data access layer without '
+                                     . 'touching the views.',
+                    ],
+                    [
+                        'pregunta'  => 'Will evidence be attachable to each finding?',
+                        'respuesta' => 'It is proposed. Today a finding is text, which forces you '
+                                     . 'to describe a screenshot or a query output in words. '
+                                     . 'Attaching the file to the control would close that gap, on '
+                                     . 'the condition that the evidence inherits the same access '
+                                     . 'control as the audit it belongs to.',
+                    ],
+                    [
+                        'pregunta'  => 'Will there be automatic alerts and notices?',
+                        'respuesta' => 'The system already knows which remediations are overdue and '
+                                     . 'shows them on entry. The proposed next step is for that '
+                                     . 'notice to leave the system — an email to the owner before '
+                                     . 'the due date, not after — and for the re-audit to propose '
+                                     . 'itself once every remediation in an audit is closed.',
+                    ],
+                    [
+                        'pregunta'  => 'Will an interface open up for integration with other systems?',
+                        'respuesta' => 'That is the longest-term proposal, and the one least worth '
+                                     . 'rushing. Publishing the risk index and remediation status '
+                                     . 'to a corporate dashboard or a ticketing system only pays off '
+                                     . 'once the data model has settled; doing it earlier means '
+                                     . 'maintaining a public interface on top of a schema that is '
+                                     . 'still moving.',
+                    ],
+                ],
+            ],
+        ],
     ],
 ];

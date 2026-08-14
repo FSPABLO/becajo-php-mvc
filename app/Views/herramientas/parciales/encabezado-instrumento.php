@@ -31,7 +31,7 @@ $acciones = [
 <section class="border-b border-borde bg-fondo">
     <div class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
 
-        <p class="inline-flex items-center gap-2 rounded-full border border-primario-hover/30 bg-primario-hover/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primario-hover">
+        <p class="rv-extruido-xs inline-flex items-center gap-2 rounded-full border border-oro/40 bg-oro-tinte px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-oro-texto">
             <?= icono('escudo', 'h-3.5 w-3.5') ?>
             ISO/IEC 27000 a 27011
         </p>
@@ -53,16 +53,18 @@ $acciones = [
                 'Versión'   => $instrumento['version'],
             ];
             ?>
+            <?php /* Cifras del resumen sobre losetas elevadas: son el primer
+                     dato de la página y hasta ahora flotaban sin caja. */ ?>
             <?php foreach ($resumen as $etiqueta => $valor): ?>
-                <div>
+                <div class="rv-extruido-sm rounded-rv bg-superficie px-4 py-2.5">
                     <dt class="text-xs uppercase tracking-wider text-texto-2"><?= e($etiqueta) ?></dt>
-                    <dd class="mt-0.5 text-lg font-bold text-texto"><?= e($valor) ?></dd>
+                    <dd class="tabular mt-0.5 text-lg font-bold text-texto"><?= e($valor) ?></dd>
                 </div>
             <?php endforeach; ?>
         </dl>
 
         <!-- Identificación de la consultoría -->
-        <div class="mt-9 rounded-rv-lg border border-borde bg-elevado p-6">
+        <div class="rv-extruido mt-9 rounded-rv-lg border border-borde bg-superficie p-6">
             <h2 class="text-sm font-semibold uppercase tracking-wider text-texto">
                 Identificación de la consultoría
             </h2>
@@ -78,7 +80,7 @@ $acciones = [
                                id="ident-<?= e($campo['clave']) ?>"
                                data-identificacion="<?= e($campo['clave']) ?>"
                                <?php if ($campo['marcador'] !== ''): ?>placeholder="<?= e($campo['marcador']) ?>"<?php endif; ?>
-                               class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-fondo px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
+                               class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -90,8 +92,8 @@ $acciones = [
                 <button type="button"
                         data-accion="<?= e($accion['clave']) ?>"
                         title="<?= e($accion['titulo']) ?>"
-                        class="inline-flex items-center gap-2 rounded-rv border border-borde px-3.5 py-2 text-sm font-semibold text-texto transition hover:border-primario-hover hover:bg-elevado">
-                    <?= icono($accion['icono'], 'h-4 w-4 text-primario-hover') ?>
+                        class="rv-extruido-sm rv-interactivo-sm inline-flex items-center gap-2 rounded-rv border border-borde bg-superficie px-3.5 py-2 text-sm font-semibold text-texto hover:border-primario">
+                    <?= icono($accion['icono'], 'h-4 w-4 text-primario') ?>
                     <?= e($accion['etiqueta']) ?>
                 </button>
             <?php endforeach; ?>

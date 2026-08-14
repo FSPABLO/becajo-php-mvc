@@ -11,18 +11,24 @@ declare(strict_types=1);
  * @var \App\Models\Entidades\Control $control
  * @var string                        $dominio
  */
+/*
+ * Contorno y texto teñido, igual que en components/tarjeta-control: §5.5 del
+ * sistema visual prohíbe el relleno sólido para el estado, y aquí eran cuatro
+ * rellenos saturados por tarjeta repetidos setenta y cinco veces. El texto del
+ * cuerpo sobre esos rellenos tampoco llegaba al contraste mínimo.
+ */
 $respuestas = [
-    ['valor' => 'si',      'etiqueta' => 'Sí',        'activo' => 'peer-checked:bg-ok peer-checked:text-texto'],
-    ['valor' => 'parcial', 'etiqueta' => 'Parcial',   'activo' => 'peer-checked:bg-warn peer-checked:text-texto'],
-    ['valor' => 'no',      'etiqueta' => 'No',        'activo' => 'peer-checked:bg-bad peer-checked:text-texto'],
-    ['valor' => 'na',      'etiqueta' => 'No aplica', 'activo' => 'peer-checked:bg-texto-2 peer-checked:text-texto'],
+    ['valor' => 'si',      'etiqueta' => 'Sí',        'activo' => 'peer-checked:border-ok peer-checked:text-ok'],
+    ['valor' => 'parcial', 'etiqueta' => 'Parcial',   'activo' => 'peer-checked:border-warn peer-checked:text-warn'],
+    ['valor' => 'no',      'etiqueta' => 'No',        'activo' => 'peer-checked:border-bad peer-checked:text-bad'],
+    ['valor' => 'na',      'etiqueta' => 'No aplica', 'activo' => 'peer-checked:border-na peer-checked:text-na'],
 ];
 ?>
 <article data-tarjeta="<?= e($control->id) ?>"
          data-dominio="<?= e($dominio) ?>"
          data-proceso="<?= e((string) $control->proceso) ?>"
          data-respuesta=""
-         class="rv-extruido rv-interactivo rounded-rv-lg border border-l-4 border-borde border-l-borde bg-superficie p-5">
+         class="rv-extruido rv-interactivo rounded-rv-lg border border-l-4 border-borde border-l-borde bg-superficie p-5 sm:p-6">
 
     <div class="flex flex-wrap items-center gap-2">
         <span class="rv-badge-norma">
@@ -40,7 +46,7 @@ $respuestas = [
     <div class="mt-4 border-t border-borde pt-4">
         <fieldset>
             <legend class="text-xs font-medium text-texto-2">Respuesta</legend>
-            <div class="mt-1.5 grid grid-cols-2 gap-1 rounded-rv bg-elevado p-1 sm:grid-cols-4">
+            <div class="rv-hundido mt-1.5 grid grid-cols-2 gap-1.5 rounded-rv bg-elevado p-1.5 sm:grid-cols-4">
                 <?php foreach ($respuestas as $respuesta): ?>
                     <label class="cursor-pointer">
                         <input type="radio"
@@ -49,7 +55,7 @@ $respuestas = [
                                data-control="<?= e($control->id) ?>"
                                data-campo="respuesta"
                                value="<?= e($respuesta['valor']) ?>">
-                        <span class="block rounded-md px-1 py-1.5 text-center text-xs font-semibold text-texto-2 transition <?= e($respuesta['activo']) ?> peer-focus-visible:ring-2 peer-focus-visible:ring-primario">
+                        <span class="rv-opcion block rounded-md border border-transparent bg-superficie px-1 py-1.5 text-center text-xs font-semibold text-texto-2 <?= e($respuesta['activo']) ?> peer-focus-visible:ring-2 peer-focus-visible:ring-primario">
                             <?= e($respuesta['etiqueta']) ?>
                         </span>
                     </label>
@@ -68,7 +74,7 @@ $respuestas = [
                    data-control="<?= e($control->id) ?>"
                    data-campo="entrevistado"
                    placeholder="Nombre y puesto"
-                   class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-superficie px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
+                   class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
         </div>
         <div>
             <label for="evidencia-<?= e($control->id) ?>" class="block text-xs font-medium text-texto-2">
@@ -79,7 +85,7 @@ $respuestas = [
                    data-control="<?= e($control->id) ?>"
                    data-campo="evidenciaAportada"
                    placeholder="Documento, consulta o captura recibida"
-                   class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-superficie px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
+                   class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario">
         </div>
     </div>
 
@@ -92,6 +98,6 @@ $respuestas = [
                   data-control="<?= e($control->id) ?>"
                   data-campo="notas"
                   placeholder="Citas textuales, matices y compromisos adquiridos"
-                  class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-superficie px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
+                  class="mt-1.5 rv-hundido w-full rounded-rv border border-borde bg-elevado px-3 py-2 text-sm leading-relaxed text-texto placeholder:text-texto-2 focus:border-primario focus:outline-none focus:ring-1 focus:ring-primario"></textarea>
     </div>
 </article>

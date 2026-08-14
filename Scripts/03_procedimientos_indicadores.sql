@@ -373,6 +373,13 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
     -- Punto 18 — histórico de madurez por dominio, para una organización.
     -- Complementa a AuditoriaController::comparar(), que ya muestra el
     -- índice general por auditoría; esto desglosa por dominio.
+    --
+    -- La fecha sale con TO_CHAR y en ISO, como en el resto de los
+    -- repositorios: devuelta como DATE, la sirve el cliente con el
+    -- NLS_DATE_FORMAT de la sesión —«01-AUG-26»— y la misma consulta da
+    -- una cadena distinta según dónde corra. En la pantalla de comparación
+    -- esa cadena es un encabezado de columna, y además una fecha así no
+    -- ordena como fecha.
     -- ------------------------------------------------------------------
     PROCEDURE sp_historico_dominio(
         p_organizacion IN  VARCHAR2,
@@ -382,9 +389,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
         OPEN p_cursor FOR
             SELECT
                 aud.id_auditoria,
-                aud.fecha,
+                TO_CHAR(aud.fecha, 'YYYY-MM-DD') AS fecha,
                 d.clave AS clave_dominio,
                 d.nombre_corto AS dominio,
+                -- El orden de presentación del instrumento, no el alfabético:
+                -- por clave, 'dato' (Protección) cae entre Continuidad y
+                -- Gobierno. Viaja en la fila porque quien dibuja el radar
+                -- necesita los ejes siempre en la misma sucesión.
+                d.orden AS orden_dominio,
                 ROUND(
                     SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 WHEN 'BAJA' THEN 1 END)
                     / NULLIF(SUM(
@@ -401,8 +413,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
             JOIN dominio d ON d.clave = p.clave_dominio
             WHERE u.organizacion = p_organizacion
               AND ec.madurez IS NOT NULL
-            GROUP BY aud.id_auditoria, aud.fecha, d.clave, d.nombre_corto
-            ORDER BY aud.fecha, d.clave;
+            GROUP BY aud.id_auditoria, aud.fecha, d.clave, d.nombre_corto, d.orden
+            ORDER BY aud.fecha, d.orden, d.clave;
     END sp_historico_dominio;
 
 

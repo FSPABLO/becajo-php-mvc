@@ -16,7 +16,7 @@ declare(strict_types=1);
         de normas de acceso público de ISO.
     </p>
 
-    <ul class="mt-8 overflow-hidden rounded-rv-lg border border-borde bg-superficie">
+    <ul class="rv-extruido mt-8 overflow-hidden rounded-rv-lg border border-borde bg-superficie">
         <?php foreach ($referencias as $referencia): ?>
             <li class="border-b border-borde last:border-b-0">
                 <a href="<?= e($referencia['enlace']) ?>"
@@ -38,7 +38,7 @@ declare(strict_types=1);
         <?php endforeach; ?>
     </ul>
 
-    <div class="mt-8 rounded-rv-lg border border-borde bg-superficie p-6">
+    <div class="rv-extruido mt-8 rounded-rv-lg border border-borde bg-superficie p-6">
         <h3 class="font-bold text-texto">Sobre el alcance de este instrumento</h3>
         <p class="mt-2 text-sm leading-relaxed text-texto-2">
             Es una herramienta de diagnóstico interno. Su resultado orienta la priorización

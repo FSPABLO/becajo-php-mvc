@@ -15,7 +15,7 @@ declare(strict_types=1);
  * @var array<string, int>                  $totalPorDominio
  */
 ?>
-<div class="overflow-hidden rounded-rv-lg border border-borde bg-superficie">
+<div class="rv-extruido overflow-hidden rounded-rv-lg border border-borde bg-superficie">
 
     <?= $vista->renderizar('herramientas/parciales/tabs-dominios', [
         'ambito'          => 'cuestionario',
@@ -61,12 +61,12 @@ declare(strict_types=1);
         <nav class="mt-8 flex items-center justify-between gap-3 border-t border-borde pt-6 no-imprimir"
              aria-label="Navegación entre dominios del cuestionario">
             <button type="button" data-nav="anterior"
-                    class="inline-flex max-w-[45%] items-center gap-2 rounded-rv border border-borde bg-superficie px-4 py-2.5 text-sm font-semibold text-texto transition hover:border-borde disabled:cursor-not-allowed disabled:opacity-40">
+                    class="rv-extruido-sm rv-interactivo-sm inline-flex max-w-[45%] items-center gap-2 rounded-rv border border-borde bg-superficie px-4 py-2.5 text-sm font-semibold text-texto hover:border-primario disabled:cursor-not-allowed disabled:opacity-40">
                 <span class="rotate-180"><?= icono('flecha', 'h-4 w-4') ?></span>
                 <span class="truncate" data-nav-etiqueta>Dominio anterior</span>
             </button>
             <button type="button" data-nav="siguiente"
-                    class="inline-flex max-w-[45%] items-center gap-2 rv-extruido rv-interactivo rounded-rv bg-primario px-4 py-2.5 text-sm font-semibold text-primario-texto disabled:cursor-not-allowed disabled:opacity-40">
+                    class="inline-flex max-w-[45%] items-center gap-2 rv-extruido-sm rv-interactivo-sm rounded-rv bg-primario px-4 py-2.5 text-sm font-semibold text-primario-texto disabled:cursor-not-allowed disabled:opacity-40">
                 <span class="truncate" data-nav-etiqueta>Dominio siguiente</span>
                 <?= icono('flecha', 'h-4 w-4') ?>
             </button>

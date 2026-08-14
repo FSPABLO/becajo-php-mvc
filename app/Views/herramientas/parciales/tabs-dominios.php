@@ -45,8 +45,11 @@ declare(strict_types=1);
                                ? 'border-primario text-texto'
                                : 'border-transparent text-texto-2 hover:border-borde hover:text-texto' ?>">
                 <span><?= e($dominio->corto) ?></span>
+                <?php /* Contador de avance: ficha elevada, y en oro relleno
+                         cuando el dominio queda completo. Verde sería el color
+                         de «cumple», y esto solo dice «contestado». */ ?>
                 <span data-avance-dominio="<?= e($dominio->clave) ?>"
-                      class="rounded-full bg-elevado px-2 py-0.5 text-xs font-bold text-texto-2">
+                      class="rv-extruido-xs tabular rounded-full bg-superficie px-2 py-0.5 text-xs font-bold text-texto-2">
                     0/<?= e((string) ($totalPorDominio[$dominio->clave] ?? 0)) ?>
                 </span>
             </button>

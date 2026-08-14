@@ -9,9 +9,11 @@ declare(strict_types=1);
  */
 return [
     // Navegación / encabezado
+    'nav.nosotros'        => 'Nosotros',
     'nav.herramientas'    => 'Herramientas',
     'nav.mis_auditorias'  => 'Mis auditorías',
     'nav.catalogo'        => 'Catálogo',
+    'nav.perfil'          => 'Perfil',
     'nav.salir'           => 'Salir',
     'nav.ingresar'        => 'Ingresar',
     'nav.contactar'       => 'Contactar',
@@ -257,10 +259,52 @@ return [
     'eval.solo_una_auditoria'    => 'Solo hay una auditoría todavía. Se necesitan al menos dos para ver una tendencia.',
     'eval.riesgo'                 => 'riesgo',
 
+    // Comparación histórica — columnas del índice general por auditoría.
+    // «Auditorías: 1» y no «1 auditorías»: la cifra va detrás de los dos
+    // puntos para que la frase valga igual en singular y en plural.
+    'eval.auditorias_de_organizacion' => 'Auditorías: %s · última el %s',
+    'eval.indice_por_auditoria'  => 'Índice general por auditoría',
+    'eval.indice_por_auditoria_texto' => 'De la más antigua a la más reciente. La última va destacada; cada columna abre su auditoría.',
+    // El corte de zona verde de fn_zona (pkg_indicadores). En oro porque es
+    // referencia normativa, y el oro no significa otra cosa en Rivendel.
+    'eval.umbral_verde'          => 'Umbral de zona verde (0,80)',
+    'eval.columna_indice'        => 'Auditoría del %s · índice %s',
+    'eval.indice_resumen'        => 'Índice general por auditoría. Auditorías con índice calculado: %s. Último valor: %s.',
+    'eval.sin_indice_calculado'  => 'Ninguna auditoría de esta organización tiene todavía el índice calculado.',
+    'eval.auditorias_sin_indice' => 'Auditorías sin índice calculado, sin columna en el gráfico: %s.',
+
+    // Comparación histórica — perfil de madurez por dominio (gráfico de araña).
+    'eval.perfil_dominios'       => 'Perfil de madurez por dominio',
+    'eval.perfil_dominios_texto' => 'Última auditoría con desglose (%s).',
+    'eval.sin_desglose_dominio'  => 'Todavía no hay controles evaluados con madurez en esta organización.',
+    'eval.radar_vertice'         => '%s · madurez %s de %s',
+    'eval.radar_resumen'         => 'Perfil de madurez por dominio de la auditoría del %s: %s.',
+    'eval.radar_insuficiente'    => 'Se necesitan al menos tres dominios evaluados para dibujar el perfil. Esta auditoría tiene %s.',
+    'eval.radar_pie'             => '%s dominios evaluados · escala de madurez de 0 a %s, un anillo por nivel.',
+
+    // Comparación histórica — tabla del desglose.
+    'eval.dominio'               => 'Dominio',
+    'eval.madurez_por_dominio'   => 'Madurez ponderada por dominio',
+    'eval.madurez_por_dominio_pie' => 'Promedio ponderado por el peso de cada control. Un guion marca el dominio que esa auditoría no evaluó.',
+
     // Formulario de encabezado (alta/edición de auditoría)
     'eval.admin_entrevistado_label' => 'Administrador de base de datos entrevistado',
     'eval.seleccione'               => '— Seleccione —',
     'eval.organizacion_registrada'  => 'Su organización es la que queda registrada como entidad auditada.',
     'eval.area_evaluada'            => 'Área evaluada',
     'eval.fecha_auditoria'          => 'Fecha de la auditoría',
+
+    // Tipo de auditoría (modelo de medición) y leyenda del alta
+    'eval.tipo_auditoria'        => 'Tipo de auditoría',
+    'eval.tipo_proximamente'     => 'próximamente',
+    'eval.tipo_ayuda'            => 'Modelo contra el que se mide. Hoy los 75 controles son de la familia ISO 27000.',
+    'eval.nueva_subtitulo'       => 'Abra una medición fechada para la organización que va a auditar.',
+    'eval.nueva_leyenda_titulo'  => '¿Para qué sirve?',
+    'eval.nueva_leyenda_texto'   => 'Una auditoría es la medición fechada de una organización: se recorre el '
+                                  . 'instrumento control por control y de las respuestas salen el índice de riesgo, '
+                                  . 'la matriz C-I-D y las remediaciones. Repetirla es lo que permite comparar.',
+    'eval.nueva_modelos_proximos' => 'Próximas actualizaciones',
+    'eval.nueva_modelos_texto'   => 'Otros modelos de medición además del ISO 27000. Llegan con el plan Deluxe, '
+                                  . 'que cruza las equivalencias entre los tres marcos.',
+    'eval.nueva_ver_plan'        => 'Ver el plan Deluxe →',
 ];
