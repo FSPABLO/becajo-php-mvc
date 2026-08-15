@@ -831,6 +831,67 @@
         });
     }
 
+    function pintarRadarMadurez() {
+        const poligono = document.querySelector('[data-radar-poligono]');
+
+        if (!poligono) {
+            return;
+        }
+
+        const cx = 160;
+        const cy = 160;
+        const radio = 115;
+        const total = catalogo.dominios.length;
+
+        const puntos = catalogo.dominios.map(function (dominio, indice) {
+            const angulo = (-Math.PI / 2) + (indice * (2 * Math.PI / total));
+            const resumen = resumirControles(controlesPorDominio[dominio.clave] || []);
+            const proporcion = resumen.madurez === null ? 0 : resumen.madurez / 5;
+
+            const x = cx + (radio * proporcion * Math.cos(angulo));
+            const y = cy + (radio * proporcion * Math.sin(angulo));
+
+            return x.toFixed(1) + ',' + y.toFixed(1);
+        });
+
+        poligono.setAttribute('points', puntos.join(' '));
+
+        catalogo.dominios.forEach(function (dominio) {
+            const etiquetaValor = document.querySelector('[data-radar-valor="' + dominio.clave + '"]');
+
+            if (!etiquetaValor) {
+                return;
+            }
+
+            const resumen = resumirControles(controlesPorDominio[dominio.clave] || []);
+            etiquetaValor.textContent = resumen.madurez === null ? '—' : resumen.madurez.toFixed(1);
+        });
+    }
+
+    function pintarBarrasCumplimientoDominio() {
+        catalogo.dominios.forEach(function (dominio) {
+            const fila = document.querySelector('[data-fila-cumplimiento-dominio="' + dominio.clave + '"]');
+
+            if (!fila) {
+                return;
+            }
+
+            const resumen = resumirControles(controlesPorDominio[dominio.clave] || []);
+            const barra = fila.querySelector('[data-barra-cumplimiento]');
+            const valor = fila.querySelector('[data-valor-cumplimiento]');
+            const ancho = resumen.cumplimiento === null ? 0 : resumen.cumplimiento * 100;
+
+            if (barra) {
+                barra.style.width = ancho + '%';
+            }
+
+            if (valor) {
+                valor.textContent = porcentaje(resumen.cumplimiento);
+            }
+        });
+    }
+
+
     function porcentaje(proporcion) {
         return proporcion === null ? '—' : Math.round(proporcion * 100) + ' %';
     }
@@ -885,6 +946,9 @@
         pintarSemaforos();
         pintarMapaCalor();
         pintarRankingDebiles();
+        pintarRadarMadurez();
+        pintarBarrasCumplimientoDominio();
+
 
         const evaluados = global.si + global.no + global.na;
 

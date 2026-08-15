@@ -152,6 +152,7 @@ $etiquetaCalidad = [
                 <?php endif; ?>
             </div>
 
+
             <!-- Dimensiones CID -->
             <div>
                 <span class="block text-sm font-semibold text-texto">
@@ -237,6 +238,129 @@ $etiquetaCalidad = [
 
         </fieldset>
     </form>
+
+            <!--
+                Documentos de respaldo: distinto de "Evidencia verificada" de
+                arriba. Ese textarea es el juicio narrativo del auditor;
+                esto son los documentos concretos (correos, capturas,
+                exports) que lo sustentan, con nomenclatura, versión,
+                responsable y fecha. Uno o varios por control, y el mismo
+                documento puede vincularse a otros controles sin duplicarse
+                (evidencia_documento + evidencia_control).
+
+                id="documentos-respaldo" existe siempre, en las dos ramas del
+                if de abajo, para que el ancla funcione incluso antes de la
+                primera evaluación guardada (cuando se ve el aviso de "guarde
+                primero" en vez del formulario).
+            -->
+            <div id="documentos-respaldo">
+            <?php if ($evaluacion !== null && $evaluacion->id !== 0): ?>
+                <div class="rv-extruido rounded-rv-lg border border-borde bg-superficie p-5">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-texto-2">
+                        Documentos de respaldo
+                    </h3>
+
+                    <?php if ($evidencias === []): ?>
+                        <p class="mt-2 text-sm text-texto-2">
+                            Todavía no hay documentos vinculados a este control.
+                        </p>
+                    <?php else: ?>
+                        <ul class="mt-3 space-y-2">
+                            <?php foreach ($evidencias as $doc): ?>
+                                <li class="flex items-center justify-between gap-3 rounded-rv border border-borde bg-elevado px-3.5 py-2.5 text-sm">
+                                    <div>
+                                        <p class="font-medium text-texto"><?= e($doc->nombreDocumento) ?></p>
+                                        <p class="text-xs text-texto-2">
+                                            <?= e($doc->formato) ?> · v<?= e($doc->version) ?> ·
+                                            <?= e($doc->responsable) ?> · <?= e($doc->fechaDocumento) ?>
+                                        </p>
+                                        <?php if ($doc->otrosControles > 0): ?>
+                                            <p class="mt-0.5 text-xs italic text-texto-2">
+                                                también vinculado a <?= e((string) $doc->otrosControles) ?>
+                                                <?= $doc->otrosControles === 1 ? 'control más' : 'controles más' ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <form method="post"
+                                          action="/evaluacion/<?= e((string) $auditoria->id) ?>/controles/<?= e($control->id) ?>/evidencias/<?= e((string) $doc->id) ?>/quitar">
+                                        <?= $vista->campoToken() ?>
+                                        <button type="submit" class="shrink-0 text-xs font-semibold text-bad hover:underline"
+                                                onclick="return confirm('¿Quitar este documento de este control? El documento no se borra, solo deja de estar vinculado aquí.');">
+                                            Quitar
+                                        </button>
+                                    </form>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <form method="post"
+                              action="/evaluacion/<?= e((string) $auditoria->id) ?>/controles/<?= e($control->id) ?>/evidencias"
+                              class="rounded-rv border border-borde p-3.5">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-texto-2">
+                                Agregar documento nuevo
+                            </p>
+                            <?= $vista->campoToken() ?>
+                            <input type="text" name="nombre_documento" placeholder="Nombre según la convención"
+                                   class="mt-2 w-full rounded-rv border border-borde px-3 py-2 text-sm text-texto outline-none focus:border-primario"
+                                   required>
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                                <select name="formato"
+                                        class="rounded-rv border border-borde px-3 py-2 text-sm text-texto" required>
+                                    <option value="">Formato</option>
+                                    <?php foreach ($formatosEvidencia as $formato): ?>
+                                        <option value="<?= e($formato) ?>"><?= e($formato) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="text" name="version" placeholder="Versión, v1"
+                                       class="rounded-rv border border-borde px-3 py-2 text-sm text-texto" required>
+                            </div>
+                            <input type="text" name="responsable" placeholder="Responsable del documento"
+                                   class="mt-2 w-full rounded-rv border border-borde px-3 py-2 text-sm text-texto" required>
+                            <input type="date" name="fecha_documento"
+                                   class="mt-2 w-full rounded-rv border border-borde px-3 py-2 text-sm text-texto" required>
+                            <button type="submit"
+                                    class="mt-3 w-full rounded-rv bg-primario px-3 py-2 text-sm font-semibold text-white">
+                                Agregar
+                            </button>
+                        </form>
+
+                        <form method="post"
+                              action="/evaluacion/<?= e((string) $auditoria->id) ?>/controles/<?= e($control->id) ?>/evidencias/vincular"
+                              class="rounded-rv border border-borde p-3.5">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-texto-2">
+                                Vincular documento ya cargado
+                            </p>
+                            <?= $vista->campoToken() ?>
+                            <?php if ($evidenciasDisponibles === []): ?>
+                                <p class="mt-2 text-sm text-texto-2">
+                                    Todavía no hay documentos cargados en esta auditoría.
+                                </p>
+                            <?php else: ?>
+                                <select name="id_evidencia"
+                                        class="mt-2 w-full rounded-rv border border-borde px-3 py-2 text-sm text-texto"
+                                        required>
+                                    <option value="">Elegir documento…</option>
+                                    <?php foreach ($evidenciasDisponibles as $doc): ?>
+                                        <option value="<?= e((string) $doc->id) ?>"><?= e($doc->etiqueta()) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit"
+                                        class="mt-3 w-full rounded-rv border border-primario px-3 py-2 text-sm font-semibold text-primario">
+                                    Vincular
+                                </button>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+                </div>
+            <?php else: ?>
+                <p class="text-sm text-texto-2">
+                    Guarde la calificación de este control para poder adjuntar documentos de respaldo.
+                </p>
+            <?php endif; ?>
+            </div>
+
 
     <nav class="mt-10 flex justify-between border-t border-borde pt-5 text-sm">
         <?php if ($vecinos['anterior'] !== null): ?>

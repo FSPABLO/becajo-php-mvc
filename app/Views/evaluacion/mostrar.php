@@ -71,6 +71,11 @@ $tonoEstado = [
                 <?= e($vista->t('eval.ver_resultados')) ?>
             </a>
 
+            <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/evidencias')) ?>"
+               class="rounded-rv border border-borde px-4 py-2.5 text-sm font-semibold text-texto transition hover:bg-elevado">
+                Evidencia
+            </a>
+
             <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/remediaciones')) ?>"
                class="rounded-rv border border-borde px-4 py-2.5 text-sm font-semibold text-texto transition hover:bg-elevado">
                 Remediaciones

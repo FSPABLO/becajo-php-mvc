@@ -41,6 +41,45 @@ $dimensionesRiesgo = [
     ['clave' => 'integridad',       'etiqueta' => 'Integridad'],
     ['clave' => 'disponibilidad',   'etiqueta' => 'Disponibilidad'],
 ];
+
+// Geometría del radar de madurez por dominio
+$radarCentro = 160.0;
+$radarRadio  = 115.0;
+$radarTotalEjes = count($dominios);
+$radarEjes = [];
+
+foreach ($dominios as $indice => $dominio) {
+    $angulo = (-M_PI / 2) + ($indice * (2 * M_PI / max($radarTotalEjes, 1)));
+    $xEtiqueta = $radarCentro + (($radarRadio + 20) * cos($angulo));
+
+    $radarEjes[] = [
+        'clave'      => $dominio->clave,
+        'etiqueta'   => $dominio->corto,
+        'x1'         => round($radarCentro, 1),
+        'y1'         => round($radarCentro, 1),
+        'x2'         => round($radarCentro + ($radarRadio * cos($angulo)), 1),
+        'y2'         => round($radarCentro + ($radarRadio * sin($angulo)), 1),
+        'xEtiqueta'  => round($xEtiqueta, 1),
+        'yEtiqueta'  => round($radarCentro + (($radarRadio + 20) * sin($angulo)), 1),
+        'anclaTexto' => abs($xEtiqueta - $radarCentro) < 1.0 ? 'middle' : ($xEtiqueta > $radarCentro ? 'start' : 'end'),
+    ];
+}
+
+$radarAnillos = [];
+
+for ($nivel = 1; $nivel <= 5; $nivel++) {
+    $radioAnillo = $radarRadio * ($nivel / 5);
+    $puntos = [];
+
+    for ($indice = 0; $indice < $radarTotalEjes; $indice++) {
+        $angulo = (-M_PI / 2) + ($indice * (2 * M_PI / max($radarTotalEjes, 1)));
+        $puntos[] = round($radarCentro + ($radioAnillo * cos($angulo)), 1) . ','
+                  . round($radarCentro + ($radioAnillo * sin($angulo)), 1);
+    }
+
+    $radarAnillos[] = implode(' ', $puntos);
+}
+
 ?>
 
 <!-- Tarjetas de resumen -->

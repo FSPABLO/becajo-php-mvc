@@ -67,11 +67,17 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
 
     $enrutador->get('/evaluacion/{id}/resultados', [AuditoriaController::class, 'resultados']);
+    $enrutador->get('/evaluacion/{id}/evidencias', [AuditoriaController::class, 'evidencias']);
     $enrutador->get('/evaluacion/{id}/reporte', [AuditoriaController::class, 'reporte']);
 
     // ── Remediación y re-auditoría (punto 19) ────────────────────────────────
     $enrutador->get('/evaluacion/{id}/remediaciones', [AuditoriaController::class, 'remediaciones']);
     $enrutador->post('/evaluacion/{id}/controles/{codigo}/remediacion', [AuditoriaController::class, 'crearRemediacion']);
+
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}/evidencias', [AuditoriaController::class, 'agregarEvidencia']);
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}/evidencias/vincular', [AuditoriaController::class, 'vincularEvidenciaExistente']);
+    $enrutador->post('/evaluacion/{id}/controles/{codigo}/evidencias/{idEvidencia}/quitar', [AuditoriaController::class, 'quitarEvidencia']);
+
     $enrutador->post('/remediaciones/{idRemediacion}/programar', [AuditoriaController::class, 'programarReauditoria']);
     $enrutador->post('/remediaciones/{idRemediacion}/estado', [AuditoriaController::class, 'actualizarEstadoRemediacion']);
     $enrutador->get('/remediaciones/vencidas', [AuditoriaController::class, 'remediacionesVencidas']);

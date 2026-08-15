@@ -8,6 +8,7 @@ use App\Core\Controlador;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\Control;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvidenciaDocumento;
 use App\Models\Entidades\Usuario;
 
 /**
@@ -373,26 +374,32 @@ final class AuditoriaController extends Controlador
 
     // ── Plantilla de un control ──────────────────────────────────────────────
 
-    public function plantillaControl(): void
-    {
-        $this->exigirUsuario();
-        $auditoria = $this->auditoriaPropia();
-        $control = $this->controlDelCatalogo();
+   public function plantillaControl(): void
+       {
+           $this->exigirUsuario();
+           $auditoria = $this->auditoriaPropia();
+           $control = $this->controlDelCatalogo();
+           $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
 
-        $this->verPanel('evaluacion/control', [
-            ...$this->contexto(),
-            'meta'       => $this->meta($control->id . ' · Auditoría ' . $auditoria->id),
-            'auditoria'  => $auditoria,
-            'control'    => $control,
-            'proceso'    => $this->indexarProcesos()[$control->proceso] ?? null,
-            'evaluacion' => $this->auditorias()->evaluacion($auditoria->id, $control->id),
-            'escala'     => $this->instrumento()->escala(),
-            'estados'    => self::ESTADOS,
-            'criterios'  => self::CRITERIOS,
-            'errores'    => $this->erroresGuardados(),
-            'vecinos'    => $this->vecinos($control),
-        ]);
-    }
+           $this->verPanel('evaluacion/control', [
+               ...$this->contexto(),
+               'meta'       => $this->meta($control->id . ' · Auditoría ' . $auditoria->id),
+               'auditoria'  => $auditoria,
+               'control'    => $control,
+               'proceso'    => $this->indexarProcesos()[$control->proceso] ?? null,
+               'evaluacion' => $evaluacion,
+               'escala'     => $this->instrumento()->escala(),
+               'estados'    => self::ESTADOS,
+               'criterios'  => self::CRITERIOS,
+               'errores'    => $this->erroresGuardados(),
+               'vecinos'    => $this->vecinos($control),
+               'evidencias'            => $evaluacion !== null && $evaluacion->id !== 0
+                   ? $this->auditorias()->evidenciasDeControl($evaluacion->id)
+                   : [],
+               'evidenciasDisponibles' => $this->auditorias()->evidenciasDeAuditoria($auditoria->id),
+               'formatosEvidencia'     => EvidenciaDocumento::FORMATOS,
+           ]);
+       }
 
     public function guardarControl(): void
     {
@@ -449,6 +456,170 @@ final class AuditoriaController extends Controlador
         $this->redirigir($destino);
     }
 
+ // ── Evidencia de respaldo ─────────────────────────────────────────────────
+
+    public function agregarEvidencia(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $control = $this->controlDelCatalogo();
+        $destino = '/evaluacion/' . $auditoria->id . '/controles/' . $control->id;
+        // #documentos-respaldo: para que el auditor no tenga que desplazarse
+        // de nuevo hasta la sección cada vez que agrega, vincula o quita un
+        // documento.
+
+        $destinoConAncla = $destino . '#documentos-respaldo';
+
+        $this->exigirToken($destino);
+        $this->exigirAbierta($auditoria);
+
+        $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
+
+        if ($evaluacion === null || $evaluacion->id === 0) {
+            $this->sesion()->destello(
+                'error',
+                'Guarde primero la calificación del control antes de adjuntar evidencia.',
+            );
+            $this->redirigir($destinoConAncla);
+        }
+
+        $nombre      = trim((string) $this->peticion()->entrada('nombre_documento', ''));
+        $formato     = (string) $this->peticion()->entrada('formato', '');
+        $version     = trim((string) $this->peticion()->entrada('version', ''));
+        $responsable = trim((string) $this->peticion()->entrada('responsable', ''));
+        $fecha       = (string) $this->peticion()->entrada('fecha_documento', '');
+
+        $errores = [];
+
+        if ($nombre === '') {
+            $errores['nombre_documento'] = 'Escriba el nombre del documento.';
+        }
+
+        if (!in_array($formato, EvidenciaDocumento::FORMATOS, true)) {
+            $errores['formato'] = 'Elija un formato de la lista.';
+        }
+
+        if ($version === '') {
+            $errores['version'] = 'Indique la versión, por ejemplo v1.';
+        }
+
+        if ($responsable === '') {
+            $errores['responsable'] = 'Indique quién elaboró el documento.';
+        }
+
+        if ($fecha === '' || \DateTime::createFromFormat('Y-m-d', $fecha) === false) {
+            $errores['fecha_documento'] = 'Indique una fecha válida.';
+        }
+
+        if ($errores !== []) {
+            $this->guardarIntento($errores, []);
+            $this->redirigir($destinoConAncla);
+        }
+
+        // Aviso de nombre parecido: no bloquea la carga (el auditor puede
+        // tener una buena razón para dos documentos con nombres similares),
+
+        $nombreParecido = null;
+
+        foreach ($this->auditorias()->evidenciasDeAuditoria($auditoria->id) as $existente) {
+            similar_text($this->normalizar($existente->nombreDocumento), $this->normalizar($nombre), $porcentaje);
+
+            if ($porcentaje >= 85.0) {
+                $nombreParecido = $existente->nombreDocumento;
+                break;
+            }
+        }
+
+        $this->auditorias()->agregarEvidencia(
+            $auditoria->id,
+            $evaluacion->id,
+            $nombre,
+            $formato,
+            $version,
+            $responsable,
+            $fecha,
+        );
+
+        if ($nombreParecido !== null) {
+            $this->sesion()->destello(
+                'aviso',
+                'Documento agregado. Ya existe uno con nombre parecido en esta auditoría, "'
+                . $nombreParecido . '". Si es el mismo, la próxima vez puede usar '
+                . '"Vincular documento ya cargado" en vez de crear uno nuevo.',
+            );
+        } else {
+            // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
+
+
+            $this->sesion()->destello('aviso', 'Documento agregado.');
+        }
+
+        $this->redirigir($destinoConAncla);
+    }
+
+    public function vincularEvidenciaExistente(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $control = $this->controlDelCatalogo();
+        $destino = '/evaluacion/' . $auditoria->id . '/controles/' . $control->id;
+        $destinoConAncla = $destino . '#documentos-respaldo';
+
+        $this->exigirToken($destino);
+        $this->exigirAbierta($auditoria);
+
+        $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
+
+        if ($evaluacion === null || $evaluacion->id === 0) {
+            $this->sesion()->destello(
+                'error',
+                'Guarde primero la calificación del control antes de adjuntar evidencia.',
+            );
+            $this->redirigir($destinoConAncla);
+        }
+
+        $idEvidencia = (int) $this->peticion()->entrada('id_evidencia', '0');
+
+        if ($idEvidencia <= 0) {
+            $this->sesion()->destello('error', 'Elija un documento de la lista.');
+            $this->redirigir($destinoConAncla);
+        }
+
+        $this->auditorias()->vincularEvidencia($idEvidencia, $evaluacion->id);
+
+        // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
+        // acción «evidencia.vincular», entidad «evaluacion_control», su id, y la hora.
+
+        $this->sesion()->destello('aviso', 'Documento vinculado.');
+        $this->redirigir($destinoConAncla);
+    }
+
+    public function quitarEvidencia(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $control = $this->controlDelCatalogo();
+        $destino = '/evaluacion/' . $auditoria->id . '/controles/' . $control->id;
+        $destinoConAncla = $destino . '#documentos-respaldo';
+
+        $this->exigirToken($destino);
+        $this->exigirAbierta($auditoria);
+
+        $evaluacion = $this->auditorias()->evaluacion($auditoria->id, $control->id);
+        $idEvidencia = (int) $this->parametro('idEvidencia', '0');
+
+        if ($evaluacion !== null && $idEvidencia > 0) {
+            $this->auditorias()->desvincularEvidencia($idEvidencia, $evaluacion->id);
+
+            // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
+            // acción «evidencia.quitar», entidad «evaluacion_control», su id, y la hora.
+
+            $this->sesion()->destello('aviso', 'Documento desvinculado de este control.');
+        }
+
+        $this->redirigir($destinoConAncla);
+    }
+
     // ── Cierre y resultados ──────────────────────────────────────────────────
 
     public function finalizar(): void
@@ -497,6 +668,49 @@ final class AuditoriaController extends Controlador
             'menorMadurez' => $repositorio->menorMadurez($auditoria->id, 5),
             'mayorRiesgo' => $repositorio->mayorRiesgo($auditoria->id, 5),
             'evaluaciones' => $repositorio->evaluaciones($auditoria->id),
+        ]);
+    }
+
+
+     //Toda la evidencia de la auditoría en un solo lugar:
+    public function evidencias(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $repositorio = $this->auditorias();
+
+        // Los códigos que faltan se resuelven contra el catálogo en memoria
+        // (ya cargado por el instrumento)
+        $catalogoPorCodigo = [];
+
+        foreach ($this->instrumento()->controles() as $control) {
+            $catalogoPorCodigo[$control->id] = $control;
+        }
+
+        $controlesSinEvidencia = [];
+
+        foreach ($repositorio->controlesSinEvidencia($auditoria->id) as $codigo) {
+            if (isset($catalogoPorCodigo[$codigo])) {
+                $controlesSinEvidencia[] = $catalogoPorCodigo[$codigo];
+            }
+        }
+
+        $documentos = $repositorio->evidenciasConControlesDeAuditoria($auditoria->id);
+
+        $this->verPanel('evaluacion/evidencias', [
+            ...$this->contexto(),
+            'meta'                  => $this->meta('Evidencia · Auditoría ' . $auditoria->id),
+            'auditoria'             => $auditoria,
+            'documentos'            => $documentos,
+            'controlesSinEvidencia' => $controlesSinEvidencia,
+            'totalDocumentos'       => count($documentos),
+            'totalConEvidencia'     => count(array_unique(
+                array_merge(...array_map(
+                    static fn (\App\Models\Entidades\EvidenciaDocumento $d): array =>
+                        $d->controlesVinculados === '' ? [] : explode(', ', $d->controlesVinculados),
+                    $documentos,
+                )),
+            )),
         ]);
     }
 

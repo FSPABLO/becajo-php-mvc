@@ -8,6 +8,7 @@ use App\Core\BaseDatos;
 use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvidenciaDocumento;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
@@ -514,4 +515,168 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
             ['id_remediacion' => $idRemediacion, 'estado' => $estado],
         );
     }
+    // ── Evidencia de respaldo ────────────────────────────────────────────────
+
+        /** @return list<EvidenciaDocumento> */
+        public function evidenciasDeControl(int $idEvaluacionControl): array
+        {
+            // otros_controles va en la misma consulta, como subconsulta
+            // escalar, para no pagar una ida a la base aparte por cada
+            // documento listado: sigue siendo un solo SELECT.
+            $filas = $this->bd->consultar(
+                "SELECT ed.id_evidencia, ed.id_auditoria, ed.nombre_documento, ed.formato,
+                        ed.version, ed.responsable,
+                        TO_CHAR(ed.fecha_documento, 'YYYY-MM-DD') AS fecha_documento,
+                        (SELECT COUNT(*)
+                           FROM evidencia_control otros
+                          WHERE otros.id_evidencia = ed.id_evidencia
+                            AND otros.id_evaluacion_control != ec.id_evaluacion_control) AS otros_controles
+                   FROM evidencia_documento ed
+                   JOIN evidencia_control ec ON ec.id_evidencia = ed.id_evidencia
+                  WHERE ec.id_evaluacion_control = :id_evaluacion_control
+                  ORDER BY ed.nombre_documento",
+                ['id_evaluacion_control' => $idEvaluacionControl],
+            );
+
+            return array_map(
+                static fn (array $fila): EvidenciaDocumento => EvidenciaDocumento::desdeFila($fila),
+                $filas,
+            );
+        }
+
+        /** @return list<EvidenciaDocumento> */
+        public function evidenciasDeAuditoria(int $idAuditoria): array
+        {
+            // Un solo SELECT contra evidencia_documento, resuelto por el índice
+            // de id_auditoria: no hace falta atravesar evidencia_control ni
+            // evaluacion_control solo para saber qué documentos son de esta
+            // auditoría.
+            $filas = $this->bd->consultar(
+                "SELECT id_evidencia, id_auditoria, nombre_documento, formato,
+                        version, responsable,
+                        TO_CHAR(fecha_documento, 'YYYY-MM-DD') AS fecha_documento
+                   FROM evidencia_documento
+                  WHERE id_auditoria = :id_auditoria
+                  ORDER BY nombre_documento",
+                ['id_auditoria' => $idAuditoria],
+            );
+
+            return array_map(
+                static fn (array $fila): EvidenciaDocumento => EvidenciaDocumento::desdeFila($fila),
+                $filas,
+            );
+        }
+
+        public function agregarEvidencia(
+            int $idAuditoria,
+            int $idEvaluacionControl,
+            string $nombreDocumento,
+            string $formato,
+            string $version,
+            string $responsable,
+            string $fechaDocumento,
+        ): int {
+            $idEvidencia = $this->bd->insertar(
+                "INSERT INTO evidencia_documento
+                        (id_auditoria, nombre_documento, formato, version, responsable, fecha_documento)
+                 VALUES (:id_auditoria, :nombre_documento, :formato, :version, :responsable,
+                         TO_DATE(:fecha_documento, 'YYYY-MM-DD'))
+                 RETURNING id_evidencia INTO :id",
+                [
+                    'id_auditoria'     => $idAuditoria,
+                    'nombre_documento' => $nombreDocumento,
+                    'formato'          => $formato,
+                    'version'          => $version,
+                    'responsable'      => $responsable,
+                    'fecha_documento'  => $fechaDocumento,
+                ],
+            );
+
+            $this->vincularEvidencia($idEvidencia, $idEvaluacionControl);
+
+            return $idEvidencia;
+        }
+
+        public function vincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void
+        {
+            // MERGE en vez de INSERT liso: vincular un documento que ya estaba vinculado a un control
+            //Es idempotente a propósito.
+            $this->bd->ejecutar(
+                'MERGE INTO evidencia_control destino
+                 USING (SELECT :id_evaluacion_control AS id_evaluacion_control,
+                               :id_evidencia AS id_evidencia
+                          FROM dual) origen
+                    ON (destino.id_evaluacion_control = origen.id_evaluacion_control
+                    AND destino.id_evidencia = origen.id_evidencia)
+                 WHEN NOT MATCHED THEN
+                    INSERT (id_evaluacion_control, id_evidencia)
+                    VALUES (origen.id_evaluacion_control, origen.id_evidencia)',
+                [
+                    'id_evaluacion_control' => $idEvaluacionControl,
+                    'id_evidencia'          => $idEvidencia,
+                ],
+            );
+        }
+
+        public function desvincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void
+        {
+            $this->bd->ejecutar(
+                'DELETE FROM evidencia_control
+                  WHERE id_evidencia = :id_evidencia
+                    AND id_evaluacion_control = :id_evaluacion_control',
+                ['id_evidencia' => $idEvidencia, 'id_evaluacion_control' => $idEvaluacionControl],
+            );
+        }
+
+        /** @return list<string> */
+        public function controlesSinEvidencia(int $idAuditoria): array
+        {
+            // NOT EXISTS en vez de un LEFT JOIN + IS NULL: con la evidencia
+            // en una tabla puente aparte, el LEFT JOIN duplicaría filas si un
+            // control tuviera evidencia (una fila por vínculo); NOT EXISTS no
+            // tiene ese problema y además para en la primera coincidencia.
+            $filas = $this->bd->consultar(
+                'SELECT evc.codigo_control
+                   FROM evaluacion_control evc
+                  WHERE evc.id_auditoria = :id_auditoria
+                    AND evc.estado IS NOT NULL
+                    AND NOT EXISTS (
+                        SELECT 1 FROM evidencia_control ec
+                         WHERE ec.id_evaluacion_control = evc.id_evaluacion_control
+                    )
+                  ORDER BY evc.codigo_control',
+                ['id_auditoria' => $idAuditoria],
+            );
+
+            return array_map(
+                static fn (array $fila): string => (string) $fila['codigo_control'],
+                $filas,
+            );
+        }
+
+        /** @return list<EvidenciaDocumento> */
+        public function evidenciasConControlesDeAuditoria(int $idAuditoria): array
+
+            $filas = $this->bd->consultar(
+                "SELECT ed.id_evidencia, ed.id_auditoria, ed.nombre_documento, ed.formato,
+                        ed.version, ed.responsable,
+                        TO_CHAR(ed.fecha_documento, 'YYYY-MM-DD') AS fecha_documento,
+                        LISTAGG(evc.codigo_control, ', ') WITHIN GROUP (ORDER BY evc.codigo_control)
+                            AS controles_vinculados
+                   FROM evidencia_documento ed
+                   JOIN evidencia_control ec ON ec.id_evidencia = ed.id_evidencia
+                   JOIN evaluacion_control evc ON evc.id_evaluacion_control = ec.id_evaluacion_control
+                  WHERE ed.id_auditoria = :id_auditoria
+                  GROUP BY ed.id_evidencia, ed.id_auditoria, ed.nombre_documento, ed.formato,
+                           ed.version, ed.responsable, ed.fecha_documento
+                  ORDER BY ed.nombre_documento",
+                ['id_auditoria' => $idAuditoria],
+            );
+
+            return array_map(
+                static fn (array $fila): EvidenciaDocumento => EvidenciaDocumento::desdeFila($fila),
+                $filas,
+            );
+        }
 }
+

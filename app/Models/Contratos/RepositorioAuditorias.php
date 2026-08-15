@@ -206,16 +206,12 @@ interface RepositorioAuditorias
     /**
      * Las remediaciones abiertas de una auditoría, con el control al que
      * pertenecen ya resuelto.
-     *
-     * @return list<Remediacion>
      */
     public function remediacionesAuditoria(int $idAuditoria): array;
 
     /**
      * Todas las remediaciones vencidas, de cualquier auditoría — el panel
      * global para quien le da seguimiento a los hallazgos.
-     *
-     * @return list<array<string, mixed>>
      */
     public function remediacionesVencidas(): array;
 
@@ -223,4 +219,61 @@ interface RepositorioAuditorias
     public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void;
 
     public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void;
+    // ── Evidencia de respaldo ────────────────────────────────────────────────
+
+        /**
+         * Los documentos vinculados a un control ya evaluado.
+         *
+         * @return list<\App\Models\Entidades\EvidenciaDocumento>
+         */
+        public function evidenciasDeControl(int $idEvaluacionControl): array;
+
+        /**
+         * Todos los documentos ya cargados en una auditoría, sin importar a qué
+         * control se vincularon primero. Alimenta el selector de "vincular un
+         * documento existente".
+         *
+         * @return list<\App\Models\Entidades\EvidenciaDocumento>
+         */
+        public function evidenciasDeAuditoria(int $idAuditoria): array;
+
+        /**
+         * Crea un documento nuevo y lo vincula al control en un solo paso.
+         * Devuelve el identificador del documento creado.
+         */
+        public function agregarEvidencia(
+            int $idAuditoria,
+            int $idEvaluacionControl,
+            string $nombreDocumento,
+            string $formato,
+            string $version,
+            string $responsable,
+            string $fechaDocumento,
+        ): int;
+
+        /**
+         * Vincula un documento ya existente a otro control más.
+         * Idempotente a propósito
+         */
+        public function vincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void;
+
+        /**
+         * Quita el vínculo entre un documento y un control, no borra el documento: puede seguir vinculado a otros controles.
+         */
+        public function desvincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void;
+
+        /**
+         * Los códigos de los controles ya evaluados (con estado asignado) que
+         * todavía no tienen ningún documento de respaldo vinculado.
+         */
+        public function controlesSinEvidencia(int $idAuditoria): array;
+
+        /**
+         * Todos los documentos de la auditoría, cada uno con la lista de
+         * controles a los que está vinculado (campo controlesVinculados de
+         * EvidenciaDocumento, por ejemplo "C-001, C-002"). Para la página que
+         * reúne toda la evidencia en un solo lugar.
+         */
+        public function evidenciasConControlesDeAuditoria(int $idAuditoria): array;
+
 }
