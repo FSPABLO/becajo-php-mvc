@@ -23,18 +23,6 @@ declare(strict_types=1);
 
 return [
 
-    /**
-     * Motor de base de datos: 'oracle' o 'postgres'.
-     *
-     * Decide qué clase de conexión y qué repositorios construye
-     * public/index.php (BaseDatos+*Oracle o BaseDatosPostgres+*Postgres). El
-     * resto de claves de este archivo (cadena, usuario, clave...) se
-     * interpretan distinto según el motor — ver
-     * config/base_datos.postgres.ejemplo.php para la variante de Postgres,
-     * pensada para Azure Database for PostgreSQL.
-     */
-    'motor' => env('BD_MOTOR', 'oracle'),
-
     // Cadena Easy Connect: host:puerto/servicio.
     // Con docker compose, "oracle" es el nombre del servicio en la red interna.
     'cadena' => env('BD_CADENA', 'oracle:1521/FREEPDB1'),

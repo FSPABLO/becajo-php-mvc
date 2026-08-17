@@ -1,0 +1,67 @@
+# Becajo — LAMP en Docker + PostgreSQL
+#
+# Ruta ALTERNATIVA a docker-compose.yml (Oracle) — mismo Apache, mismo PHP,
+# mismo resultado en el navegador; cambia solo el motor de base de datos.
+# Se usa por separado, con su propio nombre de archivo:
+#
+#     docker compose -f docker-compose.postgres.yml up --build
+#
+# Pensada como el equivalente local de a dónde va a parar esto en Azure: la
+# aplicación en un contenedor (Azure App Service / Container Apps) y los
+# datos en Azure Database for PostgreSQL flexible server. Localmente, el
+# servicio "postgres" de abajo hace ese papel.
+#
+# No reemplaza a docker-compose.yml: los dos archivos conviven porque
+# CLAUDE.md documenta varias piezas de Oracle (SYS_REFCURSOR, CLOB, RETURNING
+# INTO) como requisito explícito del curso. Esta es la vía para llevar el
+# proyecto a un hosting que no ofrece Oracle, no un reemplazo del original.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    platform: linux/amd64
+    container_name: becajo-web-postgres
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: desarrollo
+      BD_MOTOR: postgres
+      # "postgres" es el nombre del servicio de abajo: dentro de la red de
+      # Docker funciona como nombre de host, igual que "oracle" en el otro
+      # compose.
+      BD_CADENA: "host=postgres port=5432 dbname=becajo sslmode=prefer"
+      BD_USUARIO: becajo
+      BD_CLAVE: becajo
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: becajo-postgres
+    ports:
+      # Por si se quiere conectar con psql o DBeaver desde el anfitrión.
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: becajo
+      POSTGRES_USER: becajo
+      POSTGRES_PASSWORD: becajo
+    volumes:
+      # Los datos sobreviven a "docker compose down", igual que oracle-datos
+      # en el compose de Oracle.
+      - postgres-datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U becajo -d becajo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      # Postgres arranca en segundos, no en minutos como Oracle — no hace
+      # falta un start_period largo.
+      start_period: 15s
+
+volumes:
+  postgres-datos:

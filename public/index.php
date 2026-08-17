@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 use App\Core\Autoloader;
 use App\Core\BaseDatos;
+use App\Core\BaseDatosPostgres;
 use App\Core\Contenedor;
 use App\Core\Enrutador;
 use App\Core\Idioma;
@@ -25,8 +26,10 @@ use App\Core\Sesion;
 use App\Core\Vista;
 use App\Models\RepositorioArreglo;
 use App\Models\RepositorioAuditoriasOracle;
+use App\Models\RepositorioAuditoriasPostgres;
 use App\Models\RepositorioInstrumentoArreglo;
 use App\Models\RepositorioInstrumentoOracle;
+use App\Models\RepositorioInstrumentoPostgres;
 
 const RAIZ = __DIR__ . '/..';
 
@@ -61,12 +64,19 @@ if (!is_file($archivoContenido)) {
 $repositorio = new RepositorioArreglo($archivoContenido);
 
 // El catálogo del instrumento (7 dominios, 25 procesos, 75 controles) y las
-// auditorías sí vienen de Oracle... cuando hay Oracle.
+// auditorías sí vienen de una base de datos... cuando hay una base de datos.
 //
 // La presencia de config/base_datos.php es el interruptor. Sin ese archivo el
 // sitio arranca igual, con el catálogo leído del arreglo y sin módulo de
 // auditorías: así nadie del equipo queda bloqueado por no tener la base
 // levantada para trabajar en una vista. Ver config/base_datos.ejemplo.php.
+//
+// Dentro de ese archivo, la clave 'motor' decide CUÁL base de datos: 'oracle'
+// (BaseDatos + oci8, la ruta original) o 'postgres' (BaseDatosPostgres + PDO,
+// la ruta que permite desplegar en Azure, donde no hay Oracle disponible).
+// Los dos pares de repositorios implementan exactamente el mismo contrato
+// (RepositorioAuditorias / RepositorioCatalogo), así que el resto de la
+// aplicación —controladores, vistas— no distingue cuál está detrás.
 $instrumento = new RepositorioInstrumentoArreglo(RAIZ . '/config/instrumento-bd.php');
 $auditorias = null;
 
@@ -75,17 +85,28 @@ $archivoBaseDatos = RAIZ . '/config/base_datos.php';
 if (is_file($archivoBaseDatos)) {
     /** @var array<string, mixed> $configuracionBd */
     $configuracionBd = require $archivoBaseDatos;
+    $motor = $configuracionBd['motor'] ?? 'oracle';
 
-    // La conexión es perezosa: construir estos objetos no abre ningún socket.
-    // Oracle solo se contacta cuando alguien pide datos de verdad.
-    $bd = new BaseDatos($configuracionBd);
-    $auditorias = new RepositorioAuditoriasOracle($bd);
+    // La conexión es perezosa en los dos motores: construir estos objetos no
+    // abre ningún socket. La base solo se contacta cuando alguien pide datos
+    // de verdad.
+    if ($motor === 'postgres') {
+        $bd = new BaseDatosPostgres($configuracionBd);
+        $auditorias = new RepositorioAuditoriasPostgres($bd);
 
-    if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
-        // El repositorio de arreglo pasa como complemento: sigue sirviendo la
-        // escala de madurez, el marco normativo y las referencias, que no
-        // tienen tabla en el esquema.
-        $instrumento = new RepositorioInstrumentoOracle($bd, $instrumento);
+        if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
+            // El repositorio de arreglo pasa como complemento: sigue sirviendo
+            // la escala de madurez, el marco normativo y las referencias, que
+            // no tienen tabla en el esquema (ver RepositorioInstrumentoPostgres).
+            $instrumento = new RepositorioInstrumentoPostgres($bd, $instrumento);
+        }
+    } else {
+        $bd = new BaseDatos($configuracionBd);
+        $auditorias = new RepositorioAuditoriasOracle($bd);
+
+        if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
+            $instrumento = new RepositorioInstrumentoOracle($bd, $instrumento);
+        }
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────

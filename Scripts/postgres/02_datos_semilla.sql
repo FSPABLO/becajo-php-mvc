@@ -1,27 +1,13 @@
 -- ============================================================================
 -- EIF402 · Proyecto Integrador — Evaluación de Riesgo ISO/IEC 27002
--- Datos semilla (Oracle 21c+) — versión consolidada final
+-- Datos semilla — PUERTO A POSTGRESQL de Scripts/02_datos_semilla.sql
 --
--- Dos bloques:
---   1. Catálogo REAL (7 dominios, 25 procesos, 75 controles), extraído
---      directamente de config/instrumento-bd.php. peso y relacion_* de
---      cada fila quedan en su valor por defecto (MEDIA / sin marcar); se
---      ajustan desde el catálogo administrable, no aquí.
---   2. Datos de PRUEBA — usuarios (con organización), una auditoría, dos
---      evaluaciones de ejemplo con impacto/probabilidad/nivel_riesgo, y un
---      resultado de riesgo ya calculado con la fórmula confirmada. La
---      evaluación de C-001 ('SI') ya trae evidencia_verificada y
---      calidad_evidencia directamente: como el esquema se crea desde cero
---      con ck_evalctrl_evidencia_si activa desde el principio, no hace
---      falta el backfill que sí necesitaba la migración original.
+-- Sin cambios de sintaxis frente al original: los INSERT eran ya SQL estándar
+-- (incluido el literal DATE '2026-08-01', que es ANSI y Postgres lo acepta
+-- igual). Es el mismo contenido, copiado tal cual.
 --
 -- Ejecutar después de 01_esquema.sql.
 -- ============================================================================
-
--- ==========================================================================
--- Datos semilla del catálogo real: 7 dominios, 25 procesos, 75 controles
--- Extraído automáticamente de config/instrumento-bd.php (Persona 1)
--- ==========================================================================
 
 -- Dominios (7)
 INSERT INTO dominio (clave, nombre, nombre_corto, descripcion) VALUES ('gobierno', 'Gobierno y riesgo', 'Gobierno', 'Quién responde por los datos, cómo se valora el riesgo y con qué competencia y documentación se opera.');
@@ -140,9 +126,8 @@ INSERT INTO control (codigo, numero_proceso, referencia_iso, enunciado, evidenci
 -- Datos de PRUEBA — usuarios (con organización), auditoría y evaluaciones
 -- ============================================================================
 
--- Hashes reales generados con password_hash() (bcrypt, costo 10). Ana Alfaro
--- entra con "auditor2026" y Luis Rojas con "adminbd2026" — las mismas
--- contraseñas documentadas en CLAUDE.md para las cuentas de prueba.
+-- Mismos hashes bcrypt reales que el script de Oracle. Ana Alfaro entra con
+-- "auditor2026" y Luis Rojas con "adminbd2026".
 INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
     ('Ana Alfaro', 'ana.alfaro@consultora.example',
      '$2b$10$6jLfYz.BZ6HHdAWE7zQIMuwWcAtBD60mG7AiWwVb8iU2jm7RV4/mW', 'AUDITOR',
@@ -154,15 +139,12 @@ INSERT INTO usuario (nombre, correo, contrasena_hash, rol, organizacion) VALUES
      'Cooperativa de Ejemplo R.L.');
 
 -- id_auditor = 1 (Ana), id_administrador_bd = 2 (Luis) -> organización
--- auditada = 'Cooperativa de Ejemplo R.L.' (se lee desde USUARIO, no de
--- una tabla Organización, que no existe en este modelo).
+-- auditada = 'Cooperativa de Ejemplo R.L.'
 INSERT INTO auditoria (id_auditor, id_administrador_bd,
                         area_evaluada, fecha, estado)
 VALUES (1, 2, 'Administración de Bases de Datos', DATE '2026-08-01', 'EN_PROGRESO');
 
--- Dos evaluaciones de ejemplo sobre controles reales del catálogo, con
--- impacto/probabilidad/nivel_riesgo y sin pregunta personalizada (NULL =
--- se usa la pregunta por defecto del catálogo).
+-- Dos evaluaciones de ejemplo sobre controles reales del catálogo.
 INSERT INTO evaluacion_control
     (id_auditoria, codigo_control, estado, madurez, criterio,
      afecta_confidencialidad, impacto, probabilidad, nivel_riesgo,
@@ -183,10 +165,6 @@ VALUES
      'No existe cifrado en reposo para las columnas con datos personales en producción.',
      'Implementar cifrado transparente (TDE) o cifrado a nivel de columna en el próximo trimestre.');
 
--- Resultado de riesgo de ejemplo para Confidencialidad, usando la fórmula
--- confirmada: promedio de madurez de los controles que afectan esa
--- dimensión (aquí solo C-046, madurez 1) / 5 = 0.200 -> zona ROJO.
+-- Resultado de riesgo de ejemplo para Confidencialidad.
 INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
 VALUES (1, 'CONFIDENCIALIDAD', 0.200, 'ROJO');
-
-COMMIT;

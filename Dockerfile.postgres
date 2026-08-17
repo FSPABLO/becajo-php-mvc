@@ -1,0 +1,53 @@
+# Becajo — imagen de Apache + PHP para el motor PostgreSQL
+#
+# Ruta ALTERNATIVA a Dockerfile (Oracle/oci8) — pensada para Azure: Azure
+# App Service (Web App for Containers) o Azure Container Apps, contra Azure
+# Database for PostgreSQL flexible server. NO usa esta imagen para correr
+# contra Oracle; para eso sigue existiendo Dockerfile.
+#
+# La diferencia entera con Dockerfile es el paso 4: pdo_pgsql se instala con
+# docker-php-ext-install, sin descargar ningún Instant Client ni compilar
+# nada aparte. Todo lo demás (DocumentRoot -> public/, AllowOverride,
+# COPY del proyecto, puerto dinámico) es igual.
+FROM php:8.3-apache
+
+# 1. mod_rewrite: lo usa public/.htaccess para mandar toda petición al
+#    front controller (public/index.php).
+RUN a2enmod rewrite
+
+# 2. DocumentRoot -> /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' \
+        /etc/apache2/sites-available/*.conf \
+        /etc/apache2/apache2.conf
+
+# 3. AllowOverride All: permite que public/.htaccess tenga efecto.
+RUN sed -ri -e 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf
+
+# 4. Extensión pdo_pgsql: el puente entre PHP y PostgreSQL.
+#
+#    A diferencia de oci8, pdo_pgsql sí está en el árbol de extensiones
+#    oficiales de PHP, así que basta con las cabeceras de libpq
+#    (libpq-dev) y docker-php-ext-install — nada de Instant Client.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql \
+    && php -m | grep -q '^pdo_pgsql$' \
+    && apt-get purge -y --auto-remove \
+    && rm -rf /var/lib/apt/lists/*
+
+# 5. Copiar el proyecto dentro de la imagen.
+#
+#    docker-compose.postgres.yml monta la carpeta como volumen para
+#    desarrollo local, así que este COPY "no se nota" ahí. En Azure, que no
+#    monta ningún volumen, es lo único que llena /var/www/html/public.
+COPY . /var/www/html
+
+# 6. Puerto dinámico: Azure App Service asigna el puerto vía $PORT, igual
+#    que Render. docker/iniciar.sh ya sabe leerlo, y también sabe elegir la
+#    plantilla de base_datos.php correcta según BD_MOTOR.
+COPY docker/iniciar.sh /usr/local/bin/iniciar.sh
+RUN chmod +x /usr/local/bin/iniciar.sh
+
+ENV BD_MOTOR=postgres
+
+CMD ["/usr/local/bin/iniciar.sh"]

@@ -12,11 +12,19 @@ set -e
 
 # config/base_datos.php no se sube al repo (trae la forma de leer las
 # credenciales, no las credenciales en sí), así que en un despliegue nuevo
-# hay que crearlo aquí. Los valores reales los pone Render como variables de
-# entorno (BD_CADENA, BD_USUARIO, BD_CLAVE); este archivo solo activa el
-# módulo de auditorías.
+# hay que crearlo aquí. Los valores reales los pone el hosting (Render,
+# Azure...) como variables de entorno (BD_CADENA, BD_USUARIO, BD_CLAVE); este
+# archivo solo activa el módulo de auditorías.
+#
+# BD_MOTOR decide qué plantilla copiar: "postgres" trae la de Azure Database
+# for PostgreSQL, cualquier otro valor (o ausente) mantiene el respaldo de
+# siempre a Oracle, para no cambiar el comportamiento de Render.
 if [ ! -f /var/www/html/config/base_datos.php ]; then
-    cp /var/www/html/config/base_datos.ejemplo.php /var/www/html/config/base_datos.php
+    if [ "${BD_MOTOR:-oracle}" = "postgres" ]; then
+        cp /var/www/html/config/base_datos.postgres.ejemplo.php /var/www/html/config/base_datos.php
+    else
+        cp /var/www/html/config/base_datos.ejemplo.php /var/www/html/config/base_datos.php
+    fi
 fi
 
 PUERTO="${PORT:-80}"
