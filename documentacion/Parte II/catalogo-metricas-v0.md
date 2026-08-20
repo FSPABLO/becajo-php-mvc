@@ -23,15 +23,28 @@
 
 ## 1. Convenciones
 
-### 1.1 Las tres familias de señal
+### 1.1 Las tres familias de señal — y la excepción declarada de CONSULTAS
 
-Definidas en el §5.1 del plan. Toda métrica pertenece a una y solo una:
+Definidas en el §5.1 del plan. Toda métrica de un componente que **entra al
+ISBD** (PROCESOS, MEMORIA, ARCHIVOS) pertenece a una y solo una:
 
 | Familia | Qué es | Cómo entra al índice |
 |---|---|---|
 | **Proporción, menor es mejor** | Consumo de un recurso contra su límite | Se normaliza (§5.2.1) y se promedia |
 | **Proporción, mayor es mejor** | Eficacia o holgura: el máximo es lo bueno | Se normaliza sobre `techo − v`, misma tabla |
 | **Estado, binaria** | Algo está o no está | **No se promedia: es una compuerta** (§1.3) |
+
+**CONSULTAS es la excepción, y es una excepción declarada, no un descuido.**
+El §3.1 del plan prohíbe expresamente forzar sus métricas a una de las tres
+familias de arriba: no son proporciones con techo natural («14,2 s de CPU por
+ejecución» no tiene un 100 % contra el que medirse) y, aunque lo fueran, no
+deben entrar a ningún promedio porque eso obligaría a redistribuir los pesos
+30/35/35 y dejaría sin línea de comparación el análisis de sensibilidad del
+§5.6. Por eso el catálogo agrega una cuarta entrada, **exclusiva de CONSULTAS**:
+
+| Familia | Qué es | Cómo entra al índice |
+|---|---|---|
+| **Conteo, menor es mejor — no se promedia** | Cuántas sentencias, de las observadas, cruzan un umbral de costo | Se normaliza a salud igual que una proporción (para reusar histéresis y alertas, §6) **pero nunca se suma al ISBD** |
 
 ### 1.2 El ámbito no es opcional
 
@@ -88,7 +101,7 @@ entre «un poco por encima» y «al triple».
 
 ---
 
-## 2. Las doce métricas
+## 2. Las trece métricas
 
 | Código | Componente | Familia | Peso | Ámbito | Mide |
 |---|---|---|---|---|---|
@@ -104,10 +117,13 @@ entre «un poco por encima» y «al triple».
 | `M-ARC-03` | ARCHIVOS | **estado** | — | RAIZ | Grupos de redo sin miembros inválidos |
 | `M-ARC-04` | ARCHIVOS | menor es mejor | 2 | CONTENEDOR | Utilización del peor tablespace temporal |
 | `M-ARC-05` | ARCHIVOS | menor es mejor | 2 | CONTENEDOR | Utilización del peor tablespace sin crecimiento automático |
+| `M-CON-01` | CONSULTAS | **conteo, no se promedia** | — | CONTENEDOR | Sentencias del top-N que superan el umbral de tiempo por ejecución |
 
-**Reparto:** 7 «menor es mejor» · 2 «mayor es mejor» · 3 compuertas. Los tres
-componentes del índice representados, y ARCHIVOS deja de ser el más débil: pasa
-de una proporción a tres.
+**Reparto:** 7 «menor es mejor» · 2 «mayor es mejor» · 3 compuertas dentro del
+ISBD, más 1 métrica de CONSULTAS que se mide, se muestra y alerta, pero
+**no** entra a ninguna de esas cuentas (§3.1 del plan). Los tres componentes
+del índice representados, y ARCHIVOS deja de ser el más débil: pasa de una
+proporción a tres.
 
 **Debilidad conocida de la v0 — ya atendida.** La v0 tenía a ARCHIVOS descansando
 en una sola proporción más dos compuertas. `M-ARC-04` y `M-ARC-05` (§3) son la
@@ -666,9 +682,101 @@ anotarlo como tal (no como un error de la consulta).
 
 ---
 
+### M-CON-01 · Sentencias sobre el umbral de tiempo por ejecución
+
+| | |
+|---|---|
+| **Necesidad de información** | Es la evidencia directa del control **C-066** de la parte 1 («las consultas de mayor consumo se identifican periódicamente y se optimizan con seguimiento de la mejora»). Sin esta métrica el monitor cubre dos de los tres controles del proceso 20 y la promesa del §0 del plan se recorta. |
+| **Componente · peso** | CONSULTAS · 1 — **no participa del ISBD** (§3.1 del plan; ver §1.1 de este catálogo) |
+| **Familia · ámbito** | **Conteo, menor es mejor — no se promedia** · `CONTENEDOR` |
+| **Medidas base** | `sql_id`, `plan_hash_value`, `executions`, `cpu_time`, `elapsed_time`, `buffer_gets` de `v$sqlstats` |
+| **Función de medición** | Del top-N por `elapsed_time` (N = 20), `u = COUNT(*)` donde `elapsed_time / executions > umbral_ms × 1000` |
+| **Medida derivada** | Cantidad de sentencias del top-N que superan el umbral de tiempo por ejecución · techo N (20) |
+| **Modelo analítico** | Normalización por tramos, igual maquinaria que una proporción (para reusar histéresis y ciclo de vida de alerta, §6), **pero el resultado nunca se suma al ISBD** |
+| **Criterios de decisión** | `u_opt` 0 · `u_adv` 1 · `u_deg` 3 · `u_crit` 5 (sentencias, no porcentaje) |
+| **Periodicidad** | Cada muestra |
+| **Ancla normativa** | ISO/IEC 27002:2022 A.8.6 — Gestión de capacidad; control C-066 (parte 1, proceso 20) |
+| **Modo de falla** | No hay un `ORA-` asociado: sentencias caras y no atendidas degradan el tiempo de respuesta general y compiten por CPU y *buffer cache* con el resto de la instancia, de forma silenciosa y acumulativa. |
+| **Lectura de calibración** | *Pendiente de ejecutar contra `becajo-oracle`* — ver nota |
+
+```sql
+SELECT sql_id, plan_hash_value, executions,
+       ROUND(cpu_time     / executions / 1000, 2) AS cpu_ms_exec,
+       ROUND(elapsed_time / executions / 1000, 2) AS elapsed_ms_exec,
+       ROUND(buffer_gets  / executions, 0)         AS lecturas_logicas_exec
+  FROM v$sqlstats
+ WHERE executions > 0
+ ORDER BY elapsed_time DESC
+ FETCH FIRST 20 ROWS ONLY;
+```
+
+**Qué guarda la muestra, y qué es solo esta ficha.** La consulta de arriba
+alimenta dos cosas distintas y no hay que confundirlas: las 20 filas completas
+se persisten en `consulta_observada` (§7.1 del plan) como el top-N con sus
+cinco medidas base — eso es la evidencia de C-066, el comparativo «antes y
+después» que el control exige—. `M-CON-01` es solo el conteo agregado de esas
+20 filas contra un umbral, que es lo que entra a alertas y al tablero como una
+cifra de salud. Borrar la ficha no perdería la evidencia; borrar la tabla sí
+perdería la métrica.
+
+**Justificación de umbrales.** Los cuatro números son sobre una cantidad de
+sentencias, no un porcentaje, y por eso no comparten forma con el resto del
+catálogo — es la consecuencia directa de la excepción declarada en §1.1.
+`u_opt = 0`: ninguna de las 20 sentencias más costosas cruza el umbral de
+tiempo, la situación esperable en una base bien mantenida. `u_adv = 1`: una
+sola sentencia problemática ya es una señal, aunque todavía puede ser un caso
+aislado. `u_deg = 3`: a partir de tres, es difícil sostener que es un caso
+aislado y no un patrón —una consulta mal escrita que se repite en distintos
+puntos del código, por ejemplo—. `u_crit = 5`: una de cada cuatro sentencias
+del top-N observado está sobre el umbral, lo que sugiere un problema
+estructural (falta de índice, estadísticas desactualizadas) y no una sentencia
+suelta. El **techo se fija en N = 20** —el tamaño del propio top-N, declarado y
+no supuesto (§1.5)— porque `u` no puede superar la cantidad de filas que la
+consulta devuelve.
+
+El **umbral de tiempo por ejecución** que separa «cara» de «aceptable»
+(`umbral_ms` en la consulta) es un segundo número, independiente de los cuatro
+de arriba, y vive en la misma fila de `metrica` que ellos —anulable por
+instancia igual que cualquier otro umbral (tabla `umbral`, §7.1)—: una consulta
+analítica nocturna y una consulta de un formulario web no comparten el mismo
+«caro».
+
+**Nota — por qué es un conteo y no la proporción que sería más consistente con
+el resto del catálogo.** Se consideró expresar `M-CON-01` como «proporción de
+las 20 sentencias que superan el umbral» (0–100 %), que sí encajaría en la
+familia «proporción, menor es mejor» sin abrir una cuarta categoría. Se
+descartó porque el plan (§3.1, razón 2) es explícito en que las métricas de
+CONSULTAS no deben forzarse a una forma que sugiera precisión que no tienen:
+un top-N de tamaño fijo (20) hace que la proporción y el conteo sean
+matemáticamente equivalentes (`proporción = conteo / 20`), así que envolver el
+conteo en un porcentaje no añadiría información, solo la disfrazaría de
+proporción cuando el catálogo ya decidió, con razones escritas, que esta
+familia no lo es.
+
+**Nota — trampa a vigilar, no verificada todavía.** `v$sqlstats` no es un
+acumulado desde el arranque de la instancia como `v$system_event`: cada fila
+vive mientras el cursor esté en la *shared pool*, y Oracle puede desalojar
+cursores para hacer espacio. Eso significa que el top-N de una muestra puede
+no incluir una sentencia cara que se ejecutó hace una hora y ya fue
+desalojada. A diferencia de `M-PRO-04`, esto **no** se resuelve con una
+diferencia entre muestras —el problema no es que el acumulado sea viejo, es
+que la fila puede directamente no estar—. Mitigación para versiones futuras
+del catálogo: consultar también `dba_hist_sqlstat` si el *Diagnostics Pack*
+está disponible: no lo está en Oracle Database Free (la licencia de este
+proyecto), así que queda fuera de la v1 y documentado como limitación, no como
+descuido.
+
+**Nota sobre la lectura de calibración.** Misma limitación operativa que
+`M-ARC-04` y `M-ARC-05`: falta ejecutar la consulta contra `becajo-oracle` y
+completar este dato con sentencias reales de la instancia (que hoy, con datos
+de ejemplo y poco tráfico, probablemente den `u = 0`, un resultado ÓPTIMO
+válido en sí mismo).
+
+---
+
 ## 4. Lo que el agente ejecuta
 
-Doce métricas salen de **nueve consultas**, porque varias comparten origen. El
+Trece métricas salen de **diez consultas**, porque varias comparten origen. El
 agente no debe repetir una consulta por métrica.
 
 | Consulta | Ámbito | Alimenta |
@@ -683,11 +791,17 @@ agente no debe repetir una consulta por métrica.
 | `v$datafile` | CONTENEDOR | `M-ARC-02` |
 | `dba_temp_free_space` | CONTENEDOR | `M-ARC-04` |
 | `dba_tablespace_usage_metrics` + `dba_data_files` | CONTENEDOR | `M-ARC-05` |
+| `v$sqlstats` | CONTENEDOR | `M-CON-01` |
 
 **`M-ARC-05` no reutiliza la consulta de `M-ARC-01`** aunque parta de la misma
 vista: necesita el filtro contra `dba_data_files` para excluir los tablespaces
 con crecimiento automático, así que es una consulta distinta con un propósito
 distinto, no una repetición.
+
+**`v$sqlstats` alimenta a la vez la métrica y la evidencia.** Es la única
+consulta del catálogo que llena dos tablas de una sola pasada: `medicion` (el
+conteo de `M-CON-01`) y `consulta_observada` (el top-N completo, §7.1 del
+plan). El agente la ejecuta una vez por muestra, no dos.
 
 **Cero filas nunca es cero.** Cualquiera de estas consultas puede devolver un
 conjunto vacío sin lanzar error —`v$resource_limit` lo hace desde el PDB y
@@ -713,9 +827,12 @@ revisables y discutibles, no correlaciones calculadas.
 
 ## 6. Lo que la versión 0 deja fuera a propósito
 
-- **`CONSULTAS`**: ninguna métrica todavía. Conviene añadir una en cuanto el camino
-  del índice esté probado, porque el componente que **no** suma es un camino de
-  código distinto y fácil de equivocar.
+- **`CONSULTAS`, más allá de `M-CON-01`**: la v0 no tenía ninguna métrica; ahora
+  tiene una, deliberadamente sola. Es el mínimo necesario para ejercitar el
+  camino de código distinto que exige un componente que se mide y no suma
+  (§3.1 del plan) sin comprometerse todavía a un catálogo de sentencias por
+  usuario, por módulo de la aplicación o por ventana horaria — eso es
+  ampliación futura, no una carencia de esta versión.
 - **Área de recuperación rápida**: `v$recovery_area_usage` devuelve cero filas aquí;
   entra cuando exista una FRA configurada.
 - **Reinicio de procesos de fondo**: exige comparar el `SPID` con la muestra
