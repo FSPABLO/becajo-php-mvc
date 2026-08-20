@@ -88,7 +88,7 @@ entre «un poco por encima» y «al triple».
 
 ---
 
-## 2. Las diez métricas
+## 2. Las doce métricas
 
 | Código | Componente | Familia | Peso | Ámbito | Mide |
 |---|---|---|---|---|---|
@@ -102,13 +102,20 @@ entre «un poco por encima» y «al triple».
 | `M-ARC-01` | ARCHIVOS | menor es mejor | 3 | CONTENEDOR | Utilización del peor tablespace |
 | `M-ARC-02` | ARCHIVOS | **estado** | — | CONTENEDOR | Datafiles en estado válido |
 | `M-ARC-03` | ARCHIVOS | **estado** | — | RAIZ | Grupos de redo sin miembros inválidos |
+| `M-ARC-04` | ARCHIVOS | menor es mejor | 2 | CONTENEDOR | Utilización del peor tablespace temporal |
+| `M-ARC-05` | ARCHIVOS | menor es mejor | 2 | CONTENEDOR | Utilización del peor tablespace sin crecimiento automático |
 
-**Reparto:** 5 «menor es mejor» · 2 «mayor es mejor» · 3 compuertas. Los tres
-componentes del índice representados.
+**Reparto:** 7 «menor es mejor» · 2 «mayor es mejor» · 3 compuertas. Los tres
+componentes del índice representados, y ARCHIVOS deja de ser el más débil: pasa
+de una proporción a tres.
 
-**Debilidad conocida de la v0:** ARCHIVOS descansa en una sola proporción más dos
-compuertas. Es suficiente para ejercitar el modelo, insuficiente como cobertura; la
-primera ampliación del catálogo debería ir ahí.
+**Debilidad conocida de la v0 — ya atendida.** La v0 tenía a ARCHIVOS descansando
+en una sola proporción más dos compuertas. `M-ARC-04` y `M-ARC-05` (§3) son la
+primera ampliación que la v0 misma pedía: cubren, respectivamente, la presión de
+espacio temporal —invisible para `M-ARC-01`, que solo mira tablespaces
+permanentes— y el punto ciego que `M-ARC-01` documenta en su propia nota: con
+crecimiento automático activo, esa métrica se queda en ÓPTIMO para siempre y dice
+poco sobre los tablespaces que **no** pueden crecer solos.
 
 ---
 
@@ -549,9 +556,119 @@ funcionando a medias» que se pueda normalizar.
 
 ---
 
+### M-ARC-04 · Utilización del peor tablespace temporal
+
+| | |
+|---|---|
+| **Necesidad de información** | Saber si queda espacio de trabajo para ordenamientos, agrupaciones y *joins* con *hash* que no caben en PGA. Es la mitad de la historia que `M-MEM-01` empieza a contar: cuando el acierto de caché de PGA baja, el trabajo no desaparece, se traslada aquí. |
+| **Componente · peso** | ARCHIVOS · 2 |
+| **Familia · ámbito** | Proporción, menor es mejor · `CONTENEDOR` |
+| **Medidas base** | `tablespace_size`, `free_space` de `dba_temp_free_space` |
+| **Función de medición** | `u = MAX((tablespace_size − free_space) / tablespace_size × 100)` — **el peor, nunca el promedio**, mismo criterio que `M-ARC-01` |
+| **Medida derivada** | Porcentaje ocupado del tablespace temporal · techo 100 |
+| **Modelo analítico** | Normalización por tramos |
+| **Criterios de decisión** | `u_opt` 50 · `u_adv` 70 · `u_deg` 85 · `u_crit` 95 |
+| **Periodicidad** | Cada muestra |
+| **Ancla normativa** | ISO/IEC 27002:2022 A.8.6 — Gestión de capacidad |
+| **Modo de falla** | `ORA-01652, unable to extend temp segment`: la operación que necesitaba espacio temporal falla; a diferencia de `M-ARC-01`, aquí no se pierden datos permanentes, pero la consulta o el índice que se estaba construyendo no termina. |
+| **Lectura de calibración** | *Pendiente de ejecutar contra `becajo-oracle`* — ver nota |
+
+```sql
+SELECT tablespace_name,
+       ROUND((tablespace_size - free_space) / tablespace_size * 100, 2) AS usado_pct
+  FROM dba_temp_free_space
+ ORDER BY usado_pct DESC
+ FETCH FIRST 1 ROWS ONLY;
+```
+
+**Justificación de umbrales.** Reutiliza la escala 50 · 70 · 85 · 95 de
+`M-ARC-01` a propósito: el modo de falla es de la misma familia —un `ORA-`
+que corta una operación al agotarse el espacio— y no hay ningún motivo, ni en
+la documentación de Oracle ni en el comportamiento observado, para tratar el
+tablespace temporal con mayor o menor tolerancia que uno permanente. Mantener
+la misma escala también evita que dos métricas de ARCHIVOS casi idénticas en
+forma se lean distinto sin una razón que lo explique. `dba_temp_free_space` ya
+agrega por tablespace temporal (a diferencia de `v$temp_space_header`, que es
+por archivo), así que no hace falta una segunda agregación en el agente.
+
+**Nota — por qué el peor y no el promedio.** Mismo argumento que `M-ARC-01`
+(§ nota de esa ficha): con más de un *tablespace* temporal, promediar uno lleno
+con otro vacío esconde el que sí está fallando.
+
+**Nota sobre la lectura de calibración.** A diferencia del resto del catálogo,
+esta ficha todavía no tiene una lectura comprobada contra `becajo-oracle`:
+este agente de trabajo no tiene acceso al contenedor Oracle del proyecto, que
+corre en la máquina local. Para completarla, ejecutar la consulta de arriba con:
+
+```bash
+docker exec -it becajo-oracle sqlplus becajo/becajo@FREEPDB1
+```
+
+y pegar el resultado (además de confirmar cuántos tablespaces temporales
+devuelve `dba_temp_free_space` en esta instancia).
+
+---
+
+### M-ARC-05 · Utilización del peor tablespace sin crecimiento automático
+
+| | |
+|---|---|
+| **Necesidad de información** | Cubrir el punto ciego que `M-ARC-01` documenta en su propia nota: con `AUTOEXTEND` activo, `used_percent` se mide contra el máximo alcanzable (hasta 32 GB en esta instancia) y la métrica se queda en ÓPTIMO sin importar cuánto crezca el archivo. Para un *tablespace* sin crecimiento automático, ese mismo porcentaje sí significa «qué tan lleno está», y el catálogo no puede tratarlo igual que al otro caso sin perder la señal. |
+| **Componente · peso** | ARCHIVOS · 2 |
+| **Familia · ámbito** | Proporción, menor es mejor · `CONTENEDOR` |
+| **Medidas base** | `used_percent` de `dba_tablespace_usage_metrics`, filtrado a los tablespaces cuyos datafiles no son `autoextensible` en `dba_data_files` |
+| **Función de medición** | `u = MAX(used_percent)` entre los tablespaces sin ningún datafile autoextensible — **el peor, nunca el promedio** |
+| **Medida derivada** | Porcentaje del tamaño fijo del archivo · techo 100 |
+| **Modelo analítico** | Normalización por tramos |
+| **Criterios de decisión** | `u_opt` 50 · `u_adv` 70 · `u_deg` 85 · `u_crit` 95 |
+| **Periodicidad** | Cada muestra |
+| **Ancla normativa** | A.8.6 — Gestión de capacidad |
+| **Modo de falla** | `ORA-01653 / ORA-01654`, igual que `M-ARC-01` — pero aquí no hay margen de crecimiento automático que retrase el error: el archivo no puede extenderse aunque el disco tenga espacio libre. |
+| **Lectura de calibración** | *Pendiente de ejecutar contra `becajo-oracle`* — ver nota |
+
+```sql
+SELECT m.tablespace_name, ROUND(m.used_percent, 2) AS usado_pct
+  FROM dba_tablespace_usage_metrics m
+ WHERE NOT EXISTS (
+         SELECT 1
+           FROM dba_data_files df
+          WHERE df.tablespace_name = m.tablespace_name
+            AND df.autoextensible = 'YES'
+       )
+ ORDER BY m.used_percent DESC
+ FETCH FIRST 1 ROWS ONLY;
+```
+
+**Justificación de umbrales.** Misma escala que `M-ARC-01` y `M-ARC-04`
+(50 · 70 · 85 · 95), y por la misma razón: comparten modo de falla
+(`ORA-01653`/`ORA-01654`) y no hay ningún argumento para calificar más o menos
+estricto un archivo solo porque no crece solo — si acaso, el argumento va en
+sentido contrario, porque aquí no hay red de seguridad. Se mantiene la escala
+común en vez de endurecerla para no repetir el error que el catálogo ya evita
+en otras partes: introducir una segunda vara de medir sin una razón
+cuantificable la vuelve arbitraria.
+
+**Nota — por qué existe si `M-ARC-01` ya mide tablespaces.** No son
+redundantes: `M-ARC-01` mira el peor tablespace de **todos**, y con
+crecimiento automático generalizado (como en `becajo-oracle` hoy, según la nota
+de esa ficha) puede quedarse en ÓPTIMO indefinidamente. `M-ARC-05` mira
+específicamente el subconjunto —hoy posiblemente vacío en `becajo-oracle`— que
+**no** tiene esa red de seguridad. Si el subconjunto está vacío, la consulta no
+devuelve filas y la métrica se marca no recolectada (§4), exactamente como
+`v$resource_limit` en el PDB: **cero filas no es cero, es «no aplica todavía»**,
+y no debe leerse como salud perfecta.
+
+**Nota sobre la lectura de calibración.** Misma limitación que `M-ARC-04`: hay
+que ejecutar la consulta contra `becajo-oracle` para completar este dato. Si la
+instancia actual no tiene ningún datafile con `autoextensible = 'NO'`, la
+consulta devuelve cero filas — es un resultado válido y esperable, y hay que
+anotarlo como tal (no como un error de la consulta).
+
+---
+
 ## 4. Lo que el agente ejecuta
 
-Diez métricas salen de **siete consultas**, porque varias comparten origen. El
+Doce métricas salen de **nueve consultas**, porque varias comparten origen. El
 agente no debe repetir una consulta por métrica.
 
 | Consulta | Ámbito | Alimenta |
@@ -564,6 +681,13 @@ agente no debe repetir una consulta por métrica.
 | `v$log` + `v$logfile` | RAIZ | `M-ARC-03` |
 | `dba_tablespace_usage_metrics` | CONTENEDOR | `M-ARC-01` |
 | `v$datafile` | CONTENEDOR | `M-ARC-02` |
+| `dba_temp_free_space` | CONTENEDOR | `M-ARC-04` |
+| `dba_tablespace_usage_metrics` + `dba_data_files` | CONTENEDOR | `M-ARC-05` |
+
+**`M-ARC-05` no reutiliza la consulta de `M-ARC-01`** aunque parta de la misma
+vista: necesita el filtro contra `dba_data_files` para excluir los tablespaces
+con crecimiento automático, así que es una consulta distinta con un propósito
+distinto, no una repetición.
 
 **Cero filas nunca es cero.** Cualquiera de estas consultas puede devolver un
 conjunto vacío sin lanzar error —`v$resource_limit` lo hace desde el PDB y
