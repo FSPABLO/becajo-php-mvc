@@ -1,4 +1,4 @@
-# Catálogo de métricas — versión 0
+# Catálogo de métricas — versión 1
 
 **EIF402 · Proyecto Rivendel · Grupo 4 · Parte 2 — Instrumento de salud**
 
@@ -8,16 +8,29 @@
 > procesos importantes, definir qué conocer de cada uno, seleccionar las métricas y
 > localizar de dónde se obtienen.
 >
-> **Qué es una versión 0.** Diez métricas elegidas para que el modelo de cálculo se
-> pueda escribir y probar entero, no para cubrir la instancia. Están representadas
-> las tres familias de señal y los tres componentes del índice. El catálogo
-> definitivo crece sobre esta forma; no la cambia.
+> **De la v0 a la v1, y por qué el archivo conserva su nombre.** La v0 eran diez
+> métricas elegidas para que el modelo de cálculo se pudiera escribir y probar
+> entero, no para cubrir la instancia — están representadas las tres familias de
+> señal y los tres componentes del índice, pero con una debilidad conocida y
+> declarada en ARCHIVOS y ninguna métrica todavía en CONSULTAS. Esta v1 la amplía a
+> **quince métricas**: refuerza ARCHIVOS (`M-ARC-04`, `M-ARC-05`), abre CONSULTAS
+> (`M-CON-01`) y completa la cobertura de PROCESOS que el §3.2 del plan ya
+> anticipaba (`M-PRO-05`, `M-PRO-06`) — el catálogo definitivo crece sobre la forma
+> de la v0, tal como esa versión prometía; no la cambia. El archivo sigue
+> llamándose `catalogo-metricas-v0.md` a propósito: `contrato-repositorio-monitor.md`
+> y `contrato-muestra.md` (Fase 0, cerrados) ya enlazan a esta ruta, y renombrar el
+> archivo por una etiqueta de versión rompería esos enlaces sin necesidad —el
+> encabezado de este documento es la fuente de verdad sobre qué versión es, no el
+> nombre del archivo.
 >
 > **Todo lo que aquí se afirma está comprobado** contra el contenedor
-> `becajo-oracle` del proyecto. Las lecturas de calibración son de una única
-> observación: sirven para saber que la consulta funciona y que el umbral no es
-> absurdo, **no son una línea base**. La línea base son los pasos 5 y 6 de la guía
-> y necesitan la ventana del §5.5.
+> `becajo-oracle` del proyecto, **con una excepción explícita**: `M-ARC-04`,
+> `M-ARC-05`, `M-CON-01`, `M-PRO-05` y `M-PRO-06` —las cinco métricas nuevas de
+> esta v1— todavía no tienen lectura de calibración real; cada una lo dice en su
+> propia ficha y trae la consulta lista para correrla. Las lecturas de
+> calibración, donde existen, son de una única observación: sirven para saber que
+> la consulta funciona y que el umbral no es absurdo, **no son una línea base**.
+> La línea base son los pasos 5 y 6 de la guía y necesitan la ventana del §5.5.
 
 ---
 
@@ -101,7 +114,7 @@ entre «un poco por encima» y «al triple».
 
 ---
 
-## 2. Las trece métricas
+## 2. Las quince métricas
 
 | Código | Componente | Familia | Peso | Ámbito | Mide |
 |---|---|---|---|---|---|
@@ -109,6 +122,8 @@ entre «un poco por encima» y «al triple».
 | `M-PRO-02` | PROCESOS | menor es mejor | 2 | RAIZ | Procesos sobre el límite |
 | `M-PRO-03` | PROCESOS | **estado** | — | RAIZ | Procesos de fondo obligatorios presentes |
 | `M-PRO-04` | PROCESOS | menor es mejor | 2 | RAIZ | Espera media de escritura de redo |
+| `M-PRO-05` | PROCESOS | **estado** | — | RAIZ | Reinicio de proceso de fondo detectado |
+| `M-PRO-06` | PROCESOS | menor es mejor | 2 | RAIZ | Antigüedad del punto de control |
 | `M-MEM-01` | MEMORIA | **mayor es mejor** | 2 | RAIZ | Aciertos de caché de PGA |
 | `M-MEM-02` | MEMORIA | menor es mejor | 3 | RAIZ | PGA asignada sobre el objetivo |
 | `M-MEM-03` | MEMORIA | **mayor es mejor** | 2 | RAIZ | Memoria libre de la *shared pool* |
@@ -119,11 +134,13 @@ entre «un poco por encima» y «al triple».
 | `M-ARC-05` | ARCHIVOS | menor es mejor | 2 | CONTENEDOR | Utilización del peor tablespace sin crecimiento automático |
 | `M-CON-01` | CONSULTAS | **conteo, no se promedia** | — | CONTENEDOR | Sentencias del top-N que superan el umbral de tiempo por ejecución |
 
-**Reparto:** 7 «menor es mejor» · 2 «mayor es mejor» · 3 compuertas dentro del
+**Reparto:** 8 «menor es mejor» · 2 «mayor es mejor» · 4 compuertas dentro del
 ISBD, más 1 métrica de CONSULTAS que se mide, se muestra y alerta, pero
 **no** entra a ninguna de esas cuentas (§3.1 del plan). Los tres componentes
-del índice representados, y ARCHIVOS deja de ser el más débil: pasa de una
-proporción a tres.
+del índice representados, ARCHIVOS deja de ser el más débil (pasa de una
+proporción a tres), y PROCESOS queda con las dos familias que el §3.2 del plan
+le exige: agotamiento de recurso (`M-PRO-01`, `M-PRO-02`) y vitalidad/desempeño
+de proceso (`M-PRO-03` a `M-PRO-06`).
 
 **Debilidad conocida de la v0 — ya atendida.** La v0 tenía a ARCHIVOS descansando
 en una sola proporción más dos compuertas. `M-ARC-04` y `M-ARC-05` (§3) son la
@@ -309,6 +326,98 @@ fija en 20 ms, un solo milisegundo sobre `u_crit`, a propósito: por encima de e
 frontera cualquier valor —25 ms o 250 ms— es igual de urgente, y extender la
 escala solo comprimiría el rango donde sí hay distinción útil (0–20 ms) sin
 aportar ninguna granularidad adicional del lado malo.
+
+---
+
+### M-PRO-05 · Reinicio de proceso de fondo detectado
+
+| | |
+|---|---|
+| **Necesidad de información** | El §3.2 del plan distingue dos señales de vitalidad para PROCESOS: presencia (`M-PRO-03`) y **reinicio**. Un proceso de fondo puede estar «presente» en la muestra actual y aun así haber caído y vuelto a levantarse entre una muestra y la siguiente — `M-PRO-03` no lo ve porque solo mira una foto, no compara. |
+| **Componente · peso** | PROCESOS · compuerta, sin peso |
+| **Familia · ámbito** | **Estado, binaria** · `RAIZ` |
+| **Medidas base** | `spid` de `v$process`, unido a `v$bgprocess` por `paddr`, para `PMON`, `SMON`, `DBW0`, `LGWR`, `CKPT` |
+| **Función de medición** | Estable = el `spid` de cada proceso vigilado es **igual** al de la muestra inmediatamente anterior |
+| **Medida derivada** | Booleano: los cinco procesos con el mismo `spid` que la muestra previa, sí o no |
+| **Modelo analítico** | Compuerta (§1.3): abierta → no promedia; cerrada → salud 0 y componente CRÍTICO |
+| **Criterios de decisión** | Cualquier cambio de `spid` respecto de la muestra anterior cierra la compuerta |
+| **Periodicidad** | Cada muestra, **salvo la primera de cada instancia** (ver nota) |
+| **Ancla normativa** | A.8.16 — Actividades de seguimiento (comportamiento anómalo); A.5.30 — Continuidad de las TIC |
+| **Modo de falla** | Un reinicio de proceso de fondo suele ir detrás de un error grave (`ORA-600`, `ORA-7445`) que `M-PRO-03` nunca llega a mostrar como ausencia, porque para cuando se toma la siguiente muestra Oracle ya lo recuperó con un `spid` distinto. Sin esta métrica, la instabilidad queda invisible aunque haya ocurrido. |
+| **Lectura de calibración** | *Pendiente* — requiere dos muestras consecutivas, no una lectura puntual (ver nota) |
+
+```sql
+SELECT bg.name, p.spid
+  FROM v$bgprocess bg
+  JOIN v$process p ON p.addr = bg.paddr
+ WHERE bg.paddr <> '00'
+   AND bg.name IN ('PMON', 'SMON', 'DBW0', 'LGWR', 'CKPT');
+```
+
+**Justificación de umbrales.** No aplica, misma razón que `M-PRO-03`: familia
+ESTADO. Un proceso conservó su identidad entre muestras o no la conservó; no
+hay «reinicio parcial».
+
+**Nota — exige historia, no solo la muestra actual.** A diferencia de todas
+las métricas anteriores, `M-PRO-05` no se calcula con una sola consulta: el
+agente tiene que comparar el resultado de arriba contra el mismo resultado de
+la muestra anterior de la misma instancia. Es una exigencia nueva para el
+contrato de muestra, distinta de la de `M-PRO-04` — ahí se compara una
+*magnitud* (el acumulado), aquí se compara una *identidad* (el `spid`).
+
+**Nota — el caso de la primera muestra.** En la primera muestra que se toma de
+una instancia no existe "muestra anterior" con la cual comparar. Tratarlo como
+compuerta cerrada sería una alerta falsa en el arranque del monitor; tratarlo
+como compuerta abierta sería publicar una garantía de estabilidad que nadie
+observó. La resolución correcta es la misma regla del §4: se marca **no
+recolectada** hasta la segunda muestra, y no entra al denominador del
+componente todavía.
+
+---
+
+### M-PRO-06 · Antigüedad del punto de control
+
+| | |
+|---|---|
+| **Necesidad de información** | Es la mitad de desempeño que le falta a CKPT, el quinto proceso vigilado por `M-PRO-03`: esa métrica dice si CKPT está vivo, no si está haciendo *checkpoint* a tiempo. Un punto de control atrasado alarga el tiempo de recuperación ante una caída (MTTR) y puede ser síntoma de contención de E/S en `DBWn`. |
+| **Componente · peso** | PROCESOS · 2 |
+| **Familia · ámbito** | Proporción, menor es mejor · `RAIZ` |
+| **Medidas base** | `target_mttr`, `estimated_mttr` (segundos) de `v$instance_recovery` |
+| **Función de medición** | `u = estimated_mttr / target_mttr × 100` cuando `target_mttr > 0`; si `target_mttr = 0` (sin `FAST_START_MTTR_TARGET` configurado), `u = estimated_mttr` directo, en segundos, contra un techo declarado — mismo patrón de excepción que `M-PRO-04` con sus umbrales en milisegundos (§1.4) |
+| **Medida derivada** | Porcentaje del objetivo de recuperación, o segundos si no hay objetivo configurado · techo declarado por instancia |
+| **Modelo analítico** | Normalización por tramos |
+| **Criterios de decisión** | `u_opt` 50 · `u_adv` 70 · `u_deg` 85 · `u_crit` 95 (forma porcentual); valores en segundos si aplica la excepción — **pendientes de fijar contra una lectura real** (ver nota) |
+| **Periodicidad** | Cada muestra |
+| **Ancla normativa** | A.8.6 — Gestión de capacidad; A.5.30 — Continuidad de las TIC |
+| **Modo de falla** | No hay un `ORA-` asociado: un MTTR estimado muy por encima del objetivo no impide que la base siga sirviendo, pero significa que una caída ahora mismo tardaría más de lo planificado en recuperarse — el mismo tipo de riesgo silencioso que `M-PRO-04`. |
+| **Lectura de calibración** | *Pendiente de ejecutar contra `becajo-oracle`* — ver nota |
+
+```sql
+SELECT target_mttr, estimated_mttr
+  FROM v$instance_recovery;
+```
+
+**Justificación de umbrales.** Se reutiliza provisionalmente la escala
+porcentual 50 · 70 · 85 · 95 (misma forma que `M-PRO-01`/`M-PRO-02`) porque,
+igual que `M-MEM-02`, se trata de una magnitud medida contra un objetivo
+configurado, no contra un límite duro de Oracle. Se marca como *provisional* y
+no definitiva porque, a diferencia de las once fichas anteriores, todavía no
+hay una lectura de calibración de `becajo-oracle` que confirme si
+`target_mttr` está siquiera configurado en esta instancia — y si vale 0, rige
+la rama de excepción de la fila «Función de medición», cuyos cuatro umbrales
+en segundos **no pueden fijarse sin ver antes el orden de magnitud real**
+de `estimated_mttr` en este contenedor. Fijarlos ahora sería inventar una
+precisión que la §1.5 del catálogo pide evitar.
+
+**Nota — por qué la fuente es la que el plan ya señaló.** El §3.2 del plan cita
+`V$INSTANCE_RECOVERY` textualmente como fuente de «antigüedad del último punto
+de control» — esta ficha instancia esa referencia, no elige la vista por
+cuenta propia.
+
+**Nota sobre la lectura de calibración.** Falta ejecutar la consulta contra
+`becajo-oracle` y, con el resultado, decidir cuál de las dos ramas de la
+función de medición aplica en este contenedor antes de dar los cuatro
+umbrales por definitivos.
 
 ---
 
@@ -776,7 +885,7 @@ válido en sí mismo).
 
 ## 4. Lo que el agente ejecuta
 
-Trece métricas salen de **diez consultas**, porque varias comparten origen. El
+Quince métricas salen de **doce consultas**, porque varias comparten origen. El
 agente no debe repetir una consulta por métrica.
 
 | Consulta | Ámbito | Alimenta |
@@ -784,6 +893,8 @@ agente no debe repetir una consulta por métrica.
 | `v$resource_limit` | RAIZ | `M-PRO-01`, `M-PRO-02` |
 | `v$bgprocess` | RAIZ | `M-PRO-03` |
 | `v$system_event` | RAIZ | `M-PRO-04` |
+| `v$bgprocess` + `v$process` | RAIZ | `M-PRO-05` |
+| `v$instance_recovery` | RAIZ | `M-PRO-06` |
 | `v$pgastat` | RAIZ | `M-MEM-01`, `M-MEM-02` |
 | `v$sgastat` | RAIZ | `M-MEM-03` |
 | `v$log` + `v$logfile` | RAIZ | `M-ARC-03` |
@@ -792,6 +903,13 @@ agente no debe repetir una consulta por métrica.
 | `dba_temp_free_space` | CONTENEDOR | `M-ARC-04` |
 | `dba_tablespace_usage_metrics` + `dba_data_files` | CONTENEDOR | `M-ARC-05` |
 | `v$sqlstats` | CONTENEDOR | `M-CON-01` |
+
+**`M-PRO-05` reutiliza las mismas dos vistas que `M-PRO-03`** (`v$bgprocess`
+unida a `v$process`), pero no es la misma consulta: `M-PRO-03` solo necesita
+`name` y `paddr`; `M-PRO-05` necesita además el `spid` de `v$process` y
+guardarlo para compararlo con la muestra siguiente. El agente puede pedir
+ambos datos en una sola pasada por las dos vistas y derivar las dos métricas
+de un único resultado, que es distinto de "repetir la consulta".
 
 **`M-ARC-05` no reutiliza la consulta de `M-ARC-01`** aunque parta de la misma
 vista: necesita el filtro contra `dba_data_files` para excluir los tablespaces
@@ -852,7 +970,7 @@ Ambas quedan como trabajo futuro del catálogo, no como huecos sin explicar.
 
 ---
 
-## 6. Lo que la versión 0 deja fuera a propósito
+## 6. Lo que esta versión deja fuera a propósito
 
 - **`CONSULTAS`, más allá de `M-CON-01`**: la v0 no tenía ninguna métrica; ahora
   tiene una, deliberadamente sola. Es el mínimo necesario para ejercitar el
@@ -862,8 +980,6 @@ Ambas quedan como trabajo futuro del catálogo, no como huecos sin explicar.
   ampliación futura, no una carencia de esta versión.
 - **Área de recuperación rápida**: `v$recovery_area_usage` devuelve cero filas aquí;
   entra cuando exista una FRA configurada.
-- **Reinicio de procesos de fondo**: exige comparar el `SPID` con la muestra
-  anterior. Es una buena métrica y una complicación innecesaria para la v0.
 - **Bloqueos y cadenas de espera**: fuera del alcance de la versión 1 del plan.
 - **Espacio del sistema de archivos**: con crecimiento automático activo, la salud
   real de `M-ARC-01` depende también de que el disco pueda crecer, y eso no se ve

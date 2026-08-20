@@ -945,9 +945,11 @@ no quién lo hace: el reparto vive en el documento de organización del grupo.
 
 Antes de escribir código se acuerdan tres papeles. Los tres están en el repositorio:
 
-1. **[Catálogo de métricas versión 0](catalogo-metricas-v0.md)** — diez métricas con
-   ficha completa, las tres familias representadas y las consultas comprobadas
-   contra el contenedor del proyecto.
+1. **[Catálogo de métricas versión 1](catalogo-metricas-v0.md)** — quince métricas
+   con ficha completa, las cuatro familias representadas (las tres del ISBD más
+   la excepción declarada de CONSULTAS) y las consultas comprobadas contra el
+   contenedor del proyecto, salvo cinco que llegaron en esta ampliación y todavía
+   esperan su calibración.
 2. **[Forma de una muestra](contrato-muestra.md)** — la estructura que produce el
    recolector y consume el motor, con los siete casos límite obligatorios.
 3. **[`RepositorioMonitor` y rutas](contrato-repositorio-monitor.md)** — dos

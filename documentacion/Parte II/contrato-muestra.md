@@ -11,9 +11,10 @@
 > sin que exista el motor. Mientras las dos partes respeten esta forma, se pueden
 > desarrollar y probar por separado.
 >
-> Las métricas citadas son las del
-> [catálogo v0](catalogo-metricas-v0.md); los valores de los ejemplos son lecturas
-> reales del contenedor `becajo-oracle`.
+> Las métricas citadas son las diez originales del
+> [catálogo de métricas](catalogo-metricas-v0.md) (que desde su versión 1 trae
+> quince); los valores de los ejemplos son lecturas reales del contenedor
+> `becajo-oracle` y no cambian con la ampliación.
 
 ---
 
