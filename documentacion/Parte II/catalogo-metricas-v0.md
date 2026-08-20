@@ -822,6 +822,33 @@ revisables y discutibles, no correlaciones calculadas.
 | `M-PRO-02` | `M-PRO-01` | Agotados los procesos, no hay dónde alojar sesiones nuevas |
 | `M-ARC-01` | `M-ARC-02` | Un tablespace sin espacio deja archivos que no pueden extenderse |
 | `M-MEM-03` | `M-MEM-01` | Sin espacio en la *shared pool* se descartan planes y crece el trabajo en PGA |
+| `M-MEM-01` | `M-ARC-04` | Bajan los aciertos de caché de PGA, el ordenamiento que no cabe en memoria se traslada al tablespace temporal |
+| `M-ARC-05` | `M-ARC-02` | Un tablespace sin crecimiento automático que se llena no tiene margen: la siguiente escritura falla y el archivo puede quedar fuera de línea |
+| `M-CON-01` | `M-MEM-02` | Sentencias con ordenamientos o *joins* grandes consumen PGA por encima de lo habitual, empujando la asignación sobre el objetivo |
+
+**Por qué son seis y no más.** El §6.1 del plan es explícito: la precedencia es
+conocimiento declarado y defendible, no una correlación que el agente calcule.
+Cada fila de arriba tiene un mecanismo de Oracle detrás que se puede explicar en
+una frase; una relación que solo se sostiene por «suelen pasar juntas» no entra
+aquí, entra como candidato descartado (abajo), porque el §6.1 ya advierte que con
+muestras cada pocos minutos y pocas semanas de historia cualquier correlación
+calculada sería ruido con aspecto de hallazgo.
+
+**Candidatos descartados, y por qué.**
+
+- `M-ARC-03` (grupo de redo con miembro inválido) → `M-PRO-04` (espera de
+  escritura de redo): parece razonable —menos miembros disponibles, más presión
+  sobre LGWR— pero Oracle sigue escribiendo al mismo ritmo sobre los miembros que
+  quedan válidos del grupo *actual*; la validez de otros grupos no cambia
+  necesariamente el tiempo de escritura del grupo en uso. Sin una lectura de
+  calibración que lo sostenga, declararla sería inventar el mecanismo, no
+  describirlo.
+- `M-PRO-04` (espera de redo) → cualquier otra métrica: es una hoja en el grafo
+  de precedencias, no una raíz. Traslada lentitud a los `COMMIT`, que la
+  aplicación siente, pero no hay una vista `V$` en este catálogo que lo traduzca
+  en agotamiento de otro recurso medido aquí.
+
+Ambas quedan como trabajo futuro del catálogo, no como huecos sin explicar.
 
 ---
 
