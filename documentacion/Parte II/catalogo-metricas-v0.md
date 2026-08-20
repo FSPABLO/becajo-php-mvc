@@ -147,6 +147,21 @@ SELECT resource_name, current_utilization, limit_value
 **Nota.** El límite es el que devuelve `LIMIT_VALUE` —322 aquí—, no una cifra de
 manual. Calibrar contra un número supuesto es el error más común de esta métrica.
 
+**Justificación de umbrales.** El modo de falla es un corte total y sin
+gradiente —`ORA-00018` no deja escribir ni al DBA—, así que los cuatro tramos se
+leen como «cuánto margen queda frente a un evento binario», no como una curva de
+degradación. `u_opt = 50`: con la mitad del límite libre, un pico normal de
+conexiones no cambia la conclusión. `u_adv = 70`: todavía queda un 30 % de
+holgura, pero ya es visible una tendencia que conviene vigilar antes de la
+próxima ventana de carga. `u_deg = 85`: el margen restante (15 %) es del orden
+de lo que un pico de conexiones concurrentes puede consumir de una vez, así que
+cruzar esta frontera ya exige acción, no solo atención. `u_crit = 95`: a un 5 %
+del límite, cualquier evento breve —un lote, una reconexión masiva tras un
+corte de red— puede disparar el `ORA-00018` antes de que alguien alcance a
+reaccionar. El techo se deja en 100 porque el límite es literal: no hay
+«utilización de sesiones» por encima del 100 % que tenga sentido, a diferencia
+de `M-MEM-02`, donde el objetivo sí se puede superar sin error.
+
 ---
 
 ### M-PRO-02 · Utilización de procesos
@@ -174,6 +189,16 @@ la misma consulta dos veces.
 suya en la tabla `precedencia`: cuando los procesos se agotan, las sesiones se
 agotan detrás. Sin esa declaración, la correlación del §6.1 vería dos problemas
 donde hay uno.
+
+**Justificación de umbrales.** Comparte los cuatro umbrales de `M-PRO-01`
+(50 · 70 · 85 · 95) a propósito y no por omisión: sale de la misma vista, el
+mismo modo de falla —`ORA-00020` es tan abrupto como `ORA-00018`— y, sobre todo,
+la tabla de precedencias del §5 declara que el agotamiento de procesos arrastra
+al de sesiones. Si las dos métricas usaran escalas distintas, un mismo evento de
+capacidad calificaría distinto según cuál de las dos lo mida primero, y el
+episodio del §6.1 tendría que reconciliar dos criterios para lo que es un solo
+problema. El techo se mantiene en 100 por el mismo motivo que en `M-PRO-01`: el
+límite de procesos también es un tope literal, sin margen por encima.
 
 ---
 
@@ -205,6 +230,13 @@ SELECT name
 del catálogo: `v$bgprocess` lista 83 procesos activos de un catálogo mucho mayor.
 Sin ese filtro la métrica siempre da «presente». Con más de un escritor la lista
 crece a `DBW1`, `DBW2`…; el nombre exacto es dato del catálogo, no del código.
+
+**Justificación de umbrales.** No aplica: una métrica de familia ESTADO no tiene
+`u_opt`/`u_adv`/`u_deg`/`u_crit`, tiene un único criterio binario (§1.3). No es
+una omisión ni una simplificación conveniente — introducir cuatro umbrales aquí
+obligaría a inventar «qué tan ausente» está un proceso de fondo, y eso no existe:
+PMON está o no está. Este es, de hecho, el argumento central de por qué el
+catálogo distingue familias de señal en primer lugar (§1.1).
 
 ---
 
@@ -238,6 +270,22 @@ mueve una media de tres meses. La métrica solo sirve si el agente guarda el
 acumulado y publica la **diferencia entre muestras**. De ahí sale una exigencia
 para el contrato de muestra: las métricas de tasa transportan el acumulado además
 del valor derivado.
+
+**Justificación de umbrales.** No hay un `ORA-` que marque la frontera —el modo
+de falla es degradación continua, no corte—, así que los umbrales no salen de un
+límite de Oracle sino de la latencia que empieza a sentirse en cada `COMMIT`.
+`u_opt = 10 ms`: por debajo de esto la escritura de redo es indistinguible de
+«no es el cuello de botella» para una aplicación transaccional típica.
+`u_adv = 14 ms`: la latencia ya se acerca a lo perceptible en operaciones con
+muchos `COMMIT` pequeños, aunque todavía no domina el tiempo de respuesta.
+`u_deg = 17 ms`: a este nivel la espera de redo empieza a explicar una parte
+significativa de la lentitud que reportaría un usuario, sin que ningún otro
+recurso muestre agotamiento. `u_crit = 19 ms`: casi el doble del óptimo; el
+`COMMIT` ya tarda un orden de magnitud más que el de una base sana. El techo se
+fija en 20 ms, un solo milisegundo sobre `u_crit`, a propósito: por encima de esa
+frontera cualquier valor —25 ms o 250 ms— es igual de urgente, y extender la
+escala solo comprimiría el rango donde sí hay distinción útil (0–20 ms) sin
+aportar ninguna granularidad adicional del lado malo.
 
 ---
 
@@ -273,6 +321,22 @@ acierto propios es una mala práctica conocida: se pueden mejorar sin que el sis
 mejore. Un 100 % sostenido en una base ociosa dice poco; esta métrica solo tiene
 valor con la línea base delante.
 
+**Justificación de umbrales.** Es «mayor es mejor» y el modo de falla es
+silencioso —spill a disco temporal, no un error—, así que el criterio es cuánta
+proporción del trabajo de ordenamiento deja de resolverse en memoria.
+`ÓPTIMO ≥ 95 %`: el margen de spill (5 %) es el que cualquier PGA bien
+dimensionada absorbe en el uso normal, con picos ocasionales de operaciones
+grandes. `SALUDABLE ≥ 90 %`: 1 de cada 10 operaciones ya pasa a disco temporal,
+medible pero todavía dentro de lo esperable en cargas mixtas. `ADVERTENCIA ≥ 80 %`:
+1 de cada 5 —una fracción demasiado alta para atribuirla a unas pocas consultas
+pesadas puntuales— sugiere que el dimensionamiento de PGA empieza a quedarse
+corto para la carga actual. `DEGRADADO ≥ 70 %`: casi un tercio del trabajo de
+ordenamiento ya compite por I/O de disco temporal, con el impacto de rendimiento
+correspondiente. `CRÍTICO < 70 %`: a partir de aquí el patrón ya no es «algunas
+consultas grandes», es que la memoria de trabajo configurada no alcanza para la
+carga que la instancia recibe. No lleva techo declarado porque es un porcentaje
+de acierto propiamente dicho: no puede superar 100 %.
+
 ---
 
 ### M-MEM-02 · PGA asignada sobre el objetivo
@@ -300,6 +364,25 @@ una división por cero esperando su turno. Es un caso concreto de la regla gener
 **cada vista trata `CON_ID` a su manera y hay que comprobarlo antes de agregar**
 —`v$pgastat` duplica y hay que filtrar, `v$sgastat` reparte y hay que sumar todo—.
 
+**Justificación de umbrales — y del techo, que aquí es el dato interesante.**
+`u_opt = 70 %`: Oracle documenta que la gestión automática de PGA reserva
+holgura por diseño, así que operar bien por debajo del objetivo configurado es
+el estado esperado, no una señal de sobredimensionamiento. `u_adv = 90 %`:
+acercarse al objetivo todavía es variabilidad normal de carga, pero deja de ser
+holgura cómoda. `u_deg = 100 %`: exactamente en el objetivo es la frontera
+donde el motor empieza a aplicar más presión para no superarlo —más operaciones
+*one-pass* o *multi-pass* en vez de *optimal*—, que es exactamente lo que
+`M-MEM-01` mide del otro lado. `u_crit = 120 %`: superar el objetivo en un 20 %
+significa que el parámetro configurado ya no describe el uso real, y es el punto
+donde el sistema operativo empieza a sentir presión de memoria de verdad. El
+**techo en 150 %**, no en 100, es la justificación que pide el §1.5 del
+catálogo: la asignación de PGA puede exceder legítimamente su objetivo sin que
+eso sea, por sí solo, la falla —es la distancia lo que importa, no el mero
+hecho de superarlo—. Y se detiene en 150 y no más arriba porque, pasado ese
+punto, la severidad ya no distingue: un 160 % y un 300 % están igual de cerca
+de `ORA-04030`, así que extender la escala solo restaría resolución al tramo
+70–150 %, que es donde de verdad hay grados que comunicar.
+
 ---
 
 ### M-MEM-03 · Memoria libre de la *shared pool*
@@ -325,7 +408,7 @@ SELECT ROUND(SUM(DECODE(name, 'free memory', bytes, 0)) / SUM(bytes) * 100, 2) A
  WHERE pool = 'shared pool';
 ```
 
-**Nota — los umbrales parecen bajos y no lo son.** Una *shared pool* casi llena es
+**Justificación de umbrales — parecen bajos y no lo son.** Una *shared pool* casi llena es
 el estado normal de una base sana: la memoria está ahí para usarse, y Oracle la
 llena de planes en caché a propósito. Un umbral ingenuo del tipo «menos del 50 %
 libre es advertencia» produciría alerta permanente. Por eso el umbral de ÓPTIMO
@@ -377,6 +460,21 @@ Cuidado con la lectura contraria, que es el error clásico: sobre un archivo **s
 crecimiento automático, este porcentaje sí es «qué tan lleno está», y los dos casos
 no se calibran igual.
 
+**Justificación de umbrales.** Comparte la forma 50 · 70 · 85 · 95 de `M-PRO-01`
+y `M-PRO-02` porque el modo de falla es del mismo tipo: un tope duro
+(`ORA-01653`/`ORA-01654`) sin degradación previa perceptible por la aplicación.
+`u_opt = 50 %`: con la mitad del máximo alcanzable libre, ni siquiera una carga
+puntual grande cambia la conclusión. `u_adv = 70 %`: ya hay una tendencia de
+consumo que conviene proyectar, sobre todo porque un *datafile* con crecimiento
+automático limitado por disco físico puede agotar ese margen sin previo aviso.
+`u_deg = 85 %` coincide, deliberadamente, con el umbral clásico de «warning» que
+usa Oracle Enterprise Manager para espacio de *tablespace* —no es una coincidencia
+casual, es apoyarse en una convención ya validada por la operación real de bases
+Oracle—. `u_crit = 95 %`: solo queda margen para una carga masiva antes de que
+la siguiente extensión falle. El techo queda en 100 porque `used_percent` ya
+está definido sobre el máximo alcanzable (§ nota anterior): no hay «más de 100 %
+lleno».
+
 ---
 
 ### M-ARC-02 · Datafiles en estado válido
@@ -408,6 +506,11 @@ archivo del tablespace del sistema, **no** `'ONLINE'`. Una comprobación
 perfectamente sana. Es la clase de error que produce una alerta permanente el
 primer día y entrena al operador a ignorar el tablero.
 
+**Justificación de umbrales.** No aplica, por la misma razón que `M-PRO-03`: es
+una compuerta de familia ESTADO (§1.3), no una proporción. Un *datafile* está
+`ONLINE`/`SYSTEM` o no lo está; no hay un «85 % disponible» intermedio que
+tenga sentido físico.
+
 ---
 
 ### M-ARC-03 · Grupos de redo sin miembros inválidos
@@ -438,6 +541,11 @@ tratarlo como valor ausente lo convertiría en falla. Aparte: esta instancia tie
 pocos y sin multiplexar es una debilidad de configuración —territorio del
 instrumento de medición de la parte 1, control de continuidad—, no un problema de
 salud, y por eso no entra aquí.
+
+**Justificación de umbrales.** No aplica, misma razón que `M-PRO-03` y
+`M-ARC-02`: compuerta de familia ESTADO. Un grupo o miembro de redo está
+`INVALID`/`DELETED` o no lo está; no hay una proporción intermedia de «redo
+funcionando a medias» que se pueda normalizar.
 
 ---
 
