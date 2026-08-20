@@ -599,7 +599,7 @@ equipo (A-6) y por eso hay que sostenerlos en vez de declararlos. Dos entregable
    fuera de línea detiene el servicio; una *shared pool* apretada lo degrada.
    Archivos y memoria pesan más que procesos porque su falla es más terminal.
    Se documenta con la misma lógica de relación C-I-D que la parte 1 usa para los
-   procesos del catálogo.
+   procesos del catálogo. Desarrollo completo en §5.6.1.
 2. **Análisis de sensibilidad**: se recalculan las muestras históricas variando
    cada peso ±10 % y se cuenta cuántas veces cambia el **estado** publicado. Si
    cambia con facilidad, el modelo es frágil y hay que decirlo en la defensa. Si
@@ -613,6 +613,65 @@ equipo (A-6) y por eso hay que sostenerlos en vez de declararlos. Dos entregable
    lote es el que se reanaliza y el que se cita en la defensa. Elegir la ventana
    después de ver los resultados sería escoger los datos que confirman la
    conclusión, y eso no es un análisis de sensibilidad.
+
+### 5.6.1 Desarrollo del entregable 1: por qué 30/35/35 y no otra cosa
+
+El criterio es **alcance del impacto** y **reversibilidad**, tomados del modo de
+falla que cada catálogo de métricas ya documenta (`catalogo-metricas-v0.md`,
+§3) — no una impresión de cuál componente "se siente" más importante.
+
+| Componente | Peor modo de falla documentado | Alcance | ¿Se recupera solo? | ¿Hay pérdida de disponibilidad o de datos? |
+|---|---|---|---|---|
+| **PROCESOS** (30) | `ORA-00018` / `ORA-00020` (`M-PRO-01`, `M-PRO-02`): ninguna sesión o proceso **nuevo** entra | Solo admisión de trabajo nuevo. Las sesiones ya conectadas y sus transacciones en curso **siguen operando** | Sí — en cuanto una sesión existente termina y libera su cupo, el error desaparece sin intervención | Ninguna. Es un cuello de botella de admisión, no un problema de integridad ni de continuidad |
+| **MEMORIA** (35) | `ORA-04030` / `ORA-04031` (`M-MEM-02`, `M-MEM-03`): no se puede reservar memoria de proceso o de *shared pool* | Cualquier sesión —nueva **o ya conectada**— que intente una operación que necesite esa memoria. Antes del error, el efecto ya es general y silencioso: todo el trabajo de ordenamiento se vuelve más lento (`M-MEM-01`) | Se recupera al liberar memoria, pero mientras tanto **cada** sesión activa puede verse afectada, no solo las que intentan entrar | Ninguna pérdida de datos directa, pero un `ORA-04031` puede interrumpir operaciones en curso, no solo rechazarlas antes de empezar |
+| **ARCHIVOS** (35) | `M-ARC-02` (datafile fuera de línea) y `M-ARC-03` (todos los grupos de redo inválidos): una porción de los datos queda inaccesible; sin redo utilizable, **la instancia no puede confirmar ninguna transacción y se detiene** | Un datafile offline afecta solo los objetos alojados ahí; el redo agotado afecta a **toda** la instancia por igual | No. El datafile offline exige `ALTER DATABASE DATAFILE ... ONLINE` y típicamente recuperación; una instancia detenida por falta de redo no se reinicia sola | Sí, en el caso límite: datos inaccesibles hasta recuperación manual, o parada total del servicio |
+
+**Por qué PROCESOS queda con el peso más bajo.** Es el único de los tres cuyo
+peor desenlace es ruidoso, se autolimita (un error `ORA-` explícito, no una
+degradación silenciosa) y no pone en riesgo datos ni continuidad: el sistema le
+cierra la puerta a trabajo nuevo, pero lo que ya estaba corriendo no se ve
+amenazado. Comparado con eso, tanto MEMORIA como ARCHIVOS pueden afectar
+sesiones que **ya estaban dentro** — la relación de riesgo con la disponibilidad
+del servicio completo, no solo de su admisión, es mayor en los dos.
+
+**Por qué MEMORIA y ARCHIVOS quedan empatados en 35 y no uno por encima del
+otro.** Son severos por razones distintas y no comparables en la misma unidad,
+lo cual es justamente el argumento para no intentar diferenciarlos con una
+tercera cifra que no se podría defender mejor que las otras dos:
+
+- **MEMORIA gana en alcance**: su degradación (`M-MEM-01`) es general y
+  progresiva, y toca a toda sesión que ordene o agrupe datos, mucho antes de
+  llegar al error duro.
+- **ARCHIVOS gana en severidad del peor caso**: ninguna de las otras dos
+  puede terminar en pérdida de disponibilidad de datos o parada total de la
+  instancia. Solo `M-ARC-03` llega ahí.
+
+Sin una medición que compare "cuánto duele" cada tipo de daño en una escala
+común —que el proyecto no tiene, y que además el §3.1 ya explica por qué no se
+inventa una—, declarar una jerarquía entre ambos sería exactamente la
+"intuición" que este punto del checklist pide evitar. Tratarlos como iguales es
+la posición que **menos** supone.
+
+**Relación con C-I-D (misma lógica que la parte 1).** PROCESOS compromete
+únicamente **disponibilidad de admisión** (temporal, autolimitada); MEMORIA
+compromete **disponibilidad de operación** (general, mientras dura la presión);
+ARCHIVOS puede comprometer **disponibilidad de servicio** y, en el límite,
+**integridad/durabilidad** de lo que debía quedar confirmado en el registro de
+rehacer. Es la misma escalada de gravedad —de "no entra trabajo nuevo" a "el
+servicio entero se detiene"— que separa un hallazgo menor de uno crítico en el
+catálogo de 75 controles de la parte 1.
+
+**Lo que este argumento no hace.** No prueba que 30/35/35 sea el único reparto
+correcto — no existe una unidad común para medir "cuánto peor" es un servicio
+detenido frente a una operación degradada, y cualquier cifra exacta seguiría
+siendo una elección del equipo. Lo que sí establece es un **orden** defendible
+(archivos y memoria por encima de procesos, y archivos-memoria sin un ganador
+claro entre sí) con el modo de falla de cada métrica como evidencia, no como
+adorno. Si el análisis de sensibilidad del entregable 2 muestra que el estado
+publicado apenas cambia dentro de ±10 %, eso refuerza que el reparto exacto
+importa menos que el orden; si cambia con facilidad, hay que decirlo en la
+defensa tal como está escrito arriba, y no ajustar los números después de
+verlo.
 
 ---
 
@@ -1058,7 +1117,7 @@ La consecuencia práctica es que **ninguna de estas decisiones se defiende dicie
 | A-3 | **Cinco bandas** en métrica, componente e índice, con un solo vocabulario | Único punto donde el plan se aparta de la guía, que sugiere tres niveles «por ejemplo». Con cinco, la coincidencia de bandas se enuncia como igualdad y se puede probar; con dos vocabularios distintos haría falta una tabla de traducción en el código, la base y la interfaz | §5.2 |
 | A-4 | Cuatro umbrales por métrica (`u_opt`, `u_adv`, `u_deg`, `u_crit`), `u_opt = 50` por omisión | Consecuencia de A-3: la banda ÓPTIMO necesita su frontera | §5.2 |
 | A-5 | Intervalos semiabiertos: `u` cerrado por abajo, `s` cerrado por arriba | La función es decreciente; cerrar del mismo lado manda las cinco fronteras a la banda contigua | §5.2 |
-| A-6 | Pesos **30 / 35 / 35** | Por consecuencia de falla, no por intuición: un *datafile* fuera de línea detiene el servicio, una *shared pool* apretada lo degrada. Y se somete a análisis de sensibilidad en vez de afirmarse | §5.6 |
+| A-6 | Pesos **30 / 35 / 35** | Por consecuencia de falla, no por intuición: un *datafile* fuera de línea detiene el servicio, una *shared pool* apretada lo degrada. Procesos pesa menos porque su peor caso es autolimitado y no toca datos; memoria y archivos quedan empatados porque son severos en dimensiones distintas (alcance frente a irreversibilidad) y no comparables en una escala común. Se somete a análisis de sensibilidad en vez de afirmarse | §5.6.1 |
 | A-7 | **Regla del eslabón más débil** con topes en 40 / 60 / 75 / 90 | Un promedio ponderado esconde emergencias: sin tope, dos componentes en rojo y uno excelente publican salud aceptable | §5.4 |
 | A-8 | El ISBD promedia los componentes **ya topados** | Si promediara los brutos, un componente rescatado del rojo volvería a entrar como si no lo estuviera | §5.3 |
 | A-9 | **Sin dato no es cero**: la métrica no recolectada sale del denominador | Heredado de la regla del «No aplica» de la parte 1, anclada en la Declaración de Aplicabilidad (ISO/IEC 27001, cl. 6.1.3) | §5.3 |
