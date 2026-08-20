@@ -59,6 +59,7 @@ if ($esAdministrador) {
             ['etiqueta' => $vista->t('panel.catalogo_controles'),    'ruta' => '/catalogo',               'icono' => 'disco'],
             ['etiqueta' => $vista->t('panel.matriz_cid'),            'ruta' => '/catalogo/matriz',        'icono' => 'escudo'],
             ['etiqueta' => $vista->t('panel.remediaciones_vencidas'), 'ruta' => '/remediaciones/vencidas', 'icono' => 'alerta'],
+            ['etiqueta' => $vista->t('panel.bitacora'),               'ruta' => '/bitacora',               'icono' => 'disco'],
         ],
     ];
 }

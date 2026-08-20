@@ -206,6 +206,8 @@ interface RepositorioAuditorias
     /**
      * Las remediaciones abiertas de una auditoría, con el control al que
      * pertenecen ya resuelto.
+     *
+     * @return list<Remediacion>
      */
     public function remediacionesAuditoria(int $idAuditoria): array;
 
@@ -253,18 +255,16 @@ interface RepositorioAuditorias
 
         /**
          * Vincula un documento ya existente a otro control más.
-         * Idempotente a propósito
          */
         public function vincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void;
 
-        /**
-         * Quita el vínculo entre un documento y un control, no borra el documento: puede seguir vinculado a otros controles.
-         */
         public function desvincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void;
 
         /**
          * Los códigos de los controles ya evaluados (con estado asignado) que
          * todavía no tienen ningún documento de respaldo vinculado.
+         *
+         * @return list<string>
          */
         public function controlesSinEvidencia(int $idAuditoria): array;
 
@@ -273,7 +273,35 @@ interface RepositorioAuditorias
          * controles a los que está vinculado (campo controlesVinculados de
          * EvidenciaDocumento, por ejemplo "C-001, C-002"). Para la página que
          * reúne toda la evidencia en un solo lugar.
+         *
+         * @return list<\App\Models\Entidades\EvidenciaDocumento>
          */
         public function evidenciasConControlesDeAuditoria(int $idAuditoria): array;
+
+        // ── Bitácora ────────────
+
+        /**
+         * Registra una acción en la bitácora del sistema.
+         *
+         * correoUsuario se guarda siempre, aunque idUsuario sea null: es la
+         * copia que sobrevive si la cuenta se borra o se desactiva más adelante.
+         */
+        public function registrarBitacora(
+            ?int $idUsuario,
+            string $correoUsuario,
+            string $accion,
+            ?string $entidad = null,
+            ?string $idEntidad = null,
+            ?string $detalle = null,
+            ?string $direccionIp = null,
+        ): void;
+
+        /**
+         * Las entradas más recientes de la bitácora, de la más nueva a la más
+         * vieja.
+         *
+         * @return list<\App\Models\Entidades\RegistroBitacora>
+         */
+        public function bitacora(int $limite = 100, ?int $idUsuario = null): array;
 
 }

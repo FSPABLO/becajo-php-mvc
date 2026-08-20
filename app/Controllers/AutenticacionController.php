@@ -72,12 +72,16 @@ final class AutenticacionController extends Controlador
         $usuario = $auth->ingresar((string) $correo, (string) $clave);
 
         if ($usuario === null) {
+
+         $this->auditorias()->registrarBitacora(null,(string) $correo, 'sesion.fallida', 'usuario', null, null, $this->peticion()->ip(), );
+
             // Mismo mensaje para credenciales incorrectas y cuenta desactivada.
             $this->sesion()->destello('error', 'Correo o contraseña incorrectos.');
             $this->sesion()->destello('correo', (string) $correo);
             $this->redirigir('/ingresar');
         }
 
+        $this->registrarBitacora('sesion.ingresar', 'usuario', (string) $usuario->id);
         $this->sesion()->destello('aviso', 'Bienvenido, ' . $usuario->nombre . '.');
         $this->redirigir(self::DESTINO);
     }
@@ -155,3 +159,4 @@ final class AutenticacionController extends Controlador
     }
 
 }
+

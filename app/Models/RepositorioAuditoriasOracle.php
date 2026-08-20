@@ -10,6 +10,7 @@ use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
 use App\Models\Entidades\EvidenciaDocumento;
 use App\Models\Entidades\Remediacion;
+use App\Models\Entidades\RegistroBitacora;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
 
@@ -599,7 +600,8 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
 
         public function vincularEvidencia(int $idEvidencia, int $idEvaluacionControl): void
         {
-            // MERGE en vez de INSERT liso: vincular un documento que ya estaba vinculado a un control
+            // MERGE en vez de INSERT liso: vincular un documento que ya estaba vinculado al mismo control
+
             //Es idempotente a propósito.
             $this->bd->ejecutar(
                 'MERGE INTO evidencia_control destino
@@ -656,7 +658,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
 
         /** @return list<EvidenciaDocumento> */
         public function evidenciasConControlesDeAuditoria(int $idAuditoria): array
-
+        {
             $filas = $this->bd->consultar(
                 "SELECT ed.id_evidencia, ed.id_auditoria, ed.nombre_documento, ed.formato,
                         ed.version, ed.responsable,
@@ -675,6 +677,61 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
 
             return array_map(
                 static fn (array $fila): EvidenciaDocumento => EvidenciaDocumento::desdeFila($fila),
+                $filas,
+            );
+        }
+
+        // ── Bitácora  ────────────
+
+        public function registrarBitacora(
+            ?int $idUsuario,
+            string $correoUsuario,
+            string $accion,
+            ?string $entidad = null,
+            ?string $idEntidad = null,
+            ?string $detalle = null,
+            ?string $direccionIp = null,
+        ): void {
+            $this->bd->ejecutar(
+                'INSERT INTO bitacora
+                        (id_usuario, correo_usuario, accion, entidad, id_entidad, detalle, direccion_ip)
+                 VALUES (:id_usuario, :correo_usuario, :accion, :entidad, :id_entidad, :detalle, :direccion_ip)',
+                [
+                    'id_usuario'     => $idUsuario,
+                    'correo_usuario' => $correoUsuario,
+                    'accion'         => $accion,
+                    'entidad'        => $entidad,
+                    'id_entidad'     => $idEntidad,
+                    'detalle'        => $detalle,
+                    'direccion_ip'   => $direccionIp,
+                ],
+            );
+        }
+
+        /** @return list<RegistroBitacora> */
+        public function bitacora(int $limite = 100, ?int $idUsuario = null): array
+        {
+            $condicionUsuario = $idUsuario !== null ? 'WHERE id_usuario = :id_usuario' : '';
+
+            $parametros = ['limite' => $limite];
+
+            if ($idUsuario !== null) {
+                $parametros['id_usuario'] = $idUsuario;
+            }
+
+            $filas = $this->bd->consultar(
+                "SELECT id_bitacora, id_usuario, correo_usuario, accion, entidad, id_entidad,
+                        detalle, direccion_ip,
+                        TO_CHAR(fecha_hora, 'YYYY-MM-DD HH24:MI:SS') AS fecha_hora
+                   FROM bitacora
+                   $condicionUsuario
+                  ORDER BY fecha_hora DESC
+                  FETCH FIRST :limite ROWS ONLY",
+                $parametros,
+            );
+
+            return array_map(
+                static fn (array $fila): RegistroBitacora => RegistroBitacora::desdeFila($fila),
                 $filas,
             );
         }

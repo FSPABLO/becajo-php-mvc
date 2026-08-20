@@ -34,6 +34,7 @@ return [
     'panel.catalogo_controles'    => 'Catálogo de controles',
     'panel.matriz_cid'            => 'Mapa de procesos vs C-I-D',
     'panel.remediaciones_vencidas' => 'Remediaciones vencidas',
+    'panel.bitacora'            => 'Bitácora del sistema',
     'panel.volver_sitio'          => 'Volver al sitio',
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'Administrador de BD',

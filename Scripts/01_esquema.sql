@@ -281,4 +281,25 @@ CREATE TABLE evidencia_control (
                                        FOREIGN KEY (id_evidencia) REFERENCES evidencia_documento (id_evidencia)
 );
 
+-- Bitácora del sistema
+-- correo_usuario se guarda duplicado a propósito, no solo id_usuario: si la
+-- cuenta se desactiva o se borra más adelante, la bitácora sigue diciendo
+-- quién hizo qué, sin depender de que el usuario todavía exista.
+CREATE TABLE bitacora (
+                          id_bitacora     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                          id_usuario      NUMBER,
+                          correo_usuario  VARCHAR2(150) NOT NULL,
+                          accion          VARCHAR2(50)  NOT NULL,
+                          entidad         VARCHAR2(50),
+                          id_entidad      VARCHAR2(50),
+                          detalle         VARCHAR2(500),
+                          direccion_ip    VARCHAR2(45),
+                          fecha_hora      TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+                          CONSTRAINT fk_bitacora_usuario
+                              FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
+);
+
+CREATE INDEX ix_bitacora_usuario ON bitacora (id_usuario);
+CREATE INDEX ix_bitacora_fecha ON bitacora (fecha_hora);
+
 COMMIT;

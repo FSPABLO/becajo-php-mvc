@@ -444,6 +444,8 @@ final class AuditoriaController extends Controlador
         // desactualizados sería peor que no verlos.
         $this->auditorias()->recalcularRiesgo($auditoria->id);
 
+        $this->registrarBitacora('control.guardar', 'control', $control->id, 'estado=' . $datos['estado']);
+
         $this->sesion()->destello('aviso', 'Control ' . $control->id . ' guardado.');
 
         // "Guardar y siguiente" encadena los 75 controles sin volver al índice.
@@ -464,10 +466,8 @@ final class AuditoriaController extends Controlador
         $auditoria = $this->auditoriaPropia();
         $control = $this->controlDelCatalogo();
         $destino = '/evaluacion/' . $auditoria->id . '/controles/' . $control->id;
-        // #documentos-respaldo: para que el auditor no tenga que desplazarse
-        // de nuevo hasta la sección cada vez que agrega, vincula o quita un
-        // documento.
 
+        // construcción de rutas siguen necesitando la URL sin el ancla. (Cuando conectemos bd online)
         $destinoConAncla = $destino . '#documentos-respaldo';
 
         $this->exigirToken($destino);
@@ -518,7 +518,8 @@ final class AuditoriaController extends Controlador
 
         // Aviso de nombre parecido: no bloquea la carga (el auditor puede
         // tener una buena razón para dos documentos con nombres similares),
-
+        // solo lo alerta por si en realidad quería usar "Vincular documento
+        // ya cargado" en vez de crear uno nuevo por accidente.
         $nombreParecido = null;
 
         foreach ($this->auditorias()->evidenciasDeAuditoria($auditoria->id) as $existente) {
@@ -548,11 +549,10 @@ final class AuditoriaController extends Controlador
                 . '"Vincular documento ya cargado" en vez de crear uno nuevo.',
             );
         } else {
-            // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
-
-
             $this->sesion()->destello('aviso', 'Documento agregado.');
         }
+
+        $this->registrarBitacora('evidencia.agregar', 'evaluacion_control', (string) $evaluacion->id, $nombre);
 
         $this->redirigir($destinoConAncla);
     }
@@ -586,9 +586,7 @@ final class AuditoriaController extends Controlador
         }
 
         $this->auditorias()->vincularEvidencia($idEvidencia, $evaluacion->id);
-
-        // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
-        // acción «evidencia.vincular», entidad «evaluacion_control», su id, y la hora.
+        $this->registrarBitacora('evidencia.vincular', 'evaluacion_control', (string) $evaluacion->id, 'id_evidencia=' . $idEvidencia);
 
         $this->sesion()->destello('aviso', 'Documento vinculado.');
         $this->redirigir($destinoConAncla);
@@ -610,9 +608,7 @@ final class AuditoriaController extends Controlador
 
         if ($evaluacion !== null && $idEvidencia > 0) {
             $this->auditorias()->desvincularEvidencia($idEvidencia, $evaluacion->id);
-
-            // TODO(bitácora): registrar esta acción — control 8.15 (Logging) de ISO/IEC 27002:2022.
-            // acción «evidencia.quitar», entidad «evaluacion_control», su id, y la hora.
+            $this->registrarBitacora('evidencia.quitar', 'evaluacion_control', (string) $evaluacion->id, 'id_evidencia=' . $idEvidencia);
 
             $this->sesion()->destello('aviso', 'Documento desvinculado de este control.');
         }
@@ -620,6 +616,10 @@ final class AuditoriaController extends Controlador
         $this->redirigir($destinoConAncla);
     }
 
+    /**
+     * Registra una acción en la bitácora del sistema, usando al usuario de la sesión
+     * actual. Punto único para no repetir la lógica de obtener el usuario y la hora en cada acción que se quiera registrar.
+     */
     // ── Cierre y resultados ──────────────────────────────────────────────────
 
     public function finalizar(): void
@@ -672,15 +672,11 @@ final class AuditoriaController extends Controlador
     }
 
 
-     //Toda la evidencia de la auditoría en un solo lugar:
     public function evidencias(): void
     {
         $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
         $repositorio = $this->auditorias();
-
-        // Los códigos que faltan se resuelven contra el catálogo en memoria
-        // (ya cargado por el instrumento)
         $catalogoPorCodigo = [];
 
         foreach ($this->instrumento()->controles() as $control) {
@@ -872,6 +868,23 @@ final class AuditoriaController extends Controlador
             'meta'          => $this->meta('Remediaciones vencidas'),
             'usuario'       => $usuario,
             'remediaciones' => $this->auditorias()->remediacionesVencidas(),
+        ]);
+    }
+
+    /**
+     * Bitácora del sistema
+     * Restringida a Administrador de BD: quién hizo qué es información
+     * sensible.
+     */
+    public function bitacora(): void
+    {
+        $usuario = $this->exigirAdministrador();
+
+        $this->verPanel('evaluacion/bitacora', [
+            ...$this->contexto(),
+            'meta'     => $this->meta('Bitácora del sistema'),
+            'usuario'  => $usuario,
+            'registros' => $this->auditorias()->bitacora(200),
         ]);
     }
 
@@ -1258,3 +1271,4 @@ final class AuditoriaController extends Controlador
         return is_array($valores) ? $valores : [];
     }
 }
+

@@ -55,6 +55,17 @@ final class Peticion
         return $this->ruta;
     }
 
+    /**
+     * Dirección IP de quien hizo la petición, o null si no se pudo
+     * determinar. Para la bitácora, no para control de acceso
+     */
+    public function ip(): ?string
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        return is_string($ip) && $ip !== '' ? $ip : null;
+    }
+
     /** Prefijo para construir enlaces y rutas de recursos estáticos. */
     public function rutaBase(): string
     {

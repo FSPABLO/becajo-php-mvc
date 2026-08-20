@@ -64,6 +64,31 @@ abstract class Controlador
     }
 
     /**
+     * Registra una acción en la bitácora del sistema, usando al usuario de la sesión
+     * actual. Vive en la clase base porque más de un controlador la llama
+     * (Autenticación en el login, Auditoría al guardar un control o
+     * evidencia)
+     */
+    protected function registrarBitacora(
+        string $accion,
+        ?string $entidad = null,
+        ?string $idEntidad = null,
+        ?string $detalle = null,
+    ): void {
+        $usuario = $this->autenticacion()->usuario();
+
+        $this->auditorias()->registrarBitacora(
+            $usuario?->id,
+            $usuario?->correo ?? 'desconocido',
+            $accion,
+            $entidad,
+            $idEntidad,
+            $detalle,
+            $this->peticion()->ip(),
+        );
+    }
+
+    /**
      * Exige que haya alguien autenticado y devuelve quién es.
      *
      * Primera línea de toda acción del módulo de auditorías. Si no hay sesión,

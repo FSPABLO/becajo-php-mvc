@@ -30,6 +30,7 @@ return [
     'panel.catalogo_controles'    => 'Control catalog',
     'panel.matriz_cid'            => 'Process vs C-I-A map',
     'panel.remediaciones_vencidas' => 'Overdue remediations',
+    'panel.bitacora'              => 'System log',
     'panel.volver_sitio'          => 'Back to the site',
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'DB administrator',
