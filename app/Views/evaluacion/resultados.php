@@ -188,7 +188,8 @@ $etiquetaTipo = [
             <?php foreach ($dominios as $fila): ?>
                 <?php $frac = $fila['cumplimiento'] ?? null; ?>
                 <div class="flex items-center gap-3">
-                    <span class="w-40 shrink-0 truncate text-sm text-texto-2" title="<?= e((string) $fila['nombre_dominio']) ?>">
+                    <span class="flex w-40 shrink-0 items-center gap-1.5 truncate text-sm text-texto-2" title="<?= e((string) $fila['nombre_dominio']) ?>">
+                        <?= iconoDominio((string) $fila['clave_dominio'], 'h-4 w-4 shrink-0') ?>
                         <?= e((string) $fila['nombre_dominio']) ?>
                     </span>
                     <div class="h-3 w-full overflow-hidden rounded-full bg-elevado">
@@ -207,7 +208,10 @@ $etiquetaTipo = [
             <?php foreach ($dominios as $fila): ?>
                 <?php $zona = $zonaDe($fila['cumplimiento'] ?? null); ?>
                 <div class="rv-extruido rv-relieve-sutil rounded-rv-lg border border-borde bg-superficie p-4">
-                    <p class="text-sm font-semibold text-texto-2"><?= e((string) $fila['nombre_dominio']) ?></p>
+                    <p class="flex items-center gap-1.5 text-sm font-semibold text-texto-2">
+                        <?= iconoDominio((string) $fila['clave_dominio'], 'h-4 w-4 shrink-0') ?>
+                        <?= e((string) $fila['nombre_dominio']) ?>
+                    </p>
                     <p class="tabular mt-1 text-xl font-semibold text-texto"><?= e($porcentaje($fila['cumplimiento'] ?? null)) ?></p>
                     <p class="mt-2">
                         <?= $zona === null
@@ -233,7 +237,12 @@ $etiquetaTipo = [
                 <tbody class="divide-y divide-borde">
                 <?php foreach ($dominios as $fila): ?>
                     <tr>
-                        <td class="px-4 py-3 font-medium text-texto"><?= e((string) $fila['nombre_dominio']) ?></td>
+                        <td class="px-4 py-3 font-medium text-texto">
+                            <span class="flex items-center gap-1.5">
+                                <?= iconoDominio((string) $fila['clave_dominio'], 'h-4 w-4 shrink-0') ?>
+                                <?= e((string) $fila['nombre_dominio']) ?>
+                            </span>
+                        </td>
                         <td class="px-4 py-3 tabular"><?= e((string) $fila['controles_si']) ?></td>
                         <td class="px-4 py-3 tabular"><?= e((string) $fila['controles_no']) ?></td>
                         <td class="px-4 py-3 tabular"><?= e((string) $fila['controles_na']) ?></td>

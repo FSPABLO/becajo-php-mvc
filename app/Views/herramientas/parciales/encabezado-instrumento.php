@@ -21,6 +21,7 @@ $campos = [
 
 $acciones = [
     ['clave' => 'exportar-csv',  'etiqueta' => 'Exportar CSV',     'icono' => 'descargar', 'titulo' => 'Descarga los 75 controles con sus respuestas, separados por punto y coma'],
+    ['clave' => 'exportar-excel', 'etiqueta' => 'Exportar Excel',  'icono' => 'descargar', 'titulo' => 'Descarga los 75 controles con sus respuestas en un libro de Excel (.xlsx)'],
     ['clave' => 'exportar-json', 'etiqueta' => 'Guardar avance',   'icono' => 'documento', 'titulo' => 'Descarga el estado completo como archivo JSON'],
     ['clave' => 'importar-json', 'etiqueta' => 'Cargar avance',    'icono' => 'importar',  'titulo' => 'Restaura un avance guardado previamente'],
     ['clave' => 'ejemplo',       'etiqueta' => 'Datos de ejemplo', 'icono' => 'chispa',    'titulo' => 'Llena el instrumento con datos de demostración'],

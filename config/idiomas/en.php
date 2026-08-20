@@ -19,6 +19,14 @@ return [
     'nav.movil'           => 'Mobile navigation',
     'nav.saltar_contenido' => 'Skip to content',
 
+    // Homepage: welcome strip for signed-in users.
+    'home.bienvenida_titulo'  => 'Welcome back, %s',
+    'home.bienvenida_resumen_progreso'  => '%s audit(s) in progress',
+    'home.bienvenida_resumen_ninguna'   => 'You have no audits yet',
+    'home.bienvenida_resumen_todas_fin' => 'Your %s audit(s) are finalized',
+    'home.ir_panel'           => 'Go to my panel',
+    'home.nueva_auditoria'    => 'New audit',
+
     // Marco del módulo interno: barra lateral y barra superior.
     'panel.navegacion'            => 'Module navigation',
     'panel.ubicacion'             => 'Current location',
@@ -173,6 +181,9 @@ return [
     'eval.editar_encabezado'   => 'Edit header',
     'eval.guardar_encabezado'  => 'Save header',
     'eval.controles_instrumento' => 'Instrument controls',
+    'eval.dominios_lista'       => 'Audit domains',
+    'eval.pestana_resumen'      => 'Overview',
+    'eval.secciones_panel'      => 'Panel sections',
     'eval.col_codigo'          => 'Code',
     'eval.col_proceso'         => 'Process',
     'eval.col_enunciado'       => 'Statement',

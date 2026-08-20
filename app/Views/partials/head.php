@@ -21,6 +21,11 @@ $hojas = $hojas ?? [];
 <meta property="og:title" content="<?= e($meta['titulo']) ?>">
 <meta property="og:description" content="<?= e($meta['descripcion']) ?>">
 <meta property="og:locale" content="es_CR">
+<meta property="og:image" content="<?= e($vista->recurso('assets/images/branding/favicon.png')) ?>">
+
+<link rel="icon" type="image/png" sizes="32x32" href="<?= e($vista->recurso('assets/images/branding/favicon-32.png')) ?>">
+<link rel="icon" type="image/png" sizes="512x512" href="<?= e($vista->recurso('assets/images/branding/favicon.png')) ?>">
+<link rel="apple-touch-icon" href="<?= e($vista->recurso('assets/images/branding/apple-touch-icon.png')) ?>">
 
 <!--
     El producto tiene un solo tono, «Imladris de noche», declarado en :root de

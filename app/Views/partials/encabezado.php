@@ -58,7 +58,8 @@ $clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medi
 
         <?php /* Cinzel: solo el logotipo. Una palabra, caja alta, 0.09em. */ ?>
         <a href="<?= e($vista->destino('#inicio')) ?>" class="flex flex-none items-center gap-[11px]">
-            <span class="rv-extruido grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-superficie font-marca text-[15px] tracking-[0.02em] text-oro">R</span>
+            <img src="<?= e($vista->recurso('assets/images/branding/rivendel-logo-oscuro.png')) ?>"
+                 alt="" class="h-10 w-auto">
             <span class="rv-marca text-[15px] text-nav-texto"><?= e($empresa['nombre']) ?></span>
         </a>
 
