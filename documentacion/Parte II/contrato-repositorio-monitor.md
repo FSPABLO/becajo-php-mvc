@@ -8,7 +8,8 @@
 > tiene cada pantalla.
 >
 > Depende de los otros dos: las entidades salen del
-> [catálogo v0](catalogo-metricas-v0.md) y la estructura que persiste
+> [catálogo de métricas](catalogo-metricas-v0.md) (ahora en su versión 1) y la
+> estructura que persiste
 > `guardarMuestra()` es la muestra evaluada del
 > [contrato de muestra](contrato-muestra.md).
 
