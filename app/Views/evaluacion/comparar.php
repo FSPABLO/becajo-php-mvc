@@ -213,7 +213,10 @@ $nTarjeta = 0;
                                         <?php foreach ($dominios as $clave => $dominio): ?>
                                             <tr>
                                                 <td class="py-1.5 pr-3 font-medium text-texto whitespace-nowrap">
-                                                    <?= e($dominio['nombre']) ?>
+                                                    <span class="inline-flex items-center gap-1.5">
+                                                        <?= iconoDominio((string) $clave, 'h-4 w-4 shrink-0') ?>
+                                                        <?= e($dominio['nombre']) ?>
+                                                    </span>
                                                 </td>
                                                 <?php foreach ($columnas as $columna): ?>
                                                     <?php $valor = $columna['valores'][$clave] ?? null; ?>

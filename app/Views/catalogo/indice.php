@@ -104,7 +104,10 @@ $botonBorrar = static function (\App\Core\Vista $vista, string $ruta, string $et
                         <td class="px-4 py-3 tabular text-texto-2"><?= e((string) $dominio->orden) ?></td>
                         <td class="px-4 py-3">
                             <a href="<?= e($vista->url('catalogo/dominios/' . $dominio->clave)) ?>"
-                               class="font-semibold text-primario hover:underline"><?= e($dominio->clave) ?></a>
+                               class="inline-flex items-center gap-1.5 font-semibold text-primario hover:underline">
+                                <?= iconoDominio($dominio->clave, 'h-4 w-4 shrink-0') ?>
+                                <?= e($dominio->clave) ?>
+                            </a>
                         </td>
                         <td class="px-4 py-3 text-texto"><?= e($dominio->nombre) ?></td>
                         <td class="px-4 py-3 tabular text-texto-2"><?= e((string) $usos) ?></td>
@@ -154,7 +157,12 @@ $botonBorrar = static function (\App\Core\Vista $vista, string $ruta, string $et
                                class="font-semibold text-primario hover:underline"><?= e((string) $proceso->numero) ?></a>
                         </td>
                         <td class="px-4 py-3 text-texto"><?= e($proceso->nombre) ?></td>
-                        <td class="px-4 py-3 text-texto-2"><?= e($nombreDominio[$proceso->dominio] ?? $proceso->dominio) ?></td>
+                        <td class="px-4 py-3 text-texto-2">
+                            <span class="inline-flex items-center gap-1.5">
+                                <?= iconoDominio($proceso->dominio, 'h-4 w-4 shrink-0') ?>
+                                <?= e($nombreDominio[$proceso->dominio] ?? $proceso->dominio) ?>
+                            </span>
+                        </td>
                         <td class="px-4 py-3 tabular text-texto-2"><?= e((string) $usos) ?></td>
                         <td class="px-4 py-3 text-right">
                             <?php if ($usos === 0): ?>

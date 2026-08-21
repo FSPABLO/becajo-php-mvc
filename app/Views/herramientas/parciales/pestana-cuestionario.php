@@ -34,6 +34,16 @@ declare(strict_types=1);
                      class="space-y-8"
                      <?= $indice === 0 ? '' : 'hidden' ?>>
 
+                <div class="flex items-start gap-3 rounded-rv-lg border border-borde bg-superficie px-4 py-3.5">
+                    <span class="rv-extruido-xs grid h-9 w-9 flex-none place-items-center rounded-rv bg-elevado text-primario">
+                        <?= iconoDominio($dominio->clave, 'h-5 w-5') ?>
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="text-sm font-bold text-texto"><?= e($dominio->nombre) ?></h2>
+                        <p class="mt-0.5 text-xs text-texto-2"><?= e($dominio->descripcion) ?></p>
+                    </div>
+                </div>
+
                 <?php foreach ($procesosPorDominio[$dominio->clave] ?? [] as $proceso): ?>
                     <div data-grupo-proceso="<?= e((string) $proceso->numero) ?>">
 

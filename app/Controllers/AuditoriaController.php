@@ -330,13 +330,37 @@ final class AuditoriaController extends Controlador
         }
 
         $controles = $this->instrumento()->controles();
+        $procesos  = $this->indexarProcesos();
+
+        // Conteo por dominio para las pestañas: cuántos controles tiene cada
+        // uno y cuántos de esos ya están respondidos en ESTA auditoría. Con
+        // dato real de servidor no hace falta que ningún script lo recalcule.
+        $totalPorDominio = [];
+        $respondidoPorDominio = [];
+
+        foreach ($controles as $control) {
+            $clave = $procesos[$control->proceso]->dominio ?? null;
+
+            if ($clave === null) {
+                continue;
+            }
+
+            $totalPorDominio[$clave] = ($totalPorDominio[$clave] ?? 0) + 1;
+
+            if (($porCodigo[$control->id] ?? null)?->estado !== null) {
+                $respondidoPorDominio[$clave] = ($respondidoPorDominio[$clave] ?? 0) + 1;
+            }
+        }
 
         $this->verPanel('evaluacion/mostrar', [
             ...$this->contexto(),
             'meta'         => $this->meta('Auditoría ' . $auditoria->id),
             'auditoria'    => $auditoria,
             'controles'    => $controles,
-            'procesos'     => $this->indexarProcesos(),
+            'procesos'     => $procesos,
+            'dominios'     => $this->instrumento()->dominios(),
+            'totalPorDominio'     => $totalPorDominio,
+            'respondidoPorDominio' => $respondidoPorDominio,
             'evaluaciones' => $porCodigo,
             'evaluados'    => $this->auditorias()->controlesEvaluados($auditoria->id),
             'total'        => count($controles),

@@ -9,6 +9,9 @@ declare(strict_types=1);
  * @var \App\Models\Entidades\Auditoria $auditoria
  * @var list<\App\Models\Entidades\Control> $controles
  * @var array<int, \App\Models\Entidades\Proceso> $procesos
+ * @var list<\App\Models\Entidades\Dominio> $dominios
+ * @var array<string, int> $totalPorDominio
+ * @var array<string, int> $respondidoPorDominio
  * @var array<string, \App\Models\Entidades\EvaluacionControl> $evaluaciones
  * @var int $evaluados
  * @var int $total
@@ -138,53 +141,154 @@ $tonoEstado = [
     <!-- Controles -->
     <h2 class="mb-4 text-xl font-bold text-texto"><?= e($vista->t('eval.controles_instrumento')) ?></h2>
 
-    <?php /* Relieve sutil y solo en el contenedor: 75 filas con sombra propia
-             convertirían la tabla en un relieve y no en un dato legible. */ ?>
-    <div class="rv-extruido rv-relieve-sutil rv-tabla overflow-x-auto rounded-rv-lg border border-borde bg-superficie">
-        <table class="w-full min-w-[48rem] text-left text-sm">
-            <thead class="bg-elevado text-xs uppercase tracking-wide text-texto-2">
-                <tr>
-                    <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_codigo')) ?></th>
-                    <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_proceso')) ?></th>
-                    <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_enunciado')) ?></th>
-                    <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_resp')) ?></th>
-                    <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_madurez')) ?></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-borde">
-            <?php foreach ($controles as $control): ?>
-                <?php
-                $evaluacion = $evaluaciones[$control->id] ?? null;
-                $estado = $evaluacion?->estado;
-                $tono = $tonoEstado[$estado] ?? null;
-                ?>
-                <tr class="align-top hover:bg-elevado">
-                    <?php /* Código del control: identificador, luego mono y oro. */ ?>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/controles/' . $control->id)) ?>"
-                           class="rv-id font-medium hover:underline">
-                            <?= e($control->id) ?>
-                        </a>
-                    </td>
-                    <td class="px-4 py-3 text-texto-2">
-                        <?= e($procesos[$control->proceso]->nombre ?? '—') ?>
-                    </td>
-                    <td class="rv-titulo px-4 py-3 text-[1rem] text-texto-2">
-                        <?= e(mb_strimwidth($control->enunciado, 0, 110, '…')) ?>
-                    </td>
-                    <td class="px-4 py-3">
-                        <?= $tono === null
-                            ? '<span class="text-na">—</span>'
-                            : pill($tono[0], $tono[1]) ?>
-                    </td>
-                    <td class="px-4 py-3 tabular text-texto-2">
-                        <?= $evaluacion?->madurez === null
-                            ? '<span class="text-na">—</span>'
-                            : e(number_format((float) $evaluacion->madurez, 1, ',', '')) ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+    <?php
+    /*
+     * Antes: los 75 controles en una sola tira, sin más corte que el scroll
+     * del navegador. Se agrupan por dominio con el mismo componente de
+     * pestañas del instrumento público (tabs-dominios.php), así que de un
+     * vistazo hay ~10 filas por dominio en vez de 75 seguidas, y el contador
+     * ya trae el avance real de ESTA auditoría en vez de nacer en 0/N.
+     *
+     * $dominioActivo es el primero de la lista, igual que en tabs-dominios.php
+     * (el primer tab nace seleccionado); las filas de los demás dominios se
+     * marcan hidden en el propio HTML para que no haya parpadeo al cargar, y
+     * el script de más abajo se limita a alternar esa marca al hacer clic.
+     */
+    $dominioActivo = $dominios[0]->clave ?? null;
+    ?>
+
+    <div class="rv-extruido overflow-hidden rounded-rv-lg border border-borde bg-superficie">
+        <?= $vista->renderizar('herramientas/parciales/tabs-dominios', [
+            'ambito'                => 'auditoria',
+            'etiquetaLista'         => $vista->t('eval.dominios_lista'),
+            'dominios'              => $dominios,
+            'totalPorDominio'       => $totalPorDominio,
+            'respondidoPorDominio'  => $respondidoPorDominio,
+        ]) ?>
+
+        <?php /* Relieve sutil y solo en el contenedor: 75 filas con sombra propia
+                 convertirían la tabla en un relieve y no en un dato legible. */ ?>
+        <div class="rv-relieve-sutil rv-tabla overflow-x-auto">
+            <table class="w-full min-w-[48rem] text-left text-sm">
+                <thead class="bg-elevado text-xs uppercase tracking-wide text-texto-2">
+                    <tr>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_codigo')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_proceso')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_enunciado')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_resp')) ?></th>
+                        <th class="px-4 py-3 font-semibold"><?= e($vista->t('eval.col_madurez')) ?></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-borde" data-filas-por-dominio>
+                <?php foreach ($controles as $control): ?>
+                    <?php
+                    $evaluacion = $evaluaciones[$control->id] ?? null;
+                    $estado = $evaluacion?->estado;
+                    $tono = $tonoEstado[$estado] ?? null;
+                    $claveDominio = $procesos[$control->proceso]->dominio ?? null;
+                    ?>
+                    <tr class="align-top hover:bg-elevado"
+                        data-dominio="<?= e((string) $claveDominio) ?>"
+                        <?= $claveDominio !== $dominioActivo ? 'hidden' : '' ?>>
+                        <?php /* Código del control: identificador, luego mono y oro. */ ?>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <a href="<?= e($vista->url('evaluacion/' . $auditoria->id . '/controles/' . $control->id)) ?>"
+                               class="rv-id font-medium hover:underline">
+                                <?= e($control->id) ?>
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-texto-2">
+                            <?= e($procesos[$control->proceso]->nombre ?? '—') ?>
+                        </td>
+                        <td class="rv-titulo px-4 py-3 text-[1rem] text-texto-2">
+                            <?= e(mb_strimwidth($control->enunciado, 0, 110, '…')) ?>
+                        </td>
+                        <td class="px-4 py-3">
+                            <?= $tono === null
+                                ? '<span class="text-na">—</span>'
+                                : pill($tono[0], $tono[1]) ?>
+                        </td>
+                        <td class="px-4 py-3 tabular text-texto-2">
+                            <?= $evaluacion?->madurez === null
+                                ? '<span class="text-na">—</span>'
+                                : e(number_format((float) $evaluacion->madurez, 1, ',', '')) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
+
+<script>
+/*
+ * Filtro de la tabla de controles por dominio — ver el comentario junto a
+ * data-filas-por-dominio en evaluacion/mostrar.php.
+ *
+ * Independiente de assets/js/instrumento.js a propósito: ese archivo lleva
+ * su propio almacén en localStorage para el instrumento público sin sesión,
+ * y aquí los datos ya vienen calculados y guardados por el servidor. Mezclar
+ * los dos habría significado hacer que este HTML hablara el formato JSON de
+ * ese script solo para reutilizar una función de treinta líneas.
+ */
+(function () {
+    'use strict';
+
+    var lista = document.querySelector('[data-tabs-dominio="auditoria"]');
+    var cuerpo = document.querySelector('[data-filas-por-dominio]');
+
+    if (!lista || !cuerpo) {
+        return;
+    }
+
+    var tabs = Array.prototype.slice.call(lista.querySelectorAll('[data-tab-dominio]'));
+    var filas = Array.prototype.slice.call(cuerpo.querySelectorAll('[data-dominio]'));
+
+    function activar(clave, moverFoco) {
+        tabs.forEach(function (tab) {
+            var activo = tab.dataset.tabDominio === clave;
+
+            tab.setAttribute('aria-selected', String(activo));
+            tab.tabIndex = activo ? 0 : -1;
+            tab.classList.toggle('border-primario', activo);
+            tab.classList.toggle('text-texto', activo);
+            tab.classList.toggle('border-transparent', !activo);
+            tab.classList.toggle('text-texto-2', !activo);
+            tab.classList.toggle('hover:border-borde', !activo);
+
+            if (activo && moverFoco) {
+                tab.focus();
+            }
+        });
+
+        filas.forEach(function (fila) {
+            fila.hidden = fila.dataset.dominio !== clave;
+        });
+    }
+
+    tabs.forEach(function (tab, indice) {
+        tab.addEventListener('click', function () {
+            activar(tab.dataset.tabDominio, false);
+        });
+
+        tab.addEventListener('keydown', function (evento) {
+            var saltos = { ArrowRight: 1, ArrowLeft: -1 };
+            var destino = null;
+
+            if (saltos[evento.key] !== undefined) {
+                destino = (indice + saltos[evento.key] + tabs.length) % tabs.length;
+            } else if (evento.key === 'Home') {
+                destino = 0;
+            } else if (evento.key === 'End') {
+                destino = tabs.length - 1;
+            }
+
+            if (destino !== null) {
+                evento.preventDefault();
+                activar(tabs[destino].dataset.tabDominio, true);
+            }
+        });
+    });
+})();
+</script>
