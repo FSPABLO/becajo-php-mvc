@@ -14,6 +14,7 @@ return [
     'nav.mis_auditorias'  => 'Mis auditorías',
     'nav.catalogo'        => 'Catálogo',
     'nav.perfil'          => 'Perfil',
+    'nav.ir_tablero'      => 'Ir al tablero',
     'nav.salir'           => 'Salir',
     'nav.ingresar'        => 'Ingresar',
     'nav.contactar'       => 'Contactar',
@@ -22,14 +23,6 @@ return [
     'nav.principal'       => 'Navegación principal',
     'nav.movil'           => 'Navegación móvil',
     'nav.saltar_contenido' => 'Saltar al contenido',
-
-    // Portada: franja de bienvenida para quien ya inició sesión.
-    'home.bienvenida_titulo'  => 'Hola de nuevo, %s',
-    'home.bienvenida_resumen_progreso'  => '%s auditoría(s) en progreso',
-    'home.bienvenida_resumen_ninguna'   => 'Todavía no tiene auditorías registradas',
-    'home.bienvenida_resumen_todas_fin' => 'Sus %s auditoría(s) están finalizadas',
-    'home.ir_panel'           => 'Ir a mi panel',
-    'home.nueva_auditoria'    => 'Nueva auditoría',
 
     // Marco del módulo interno: barra lateral y barra superior.
     'panel.navegacion'            => 'Navegación del módulo',

@@ -36,24 +36,8 @@ final class HomeController extends Controlador
          */
         $instrumento = $this->instrumento();
 
-        /*
-         * Contexto ya trae 'usuarioActual' (null si no hay sesión o si no hay
-         * módulo de auditorías). Se reutiliza aquí en vez de volver a
-         * preguntarle a Autenticacion, porque la portada no necesita saber
-         * CÓMO se decide quién está conectado — solo el resultado.
-         *
-         * Con sesión, la portada deja de ser un sitio de visitante: se le
-         * añade una franja con su propia cartera, para que "estoy conectado"
-         * se note apenas llega y no haya que ir a buscarlo al panel.
-         */
-        $contexto = $this->contexto();
-        $auditoriasAuditor = $contexto['usuarioActual'] !== null
-            ? $this->auditorias()->auditoriasDe($contexto['usuarioActual']->id)
-            : [];
-
         $this->ver('home/index', [
-            ...$contexto,
-            'auditoriasAuditor'    => $auditoriasAuditor,
+            ...$this->contexto(),
             'meta'                  => $repositorio->meta(),
             'hero'                  => $repositorio->hero(),
             'dominios'              => $instrumento->dominios(),

@@ -34,30 +34,10 @@ declare(strict_types=1);
  * @var list<\App\Models\Entidades\Dominio> $dominios
  * @var list<\App\Models\Entidades\Proceso> $procesos
  * @var list<\App\Models\Entidades\Control> $controles
- * @var \App\Models\Entidades\Usuario|null $usuarioActual
- * @var list<\App\Models\Entidades\Auditoria> $auditoriasAuditor
  */
 $dominios = $dominios ?? [];
 $procesos = $procesos ?? [];
 $controles = $controles ?? [];
-$usuarioActual = $usuarioActual ?? null;
-$auditoriasAuditor = $auditoriasAuditor ?? [];
-
-/*
- * La franja de bienvenida es el "dashboard diferenciado" de quien ya inició
- * sesión: la misma portada de siempre, pero con SU cartera arriba de todo en
- * vez de tener que ir a buscarla. No reemplaza la portada pública —el resto
- * de la página sigue igual, y el logotipo de la barra lateral del módulo
- * sigue trayendo hasta aquí a propósito (ver barra-lateral.php)— solo le
- * antepone una pieza que un visitante sin sesión no tiene por qué ver.
- */
-$enProgresoInicio = 0;
-
-foreach ($auditoriasAuditor as $auditoriaInicio) {
-    if (!$auditoriaInicio->estaFinalizada()) {
-        $enProgresoInicio++;
-    }
-}
 
 /*
  * Controles por dominio. La cadena es control -> proceso -> dominio: el control
@@ -101,41 +81,6 @@ $rutaIcono = static fn (string $archivo): string =>
      */
     ?>
     <div class="mx-auto max-w-[1180px] px-5 pb-[72px] pt-[86px]">
-
-        <?php if ($usuarioActual !== null): ?>
-            <div class="rv-extruido mx-auto mb-10 flex max-w-[760px] flex-wrap items-center justify-between gap-4 rounded-rv-lg border border-borde bg-superficie px-5 py-4">
-                <div class="flex min-w-0 items-center gap-3">
-                    <span class="rv-extruido-xs grid h-11 w-11 flex-none place-items-center rounded-full bg-elevado text-sm font-bold text-primario">
-                        <?= e(iniciales($usuarioActual->nombre)) ?>
-                    </span>
-                    <div class="min-w-0 text-left">
-                        <p class="truncate text-sm font-semibold text-texto">
-                            <?= e($vista->t('home.bienvenida_titulo', $usuarioActual->nombre)) ?>
-                        </p>
-                        <p class="mt-0.5 text-xs text-texto-2">
-                            <?php if ($auditoriasAuditor === []): ?>
-                                <?= e($vista->t('home.bienvenida_resumen_ninguna')) ?>
-                            <?php elseif ($enProgresoInicio > 0): ?>
-                                <?= e($vista->t('home.bienvenida_resumen_progreso', (string) $enProgresoInicio)) ?>
-                            <?php else: ?>
-                                <?= e($vista->t('home.bienvenida_resumen_todas_fin', (string) count($auditoriasAuditor))) ?>
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex shrink-0 flex-wrap gap-2.5">
-                    <a href="<?= e($vista->url('evaluacion/nueva')) ?>"
-                       class="rounded-rv border border-borde px-3.5 py-2 text-xs font-semibold text-texto transition hover:bg-elevado">
-                        <?= e($vista->t('home.nueva_auditoria')) ?>
-                    </a>
-                    <a href="<?= e($vista->url('evaluacion')) ?>"
-                       class="rv-extruido rv-interactivo rounded-rv bg-primario px-3.5 py-2 text-xs font-semibold text-primario-texto">
-                        <?= e($vista->t('home.ir_panel')) ?>
-                    </a>
-                </div>
-            </div>
-        <?php endif; ?>
 
         <div class="mx-auto flex max-w-[760px] flex-col items-center gap-[26px] text-center">
 

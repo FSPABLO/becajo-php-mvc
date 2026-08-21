@@ -10,6 +10,7 @@ return [
     'nav.mis_auditorias'  => 'My Audits',
     'nav.catalogo'        => 'Catalog',
     'nav.perfil'          => 'Profile',
+    'nav.ir_tablero'      => 'Go to dashboard',
     'nav.salir'           => 'Log out',
     'nav.ingresar'        => 'Log in',
     'nav.contactar'       => 'Contact',
@@ -18,14 +19,6 @@ return [
     'nav.principal'       => 'Main navigation',
     'nav.movil'           => 'Mobile navigation',
     'nav.saltar_contenido' => 'Skip to content',
-
-    // Homepage: welcome strip for signed-in users.
-    'home.bienvenida_titulo'  => 'Welcome back, %s',
-    'home.bienvenida_resumen_progreso'  => '%s audit(s) in progress',
-    'home.bienvenida_resumen_ninguna'   => 'You have no audits yet',
-    'home.bienvenida_resumen_todas_fin' => 'Your %s audit(s) are finalized',
-    'home.ir_panel'           => 'Go to my panel',
-    'home.nueva_auditoria'    => 'New audit',
 
     // Marco del módulo interno: barra lateral y barra superior.
     'panel.navegacion'            => 'Module navigation',
