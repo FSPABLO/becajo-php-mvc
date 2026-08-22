@@ -113,6 +113,7 @@ else
     echo "Cargando esquema y catálogo del monitor de salud..."
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/06_esquema_monitor.sql > /dev/null
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql > /dev/null
+    docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/09_procedimientos_monitor.sql > /dev/null
     verde "Esquema y catálogo del monitor cargados."
 fi
 
