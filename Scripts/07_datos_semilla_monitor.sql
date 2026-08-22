@@ -8,7 +8,18 @@
 -- decisión" de cada ficha — no hay que traducir nada, salvo la excepción de
 -- las métricas MAYOR_MEJOR que se explica abajo.
 --
--- Tres bloques: METRICA (15 filas), UMBRAL (11 filas) y PRECEDENCIA (6 filas).
+-- Cuatro bloques: INSTANCIA (1 fila), METRICA (15 filas), UMBRAL (11 filas)
+-- y PRECEDENCIA (6 filas).
+--
+-- LA INSTANCIA PROPIA
+-- ---------------------
+-- FREEPDB1/becajo es la única instancia Oracle alcanzable en este entorno de
+-- desarrollo (docker-compose.yml no levanta ninguna otra), así que es la que
+-- se siembra aquí para poder probar el agente de punta a punta — el mismo
+-- criterio que usa config/conexiones.php para marcarla "propia". Registrar
+-- una instancia real es, en general, una tarea operativa (del panel, cuando
+-- exista), no un dato del catálogo; esta fila es la excepción porque sin
+-- ella bin/monitor.php no tiene nada que recolectar.
 --
 -- POR QUÉ 11 UMBRALES Y NO 15
 -- ----------------------------
@@ -52,6 +63,11 @@
 -- Ejecutar después de 06_esquema_monitor.sql:
 --   docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql
 -- ============================================================================
+
+-- ── INSTANCIA (1) ────────────────────────────────────────────────────────
+
+INSERT INTO instancia (clave, nombre, motor, host, puerto, servicio_raiz, servicio_contenedor, entorno, criticidad, activa, demostrativa)
+VALUES ('FREEPDB1', 'FREEPDB1 · becajo', 'Oracle', 'oracle', 1521, 'FREE', 'FREEPDB1', 'Aplicación', 'MEDIA', 1, 0);
 
 -- ── METRICA (15) ─────────────────────────────────────────────────────────
 -- componente, nombre, unidad, vista_origen, sentido, ambito, peso, u_max,
