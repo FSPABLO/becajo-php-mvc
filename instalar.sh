@@ -78,7 +78,7 @@ verde "Oracle está listo."
 
 # ── 4. Esquema y datos ───────────────────────────────────────────────────
 
-YA_CARGADO=$(docker exec becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 <<'SQL'
+YA_CARGADO=$(docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 <<'SQL'
 set heading off feedback off
 select count(*) from user_tables where table_name = 'DOMINIO';
 exit;
