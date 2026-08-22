@@ -22,3 +22,5 @@ if (is_file($vendor)) {
 require_once dirname(__DIR__) . '/app/Core/Autoloader.php';
 
 (new App\Core\Autoloader('App\\', dirname(__DIR__) . '/app'))->registrar();
+
+(new App\Core\Autoloader('Pruebas\\', __DIR__))->registrar();

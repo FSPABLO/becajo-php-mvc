@@ -52,6 +52,33 @@ final class MotorCalculoSalud implements MotorCalculo
      */
     public const SIN_DERIVAR = 'SIN_DERIVAR';
 
+    /** La conexión de su ámbito no respondió, la lectura no se intentó o no es fiable.  */
+    public const CONTEXTO_CAIDO = 'CONTEXTO_CAIDO';
+
+    /**
+     * Motivos que sacan a la métrica también de las **planificadas**, no solo
+     * de las recolectadas.
+     *
+     * `NO_APLICA`  la métrica no corresponde a esta instancia y nunca iba
+     * a dar datos.
+     *`SIN_DERIVAR` una tasa en su primera muestra no es
+     * una falla de recolección: el acumulado llegó, lo que falta es el punto de
+     * comparación.
+     * Todo lo demás —`VACIA`, `ERROR`, silencio, lectura incompleta, contexto caído—
+     * sí baja la cobertura, porque en esos casos la métrica **debía** dar datos y no los dio.
+     *
+     * @var list<string>
+     */
+    private const FUERA_DEL_DENOMINADOR = [/'NO_APLICA', self::SIN_DERIVAR];
+
+    /**
+     * @param float $pisoCobertura Por debajo de este porcentaje la muestra se
+     *   marca PARCIAL y no publica índice (invariante 4). Se propone 80 %.
+     */
+    public function __construct(private readonly float $pisoCobertura = 80.0)
+    {
+    }
+
     /**
      * @param array<string, mixed> $muestraCruda
      * @return array<string, mixed>
@@ -63,6 +90,9 @@ final class MotorCalculoSalud implements MotorCalculo
         /** @var array<string, array<string, mixed>> $lecturas */
         $lecturas = $muestraCruda['lecturas'] ?? [];
 
+        /** @var array<string, array<string, mixed>> $contextos */
+        $contextos = $muestraCruda['contextos'] ?? [];
+
         $mediciones = [];
         $fuera = [];
 
@@ -71,6 +101,12 @@ final class MotorCalculoSalud implements MotorCalculo
         // de desaparecer sin dejar rastro, y el orden del resultado es siempre
         // el mismo aunque el agente reordene su salida.
         foreach ($catalogo as $codigo => $metrica) {
+
+            if (!$this->contextoRespondio($contextos, $metrica->ambito)) {
+                $fuera[$codigo] = self::CONTEXTO_CAIDO;
+                continue;
+            }
+
             $lectura = $lecturas[$codigo] ?? null;
 
             if (!is_array($lectura)) {
@@ -81,8 +117,6 @@ final class MotorCalculoSalud implements MotorCalculo
             $estadoRecoleccion = (string) ($lectura['estado'] ?? '');
 
             if ($estadoRecoleccion !== 'OK') {
-                // VACIA, ERROR o NO_APLICA viajan tal cual: la diferencia entre
-                // ellos la necesita el cálculo de cobertura, no este bloque.
                 $fuera[$codigo] = $estadoRecoleccion === '' ? self::LECTURA_INCOMPLETA : $estadoRecoleccion;
                 continue;
             }
@@ -104,14 +138,142 @@ final class MotorCalculoSalud implements MotorCalculo
             $mediciones[$codigo] = $medicion;
         }
 
-        return [
-            'instancia'   => (string) ($muestraCruda['instancia'] ?? ''),
-            'tomada_en'   => (string) ($muestraCruda['tomada_en'] ?? ''),
-            'duracion_ms' => isset($muestraCruda['duracion_ms']) ? (int) $muestraCruda['duracion_ms'] : null,
-            'mediciones'  => $mediciones,
-            'fuera'       => $fuera,
-            'ignoradas'   => $this->lecturasDesconocidas($lecturas, $catalogo),
+        $planificadas = count($mediciones) + count(array_filter(
+            $fuera,
+            static fn (string $motivo): bool => !in_array($motivo, self::FUERA_DEL_DENOMINADOR, true),
+        ));
+
+        $cobertura = $planificadas === 0 ? 0.0 : round(count($mediciones) / $planificadas * 100, 1);
+        $resultado = $this->resultado($contextos, $cobertura);
+
+        $evaluada = [
+            'instancia'     => (string) ($muestraCruda['instancia'] ?? ''),
+            'tomada_en'     => (string) ($muestraCruda['tomada_en'] ?? ''),
+            'duracion_ms'   => isset($muestraCruda['duracion_ms']) ? (int) $muestraCruda['duracion_ms'] : null,
+            'resultado'     => $resultado,
+            'cobertura_pct' => $cobertura,
+            'mensaje'       => $this->mensaje($resultado, $contextos, $cobertura, $fuera),
+            'mediciones'    => $mediciones,
+            'fuera'         => $fuera,
+            'ignoradas'     => $this->lecturasDesconocidas($lecturas, $catalogo),
         ];
+
+        if (isset($muestraCruda['consultas_observadas'])) {
+            $evaluada['consultas_observadas'] = $muestraCruda['consultas_observadas'];
+        }
+
+        return $evaluada;
+    }
+
+    /**
+     * ¿Respondió la conexión de este ámbito?
+     *
+     * Un contexto que no viene declarado se considera caído. El agente abre las
+     * dos conexiones en cada muestra y el §2 del contrato le exige anotar cómo
+     * fue cada una
+     *
+     * @param array<string, array<string, mixed>> $contextos
+     */
+    private function contextoRespondio(array $contextos, string $ambito): bool
+    {
+        return ($contextos[$ambito]['estado'] ?? null) === 'OK';
+    }
+
+    /**
+     * OK, PARCIAL o FALLIDA.
+     *
+     * FALLIDA cuando ninguna conexión respondió: la instancia no contestó a esa
+     * hora. La muestra se persiste igual, porque saltarla dejaría un hueco que
+     * después parece un periodo sano.
+     *
+     * PARCIAL cuando la cobertura queda por debajo del piso. Es el invariante 4:
+     * un índice calculado sobre la mitad de la evidencia es peor que ningún
+     * índice, porque parece uno bueno. El paso que publica el ISBD consulta
+     * este campo, no lo recalcula.
+     *
+     * @param array<string, array<string, mixed>> $contextos
+     */
+    private function resultado(array $contextos, float $cobertura): string
+    {
+        $algunoRespondio = false;
+
+        foreach ([Metrica::RAIZ, Metrica::CONTENEDOR] as $ambito) {
+            if ($this->contextoRespondio($contextos, $ambito)) {
+                $algunoRespondio = true;
+            }
+        }
+
+        if (!$algunoRespondio) {
+            return 'FALLIDA';
+        }
+
+        return $cobertura >= $this->pisoCobertura ? 'OK' : 'PARCIAL';
+    }
+
+    /**
+     * El texto que acompaña a una muestra que no salió bien.
+     *
+     * Existe para que el tablero pueda decir «muestra incompleta» con su razón
+     * en lugar de un número. Una muestra OK no lleva mensaje: el dato habla
+     * solo.
+     *
+     * @param array<string, array<string, mixed>> $contextos
+     * @param array<string, string> $fuera
+     */
+    private function mensaje(string $resultado, array $contextos, float $cobertura, array $fuera): ?string
+    {
+        if ($resultado === 'OK') {
+            return null;
+        }
+
+        if ($resultado === 'FALLIDA') {
+            foreach ($contextos as $ambito => $contexto) {
+                if (isset($contexto['mensaje'])) {
+                    return $ambito . ': ' . (string) $contexto['mensaje'];
+                }
+            }
+
+            return 'La instancia no respondió: ninguna conexión pudo abrirse.';
+        }
+
+        return sprintf(
+            'Muestra incompleta: cobertura %s %% bajo el piso de %s %%.%s',
+            number_format($cobertura, 1, ',', ''),
+            number_format($this->pisoCobertura, 1, ',', ''),
+            $this->resumenDeMotivos($fuera),
+        );
+    }
+
+    /**
+     * «CONTEXTO_CAIDO 10, SIN_LECTURA 3», ordenado de más a menos frecuente.
+     *
+     * @param array<string, string> $fuera
+     */
+    private function resumenDeMotivos(array $fuera): string
+    {
+        $cuenta = [];
+
+        foreach ($fuera as $motivo) {
+            if (in_array($motivo, self::FUERA_DEL_DENOMINADOR, true)) {
+                continue;
+            }
+
+            $cuenta[$motivo] = ($cuenta[$motivo] ?? 0) + 1;
+        }
+
+        if ($cuenta === []) {
+            return '';
+        }
+
+        arsort($cuenta);
+
+        $partes = [];
+
+        foreach ($cuenta as $motivo => $cuantas) {
+            $partes[] = $motivo . ' ' . $cuantas;
+        }
+
+        return ' Fuera: ' . implode(', ', $partes) . '.';
     }
 
     /**

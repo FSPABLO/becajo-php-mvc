@@ -9,6 +9,7 @@ use App\Models\Entidades\Muestra;
 use App\Models\RepositorioMonitorArreglo;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Pruebas\Muestras;
 
 /**
  * Dos grupos de pruebas con propósitos distintos. Las primeras verifican que
@@ -358,7 +359,7 @@ final class RepositorioMonitorArregloTest extends TestCase
 
     public function testLasMuestrasDeEjemploUsanCodigosDelCatalogo(): void
     {
-        $muestras = require self::RAIZ . '/config/monitor-muestras.php';
+        $muestras = Muestras::todas();
 
         $conocidos = array_map(
             static fn (Metrica $m): string => $m->codigo,
@@ -377,7 +378,7 @@ final class RepositorioMonitorArregloTest extends TestCase
 
     public function testLaMuestraCompletaEsLaDelContrato(): void
     {
-        $muestras = require self::RAIZ . '/config/monitor-muestras.php';
+        $muestras = Muestras::todas();
         $completa = $muestras['completa'];
 
         $this->assertCount(10, $completa['lecturas']);
@@ -394,7 +395,7 @@ final class RepositorioMonitorArregloTest extends TestCase
 
     public function testLaMuestraFallidaNoTraeLecturas(): void
     {
-        $muestras = require self::RAIZ . '/config/monitor-muestras.php';
+        $muestras = Muestras::todas();
 
         $this->assertSame([], $muestras['fallida']['lecturas']);
         $this->assertSame('ERROR', $muestras['fallida']['contextos']['RAIZ']['estado']);
@@ -463,3 +464,4 @@ final class RepositorioMonitorArregloTest extends TestCase
         ];
     }
 }
+

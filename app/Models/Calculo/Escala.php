@@ -9,9 +9,10 @@ use App\Models\Entidades\Umbral;
 use InvalidArgumentException;
 
 /**
- * Traduce una utilizacion en salud, y todo lo demas del motor descansa sobre ella.
- * Por eso vive aparte del motor: si la conversion estuviera dentro de `MotorCalculoSalud`,
- * probar la tabla de verificacion del §5.2.1 exigiria construir una muestra entera para
+ * Pieza del proyecto que traduce una utilizacion en salud, y todo
+ * lo demas del motor descansa sobre ella. Por eso vive aparte del motor: si
+ * la conversion estuviera dentro de `MotorCalculoSalud`, probar la tabla de
+ * verificacion del §5.2.1 exigiria construir una muestra entera para
  * comprobar una funcion de una linea.
  *
  * Todos los metodos son estaticos y sin estado a proposito: no hay nada que
@@ -85,7 +86,7 @@ final class Escala
      * formula que mantener, y por eso los umbrales de `M-MEM-01` y `M-MEM-03`
      * se siembran ya transformados.
      */
-    public static function utilizacionEfectiva(float $valor, float $uMax, string $sentido): float
+    private static function utilizacionEfectiva(float $valor, float $uMax, string $sentido): float
     {
         $u = $sentido === Metrica::MAYOR_MEJOR ? $uMax - $valor : $valor;
 
@@ -142,8 +143,6 @@ final class Escala
      * La banda a la que pertenece una utilizacion segun sus cuatro umbrales.
      * Tramos cerrados por abajo.
      *
-     * Existe para COMPROBAR la coincidencia con `bandaPorSalud()`. El
-     * motor clasifica siempre por salud
      */
     public static function bandaPorUtilizacion(float $valor, Umbral $umbral, float $uMax, string $sentido): string
     {
@@ -169,8 +168,8 @@ final class Escala
         return self::CRITICO;
     }
 
-    /** Posicion en la escala de severidad: 0 es ÓPTIMO, 4 es CRÍTICO. */
-    public static function severidad(string $banda): int
+    /** Posicion en la escala de severidad: 0 es ÓPTIMO, 4 es CRÍTICO.*/
+    private static function severidad(string $banda): int
     {
         $posicion = array_search($banda, self::BANDAS, true);
 

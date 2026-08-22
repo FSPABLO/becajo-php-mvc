@@ -11,7 +11,6 @@ use App\Models\Entidades\Instancia;
 use App\Models\Entidades\Medicion;
 use App\Models\Entidades\Metrica;
 use App\Models\Entidades\Muestra;
-use App\Models\Entidades\Metrica as CatalogoMetrica;
 use InvalidArgumentException;
 
 /**
@@ -23,7 +22,6 @@ use InvalidArgumentException;
  * esta clase o `RepositorioMonitorOracle`; cambiar de una a otra es una línea
  * en `public/index.php` o en `bin/monitor.php`.
  *
- * El motor debe poder escribirse y probarse entero sin que Oracle esté levantado.
  */
 final class RepositorioMonitorArreglo implements RepositorioMonitor
 {
@@ -45,6 +43,13 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
 
     private int $siguienteId = 1;
 
+    /**
+     * @param array{
+     *     instancias?: list<array<string, mixed>>,
+     *     metricas?: list<array<string, mixed>>,
+     *     precedencias?: list<array{origen: string, consecuencia: string}>
+     * } $catalogo
+     */
     public function __construct(array $catalogo)
     {
         foreach ($catalogo['instancias'] ?? [] as $fila) {
@@ -53,7 +58,7 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
         }
 
         foreach ($catalogo['metricas'] ?? [] as $fila) {
-            $this->metricas[] = CatalogoMetrica::desdeFila($fila);
+            $this->metricas[] = Metrica::desdeFila($fila);
         }
 
         $this->precedencias = $catalogo['precedencias'] ?? [];
@@ -173,7 +178,6 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
 
     // ── Series históricas ───────────────────────────────────────────────────
 
-    /** @return list<array<string, mixed>> */
     public function serieIndice(string $clave, string $desdeUtc, string $hastaUtc): array
     {
         $serie = [];
@@ -243,9 +247,7 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
         return $this->metricas;
     }
 
-    /**
-     * @return list<array{origen: string, consecuencia: string}>
-     */
+    /** @return list<array{origen: string, consecuencia: string}> */
     public function precedencias(): array
     {
         return $this->precedencias;
@@ -323,6 +325,9 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
     }
 
     /**
+     * Del más reciente al más antiguo, que es el orden que espera la
+     * histéresis: «k de las últimas n».
+     *
      * @return list<string>
      */
     public function estadosRecientes(string $clave, string $codigoMetrica, int $cuantas): array
@@ -395,7 +400,6 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
     // ── Interno ─────────────────────────────────────────────────────────────
 
     /** @return list<array{id: int, evaluada: array<string, mixed>}> */
-
     private function entradasDe(string $clave, ?string $desdeUtc = null, ?string $hastaUtc = null): array
     {
         $entradas = array_values(array_filter(

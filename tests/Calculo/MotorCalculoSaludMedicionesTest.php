@@ -9,6 +9,7 @@ use App\Models\Calculo\MotorCalculoSalud;
 use App\Models\RepositorioMonitorArreglo;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Pruebas\Muestras;
 
 /**
  * El bloque `mediciones` del §5 del contrato de muestra.
@@ -18,8 +19,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class MotorCalculoSaludMedicionesTest extends TestCase
 {
-    private const RAIZ = __DIR__ . '/../..';
-
     private function motor(): MotorCalculoSalud
     {
         return new MotorCalculoSalud();
@@ -33,15 +32,11 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
     /** @return array<string, mixed> */
     private function muestra(string $nombre): array
     {
-        /** @var array<string, array<string, mixed>> $muestras */
-        $muestras = require self::RAIZ . '/config/monitor-muestras.php';
-
-        return $muestras[$nombre];
+        return Muestras::cruda($nombre);
     }
 
     // ── El ejemplo del contrato ────────────────────────────────────────────
 
-    /** Las seis proporciones evaluables del ejemplo, con sus cifras exactas. */
     public function testLasProporcionesDelEjemploDelContrato(): void
     {
         $evaluada = $this->motor()->evaluar($this->muestra('completa'), $this->repositorio());
@@ -68,7 +63,6 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
         }
     }
 
-    /** Las tres compuertas del ejemplo: estado, sin valor normalizado. */
     public function testLasCompuertasDelEjemploNoLlevanValorNormalizado(): void
     {
         $evaluada = $this->motor()->evaluar($this->muestra('completa'), $this->repositorio());
