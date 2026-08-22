@@ -253,6 +253,17 @@ final class BaseDatos
         oci_rollback($this->conexion());
     }
 
+    /**
+     * Tiempo límite por llamada, en segundos. Lo usa bin/monitor.php: una
+     * instancia vigilada que no responde no debe dejar al agente esperando
+     * indefinidamente (§8.2 del plan de la parte 2). El resto de la
+     * aplicación no lo necesita y no lo llama.
+     */
+    public function establecerTiempoLimite(int $segundos): void
+    {
+        oci_set_call_timeout($this->conexion(), $segundos * 1000);
+    }
+
     // ── Interno ──────────────────────────────────────────────────────────────
 
     /**
