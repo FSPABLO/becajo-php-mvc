@@ -755,7 +755,7 @@ misma instancia, pero la limitación se documenta y se defiende como tal.
 | `metrica` | Catálogo de variables medibles: código, componente (`PROCESOS`/`MEMORIA`/`ARCHIVOS`/`CONSULTAS`), nombre, unidad, vista `V$` de origen, sentido (`MENOR_MEJOR`/`MAYOR_MEJOR`/`ESTADO`), peso, **los cuatro umbrales** (`u_opt`, `u_adv`, `u_deg`, `u_crit`) y ancla ISO. Es el equivalente al catálogo de controles de la parte 1. |
 | `umbral` | **Juegos de umbrales con vigencia.** Una fila es `(metrica_id, instancia_id, u_opt, u_adv, u_deg, u_crit, valido_desde, valido_hasta)`. Con `instancia_id` nulo es el umbral general de la métrica; con valor, la anulación para esa instancia. Sustituye a la tabla `umbral_instancia` del diseño anterior: la anulación por instancia y el versionado son el mismo problema y no merecen dos tablas. |
 | `muestra` | Cabecera de una recolección: instancia, `tomada_en` (UTC), duración, resultado (`OK`/`PARCIAL`/`FALLIDA`), `cobertura_pct`, mensaje. |
-| `medicion` | Una fila por métrica y muestra: `valor_crudo`, `valor_normalizado`, `estado`, **`umbral_id`** (el juego vigente en ese momento) y **`valor_acumulado`**, nulable, donde las métricas de tasa guardan el total leído para que la muestra siguiente pueda restar. Tabla angosta y de alto volumen. |
+| `medicion` | Una fila por métrica y muestra: `valor_crudo`, `valor_normalizado`, `estado`, **`umbral_id`** (el juego vigente en ese momento), **`valor_acumulado`**, nulable, donde las métricas de tasa guardan el total leído para que la muestra siguiente pueda restar, y **`huella`**, nulable, el equivalente de texto para métricas de identidad como `M-PRO-05` (B-7). Tabla angosta y de alto volumen. |
 | `indice` | Una fila por muestra: `ip`, `im`, `ia`, `isbd_bruto`, `isbd`, `estado`, `causa`. |
 | `alerta` | Ciclo de vida completo según §6: `nivel_actual`, `nivel_maximo`, responsable, acción registrada al cerrar, y `episodio_id`. |
 | `episodio` | Agrupación de alertas concurrentes de una misma instancia (§6.1), con su `alerta_causa_id` cuando la precedencia permite señalar una. |
@@ -847,10 +847,13 @@ opcionales en un proyecto que audita ISO/IEC 27002.
   necesita una demo que se pueda enseñar sin esperar semanas de recolección, y ya
   resolvió ese problema una vez: `Scripts/05_datos_demo_evolucion.sql` puebla la
   evolución mensual del panel. El monitor sigue la misma convención con
-  `Scripts/06_datos_demo_monitor.sql`. Las dos condiciones son: **(a)** viven en un
-  script propio, cargable y omitible, nunca sembrados desde el código de la
-  aplicación; y **(b)** la instancia queda marcada como demostrativa en la tabla
-  `instancia`, de modo que la interfaz pueda distinguirlas si hace falta.
+  `Scripts/08_datos_demo_monitor.sql`, después de `Scripts/06_esquema_monitor.sql`
+  y `Scripts/07_datos_semilla_monitor.sql`: el orden importa, porque la demo
+  inserta muestras que dependen de que `instancia` y `metrica` ya existan. Las dos
+  condiciones son: **(a)** viven en un script propio, cargable y omitible, nunca
+  sembrados desde el código de la aplicación; y **(b)** la instancia queda marcada
+  como demostrativa en la tabla `instancia`, de modo que la interfaz pueda
+  distinguirlas si hace falta.
   La línea que no se cruza no es «no inventar nada», es **no presentar como
   medición real algo que no se midió**.
 
@@ -1027,7 +1030,7 @@ La parte 2 está terminada cuando **todas** estas afirmaciones son verificables:
 - [ ] No hay credenciales en el repositorio.
 - [ ] El tablero pinta correctamente cuando la instancia vigilada está caída, mostrando la antigüedad del último dato.
 - [ ] Ninguna cifra de salud (ISBD, utilización, alerta) se muestra sin provenir de una muestra realmente tomada.
-- [ ] Los datos de demostración están en `Scripts/06_datos_demo_monitor.sql`, su instancia está marcada como demostrativa, y el sistema funciona igual si el script no se carga.
+- [ ] Los datos de demostración están en `Scripts/08_datos_demo_monitor.sql`, su instancia está marcada como demostrativa, y el sistema funciona igual si el script no se carga.
 - [ ] Todo estado se comunica con icono y etiqueta, no solo con color; contrastes verificados contra WCAG 2.2.
 - [ ] Cada métrica tiene su ficha de medición documentada (necesidad de información, medida base, función, indicador, criterio de decisión, periodicidad, responsable).
 - [ ] Cada métrica declara su anclaje normativo.
@@ -1146,6 +1149,7 @@ Estas no corrigen nada: resuelven preguntas que el plan había dejado abiertas.
 | B-4 | Umbrales versionados con vigencia; `medicion` guarda el `umbral_id` usado | Una recalibración no reescribe el pasado. La tabla `umbral` absorbe a `umbral_instancia` | §7.1, §7.2 |
 | B-5 | Los datos de demostración se conservan, con origen separado y rótulo | El equipo debe poder enseñar el tablero poblado en la defensa sin esperar semanas de recolección. Misma convención que `Scripts/05_datos_demo_evolucion.sql`. Lo prohibido es presentar como medición real algo que no se midió | §8.3, §12 |
 | B-6 | El análisis de sensibilidad corre sobre un lote congelado antes de la purga | La ventana se declara antes de ver los resultados | §5.6 |
+| B-7 | `M-PRO-05` compara identidad (`spid`), no magnitud: nuevo tipo de lectura «identidad» en el contrato de muestra, columna `huella` en `medicion` y `huellasAnteriores()` en `RepositorioMonitor`, en vez de forzarlo al mecanismo de `valor_acumulado` | El catálogo v1 agregó esta métrica después de cerrada la Fase 0; se resuelve extendiendo el mismo patrón de continuidad entre muestras que ya usan las tasas, no inventando uno nuevo | §7.1, contrato-muestra.md §3.1, contrato-repositorio-monitor.md §2 |
 
 ---
 
