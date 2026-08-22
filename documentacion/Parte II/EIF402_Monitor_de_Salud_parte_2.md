@@ -465,12 +465,15 @@ construcción:
 
 Esa tabla es, literalmente, el primer caso de prueba del motor de cálculo.
 
-Los umbrales —ahora cuatro por métrica— viven en la tabla `metrica`, con
-posibilidad de anularlos por instancia (tabla `umbral`, §7.1). Una base de desarrollo
-y una de producción no se califican igual. **Los umbrales son dato, no código** —
-misma decisión que se tomó con el catálogo de 75 controles. `u_opt = 50` es solo el
-valor por omisión: la mitad del recurso consumido ya no es holgura, aunque falte
-mucho para el problema.
+Los umbrales —ahora cuatro por métrica— viven en la tabla `umbral`, versionados,
+con un juego general por métrica (`instancia_id` nulo) y la posibilidad de un
+juego propio por instancia (§7.1). `metrica` no guarda una copia (B-8): el umbral
+vigente en cada instante se resuelve consultando `umbral`, nunca leyendo un valor
+fijo del catálogo. Una base de desarrollo y una de producción no se califican
+igual. **Los umbrales son dato, no código** — misma decisión que se tomó con el
+catálogo de 75 controles. `u_opt = 50` es solo el valor por omisión del primer
+juego que se siembra: la mitad del recurso consumido ya no es holgura, aunque
+falte mucho para el problema.
 
 ### 5.3 De métrica a componente, y de componente a ISBD
 
@@ -752,11 +755,12 @@ misma instancia, pero la limitación se documenta y se defiende como tal.
 | Tabla | Papel |
 |---|---|
 | `instancia` | Una fila por base vigilada: nombre, motor, host, servicio, entorno, criticidad, activa. **Es la tabla que `config/conexiones.php` venía anunciando.** |
-| `metrica` | Catálogo de variables medibles: código, componente (`PROCESOS`/`MEMORIA`/`ARCHIVOS`/`CONSULTAS`), nombre, unidad, vista `V$` de origen, sentido (`MENOR_MEJOR`/`MAYOR_MEJOR`/`ESTADO`), peso, **los cuatro umbrales** (`u_opt`, `u_adv`, `u_deg`, `u_crit`) y ancla ISO. Es el equivalente al catálogo de controles de la parte 1. |
-| `umbral` | **Juegos de umbrales con vigencia.** Una fila es `(metrica_id, instancia_id, u_opt, u_adv, u_deg, u_crit, valido_desde, valido_hasta)`. Con `instancia_id` nulo es el umbral general de la métrica; con valor, la anulación para esa instancia. Sustituye a la tabla `umbral_instancia` del diseño anterior: la anulación por instancia y el versionado son el mismo problema y no merecen dos tablas. |
+| `metrica` | Catálogo de variables medibles: código, componente (`PROCESOS`/`MEMORIA`/`ARCHIVOS`/`CONSULTAS`), nombre, unidad, vista `V$` de origen, sentido (`MENOR_MEJOR`/`MAYOR_MEJOR`/`ESTADO`), peso, `u_max` (el techo de normalización, que no siempre es 100) y ancla ISO. **No guarda los cuatro umbrales de decisión** — esos viven solo en `umbral` (B-8). Es el equivalente al catálogo de controles de la parte 1. |
+| `umbral` | **Juegos de umbrales con vigencia — la única fuente de `u_opt`/`u_adv`/`u_deg`/`u_crit`.** Una fila es `(metrica_id, instancia_id, u_opt, u_adv, u_deg, u_crit, valido_desde, valido_hasta)`. Con `instancia_id` nulo es el umbral general de la métrica; con valor, la anulación para esa instancia. Sustituye a la tabla `umbral_instancia` del diseño anterior: la anulación por instancia y el versionado son el mismo problema y no merecen dos tablas. `metrica` no guarda una copia de los cuatro números (B-8): dos lugares para el mismo dato es justo lo que este diseño evita. |
 | `muestra` | Cabecera de una recolección: instancia, `tomada_en` (UTC), duración, resultado (`OK`/`PARCIAL`/`FALLIDA`), `cobertura_pct`, mensaje. |
 | `medicion` | Una fila por métrica y muestra: `valor_crudo`, `valor_normalizado`, `estado`, **`umbral_id`** (el juego vigente en ese momento), **`valor_acumulado`**, nulable, donde las métricas de tasa guardan el total leído para que la muestra siguiente pueda restar, y **`huella`**, nulable, el equivalente de texto para métricas de identidad como `M-PRO-05` (B-7). Tabla angosta y de alto volumen. |
-| `indice` | Una fila por muestra: `ip`, `im`, `ia`, `isbd_bruto`, `isbd`, `estado`, `causa`. |
+| `indice` | Una fila por muestra: `ip`, `im`, `ia`, `isbd_bruto`, `isbd`, `estado`. La causa —qué métricas están en el peor estado— no es una columna de aquí: ver `indice_causa` (B-9). |
+| `indice_causa` | Tabla puente `(indice_id, metrica_id)`: las métricas en el peor estado que explican el `indice` publicado (invariante 5). Sustituye a un campo de texto con códigos separados por coma, que ni el motor ni la vista podrían consultar sin parsearlo (B-9). |
 | `alerta` | Ciclo de vida completo según §6: `nivel_actual`, `nivel_maximo`, responsable, acción registrada al cerrar, y `episodio_id`. |
 | `episodio` | Agrupación de alertas concurrentes de una misma instancia (§6.1), con su `alerta_causa_id` cuando la precedencia permite señalar una. |
 | `precedencia` | Qué métrica suele arrastrar a cuál: `(metrica_origen_id, metrica_consecuencia_id, nota)`. Conocimiento declarado y revisable, no correlación calculada. |
@@ -1150,6 +1154,8 @@ Estas no corrigen nada: resuelven preguntas que el plan había dejado abiertas.
 | B-5 | Los datos de demostración se conservan, con origen separado y rótulo | El equipo debe poder enseñar el tablero poblado en la defensa sin esperar semanas de recolección. Misma convención que `Scripts/05_datos_demo_evolucion.sql`. Lo prohibido es presentar como medición real algo que no se midió | §8.3, §12 |
 | B-6 | El análisis de sensibilidad corre sobre un lote congelado antes de la purga | La ventana se declara antes de ver los resultados | §5.6 |
 | B-7 | `M-PRO-05` compara identidad (`spid`), no magnitud: nuevo tipo de lectura «identidad» en el contrato de muestra, columna `huella` en `medicion` y `huellasAnteriores()` en `RepositorioMonitor`, en vez de forzarlo al mecanismo de `valor_acumulado` | El catálogo v1 agregó esta métrica después de cerrada la Fase 0; se resuelve extendiendo el mismo patrón de continuidad entre muestras que ya usan las tasas, no inventando uno nuevo | §7.1, contrato-muestra.md §3.1, contrato-repositorio-monitor.md §2 |
+| B-8 | `metrica` no guarda los cuatro umbrales de decisión; `umbral` es la única fuente | §5.2 y §7.1 decían que los umbrales viven en `metrica` con posibilidad de anularlos por instancia en `umbral`; §7.2 y B-4 los versionan solo en `umbral`, con `instancia_id` nulo como el juego general — dos lugares para el mismo número, que es exactamente lo que B-4 dice evitar al fusionar `umbral` y `umbral_instancia`. Se corrige el texto de §5.2 y §7.1 a favor de `umbral` como fuente única; `metrica` conserva `u_max` (el techo, que no es un criterio de decisión versionable) pero no `u_opt`/`u_adv`/`u_deg`/`u_crit` | §5.2, §7.1 |
+| B-9 | `indice.causa` se separa a una tabla puente `indice_causa` (`indice_id`, `metrica_id`), en vez de un campo de texto con códigos separados por coma | Es una lista de métricas en el peor estado (invariante 5), no un escalar; guardarla como texto delimitado obligaría a parsearla tanto en el motor como en la vista cada vez que hace falta consultarla | §7.1 |
 
 ---
 
