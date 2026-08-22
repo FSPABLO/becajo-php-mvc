@@ -44,11 +44,28 @@ Cuentas de prueba tras cargar `02_datos_semilla.sql`:
 `ana.alfaro@consultora.example / auditor2026` (AUDITOR) y
 `luis.rojas@empresa.example / adminbd2026` (ADMIN_BD).
 
-**No hay Composer, npm, PHPUnit ni linter.** El autoloader está escrito a mano
-(`app/Core/Autoloader.php`) y Tailwind se carga por CDN desde
-`app/Views/partials/head.php`. No introduzca dependencias externas sin
-acordarlo: la ausencia de `vendor/` es deliberada. Verificar un cambio
-significa abrirlo en el navegador.
+**No hay npm ni linter, y Composer entra con una sola excepción acordada.** El
+autoloader está escrito a mano (`app/Core/Autoloader.php`) y Tailwind se carga
+por CDN desde `app/Views/partials/head.php`. No introduzca dependencias
+externas sin acordarlo.
+
+La excepción, y su alcance exacto (frente 3 del plan de la parte 2):
+**Composer y PHPUnit solo como dependencia de desarrollo, solo para las pruebas
+del motor de cálculo.** `composer.json` declara PHPUnit en `require-dev` y nada
+en `require` salvo la versión de PHP. El autoloader propio sigue siendo el de la
+aplicación —`tests/bootstrap.php` lo registra a mano, y `App\` no aparece en el
+`autoload` de Composer— de modo que **`vendor/` no participa en ninguna petición
+web**, no viaja dentro de la imagen (`.dockerignore`) y no se versiona
+(`.gitignore`); `composer.json` y `composer.lock` sí se versionan.
+
+```bash
+composer install          # solo la primera vez, trae PHPUnit
+vendor/bin/phpunit        # las pruebas del motor de cálculo
+```
+
+Las pruebas cubren **únicamente `app/Models/Calculo`**, que es aritmética pura y
+no necesita Oracle ni Apache. Para todo lo demás —controladores, vistas,
+repositorios— verificar un cambio sigue significando abrirlo en el navegador.
 
 ## Sistema visual (Rivendel)
 
@@ -68,7 +85,7 @@ utilidades de Tailwind siguen el cambio solas.
 - **Tres clases de región**, todas declaradas en `rivendel.css`:
 
   | Clase | Paleta | Dónde |
-  |---|---|---|
+    |---|---|---|
   | `:root` | «Imladris de noche» | El sitio público entero y todo lo que no diga otra cosa. |
   | `.rv-claro` | «Pergamino élfico» | El `<body>` del módulo interno (`layouts/panel`). |
   | `.rv-oscuro` | «Imladris de noche» | Vuelve a la noche dentro de una región clara. Hoy solo la barra lateral del módulo. |
