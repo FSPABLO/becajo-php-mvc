@@ -16,12 +16,6 @@ declare(strict_types=1);
  * no hace falta una segunda ruta de construcción que pudiera divergir de la de
  * Oracle sin que nadie lo note.
  *
- * Los umbrales de `M-MEM-01` y `M-MEM-03` van **transformados** (`100 − v`),
- * igual que en el script: son las dos métricas «mayor es mejor» y el §5.2.1 del
- * plan aplica sobre ellas la misma tabla de normalización, no una segunda
- * fórmula. Las cuatro métricas de familia ESTADO no llevan umbral porque son
- * compuertas: no hay «qué tan ausente» está un proceso de fondo.
- *
  * Al tocar el catálogo, tóquense los dos archivos. `RepositorioMonitorArregloTest`
  * compara este arreglo contra el `.sql` y falla si se desincronizan.
  */
