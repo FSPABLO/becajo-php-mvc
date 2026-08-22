@@ -438,6 +438,30 @@ final class RepositorioMonitorOracle implements RepositorioMonitor, RepositorioM
                 }
             }
 
+            // Evidencia de C-066 (§3.1 del plan): v$sqlstats alimenta a la vez
+            // M-CON-01 (el conteo, en 'mediciones') y esta tabla (el top-N
+            // completo). Viaja intacta de la muestra cruda a la evaluada — el
+            // motor no la transforma, solo la reenvía (B-11, Anexo A del plan).
+            foreach ($muestraEvaluada['consultas_observadas'] ?? [] as $consulta) {
+                $this->bd->ejecutar(
+                    'INSERT INTO consulta_observada
+                            (id_muestra, sql_id, plan_hash_value, ejecuciones,
+                             cpu_ms_por_ejecucion, transcurrido_ms_por_ejecucion, lecturas_logicas_por_ejecucion)
+                     VALUES (:id_muestra, :sql_id, :plan_hash_value, :ejecuciones,
+                             :cpu_ms, :transcurrido_ms, :lecturas_logicas)',
+                    [
+                        'id_muestra'       => $idMuestra,
+                        'sql_id'           => $consulta['sql_id'],
+                        'plan_hash_value'  => $consulta['plan_hash_value'] ?? null,
+                        'ejecuciones'      => $consulta['ejecuciones'] ?? null,
+                        'cpu_ms'           => $consulta['cpu_ms_por_ejecucion'] ?? null,
+                        'transcurrido_ms'  => $consulta['transcurrido_ms_por_ejecucion'] ?? null,
+                        'lecturas_logicas' => $consulta['lecturas_logicas_por_ejecucion'] ?? null,
+                    ],
+                    confirmar: false,
+                );
+            }
+
             $this->bd->confirmarTransaccion();
 
             return $idMuestra;
