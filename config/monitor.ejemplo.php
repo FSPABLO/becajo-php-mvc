@@ -19,6 +19,12 @@ declare(strict_types=1);
  * script). Es un usuario COMÚN: la misma cuenta sirve para las dos
  * conexiones que abre el agente por muestra (§10.1 del plan de la parte 2),
  * solo cambia el servicio al que se conecta.
+ *
+ * NO hay aquí host/puerto/servicio: esas señas son POR INSTANCIA, no
+ * globales del agente, y ya viven en la tabla `instancia`
+ * (host/puerto/servicio_raiz/servicio_contenedor, Scripts/06). Este archivo
+ * solo tiene lo que SÍ es igual para todas las instancias que vigila el
+ * mismo agente: la cuenta, y su propio comportamiento operativo.
  */
 
 return [
@@ -27,22 +33,26 @@ return [
 
     'clave' => env('BD_MONITOR_CLAVE', 'RivendelMonitor2026'),
 
-    // Mismo host/puerto para las dos conexiones (§10.1 del plan): lo único
-    // que cambia entre RAIZ y CONTENEDOR es el nombre de servicio.
-    'host' => env('BD_MONITOR_HOST', 'oracle'),
-
-    'puerto' => (int) env('BD_MONITOR_PUERTO', '1521'),
-
-    // CDB$ROOT — donde vive V$RESOURCE_LIMIT de verdad (dentro del PDB
-    // devuelve 0 filas sin error).
-    'servicio_raiz' => env('BD_MONITOR_SERVICIO_RAIZ', 'FREE'),
-
-    // El PDB auditado — tablespaces, datafiles, V$SQLSTATS de esa base.
-    'servicio_contenedor' => env('BD_MONITOR_SERVICIO_CONTENEDOR', 'FREEPDB1'),
-
     'charset' => env('BD_MONITOR_CHARSET', 'AL32UTF8'),
 
-    // Las claves de bin/monitor.php (intervalo, timeouts, cortacircuitos)
-    // se suman aquí cuando se escriba el agente — no antes, para no fijar
-    // un valor que todavía no se probó.
+    // Cada cuántos minutos corre bin/monitor.php — lo usa el servicio
+    // programador de docker-compose.yml (Fase 5), no el script en sí.
+    'intervalo_minutos' => (int) env('BD_MONITOR_INTERVALO_MINUTOS', '5'),
+
+    // Tiempo límite por consulta individual y por la muestra completa de una
+    // instancia (§8.2 del plan): una instancia que no responde marca la
+    // muestra FALLIDA y el agente sigue con la siguiente, en vez de
+    // quedarse esperando indefinidamente.
+    'tiempo_limite_consulta_seg' => (int) env('BD_MONITOR_TIMEOUT_CONSULTA', '10'),
+
+    'tiempo_limite_muestra_seg' => (int) env('BD_MONITOR_TIMEOUT_MUESTRA', '60'),
+
+    // Cortacircuitos (§8.2 del plan): tras esta cantidad de muestras
+    // FALLIDA consecutivas para una instancia, el agente la salta ese
+    // ciclo en vez de insistir, para no martillar una base ya en problemas.
+    'fallos_consecutivos_para_pausar' => (int) env('BD_MONITOR_FALLOS_PAUSA', '3'),
+
+    // Umbral de tiempo por ejecución para M-CON-01. catalogo-metricas-v0.md
+    // no fija un valor propio: es de calibración, no un dato del catálogo.
+    'umbral_consulta_costosa_ms' => (float) env('BD_MONITOR_UMBRAL_CONSULTA_MS', '1000'),
 ];
