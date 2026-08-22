@@ -91,4 +91,12 @@ COPY . /var/www/html
 COPY docker/iniciar.sh /usr/local/bin/iniciar.sh
 RUN chmod +x /usr/local/bin/iniciar.sh
 
+# 7. Programador del agente de monitoreo (parte 2, §4.1 del plan).
+#
+#    Reutiliza esta misma imagen -ya trae PHP y oci8 compilado- para el
+#    servicio "monitor" de docker-compose.yml, que sobreescribe el CMD de
+#    abajo con este script en vez de arrancar Apache.
+COPY docker/monitor.sh /usr/local/bin/monitor.sh
+RUN chmod +x /usr/local/bin/monitor.sh
+
 CMD ["/usr/local/bin/iniciar.sh"]
