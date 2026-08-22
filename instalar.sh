@@ -95,6 +95,27 @@ else
     verde "Esquema y datos de prueba cargados."
 fi
 
+# ── 5. Esquema MONITOR (parte 2) ─────────────────────────────────────────
+# Gate aparte del anterior: alguien puede tener ya el esquema de la parte 1
+# y no el del monitor (o viceversa, si vuelve a correr el instalador tras
+# actualizar), así que no comparten la misma comprobación.
+
+YA_CARGADO_MONITOR=$(docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 <<'SQL'
+set heading off feedback off
+select count(*) from user_tables where table_name = 'INSTANCIA';
+exit;
+SQL
+)
+
+if echo "$YA_CARGADO_MONITOR" | grep -q "1"; then
+    verde "El esquema MONITOR ya estaba cargado, no lo vuelvo a correr."
+else
+    echo "Cargando esquema y catálogo del monitor de salud..."
+    docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/06_esquema_monitor.sql > /dev/null
+    docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql > /dev/null
+    verde "Esquema y catálogo del monitor cargados."
+fi
+
 echo
 verde "Listo. El sitio está en http://localhost:8080"
 echo "Cuentas de prueba:"
