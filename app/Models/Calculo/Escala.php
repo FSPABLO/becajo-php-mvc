@@ -79,7 +79,6 @@ final class Escala
     private const SALUD_EN_FRONTERAS = [100.0, 90.0, 75.0, 60.0, 40.0, 0.0];
 
     /**
-     * La utilizacion con la que se compara contra los umbrales.
      *
      * Para una metrica «mayor es mejor» se aplica la misma tabla sobre
      * `techo − v` (§5.2.1 del plan, §1.1 del catalogo): no hay una segunda
@@ -168,7 +167,7 @@ final class Escala
         return self::CRITICO;
     }
 
-    /** Posicion en la escala de severidad: 0 es ÓPTIMO, 4 es CRÍTICO.*/
+    /** Posicion en la escala de severidad: 0 es ÓPTIMO, 4 es CRÍTICO. */
     private static function severidad(string $banda): int
     {
         $posicion = array_search($banda, self::BANDAS, true);
@@ -198,6 +197,18 @@ final class Escala
         }
 
         return $peor;
+    }
+
+    /** ¿`$nuevo` es más severo que `$anterior`? */
+    public static function empeora(string $nuevo, string $anterior): bool
+    {
+        return self::severidad($nuevo) > self::severidad($anterior);
+    }
+
+    /** ¿`$banda` es al menos tan severa como `$referencia`? */
+    public static function alMenosTanSevera(string $banda, string $referencia): bool
+    {
+        return self::severidad($banda) >= self::severidad($referencia);
     }
 
     /** El tope que impone una banda como peor estado observado. Null: sin tope. */

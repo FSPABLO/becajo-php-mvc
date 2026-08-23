@@ -29,16 +29,39 @@ final class MotorCalculoSalud implements MotorCalculo
     /** Declaró OK pero le falta el campo de su familia. */
     public const LECTURA_INCOMPLETA = 'LECTURA_INCOMPLETA';
 
-    /** Tasa o identidad: no se deriva de una sola muestra. */
+    /** Tasa o identidad sin muestra anterior con la que comparar. */
     public const SIN_DERIVAR = 'SIN_DERIVAR';
+
+    /** El acumulado bajó: la instancia se reinició y el tramo se descarta. */
+    public const REINICIO = 'REINICIO';
+
+    /** No hubo actividad entre muestras: el denominador de la tasa es cero. */
+    public const SIN_ACTIVIDAD = 'SIN_ACTIVIDAD';
 
     /** La conexión de su ámbito no respondió. Manda sobre lo que diga la lectura. */
     public const CONTEXTO_CAIDO = 'CONTEXTO_CAIDO';
 
     /**
+     * Cómo se deriva la tasa de cada métrica acumulada.
+     *
+     * @var array<string, array{numerador: string, denominador: string, factor: float}>
+     */
+    private const DERIVACIONES = [
+        // (Δtime_waited_micro / Δtotal_waits) / 1000 → milisegundos por escritura.
+        'M-PRO-04' => ['numerador' => 'micros', 'denominador' => 'esperas', 'factor' => 0.001],
+    ];
+
+    /** Motivos que sacan a la métrica también de las planificadas: nunca iba a
+     * dar datos, o el dato llegó y lo que falta es el punto de comparación.
+     *
      * @var list<string>
      */
-    private const FUERA_DEL_DENOMINADOR = ['NO_APLICA', self::SIN_DERIVAR];
+    private const FUERA_DEL_DENOMINADOR = [
+        'NO_APLICA',
+        self::SIN_DERIVAR,
+        self::REINICIO,
+        self::SIN_ACTIVIDAD,
+    ];
 
     private const PESOS_ISBD = [
         'PROCESOS' => 0.30,
@@ -49,9 +72,14 @@ final class MotorCalculoSalud implements MotorCalculo
     /**
      * @param float $pisoCobertura Bajo este porcentaje la muestra es PARCIAL y
      *   no publica índice (invariante 4).
+     * @param int $ventana Muestras que mira la histéresis, incluida la actual.
+     * @param int $paraSubir Cuántas de esa ventana deben sostener un empeoramiento.
      */
-    public function __construct(private readonly float $pisoCobertura = 80.0)
-    {
+    public function __construct(
+        private readonly float $pisoCobertura = 80.0,
+        private readonly int $ventana = 3,
+        private readonly int $paraSubir = 2,
+    ) {
     }
 
     /**
@@ -70,6 +98,9 @@ final class MotorCalculoSalud implements MotorCalculo
 
         $mediciones = [];
         $fuera = [];
+        $clave = (string) ($muestraCruda['instancia'] ?? '');
+        $acumuladosPrevios = $repositorio->acumuladosAnteriores($clave);
+        $huellasPrevias = $repositorio->huellasAnteriores($clave);
 
         // Se recorre el catálogo y no las lecturas: así una métrica planificada
         // que el recolector no reportó aparece anotada en vez de desaparecer.
@@ -93,21 +124,27 @@ final class MotorCalculoSalud implements MotorCalculo
                 continue;
             }
 
-            if ($metrica->acumulada || $metrica->esIdentidad) {
-                $fuera[$codigo] = self::SIN_DERIVAR;
-                continue;
+            if ($metrica->esIdentidad) {
+                $medicion = $this->evaluarIdentidad($metrica, $lectura, $huellasPrevias);
+            } elseif ($metrica->acumulada) {
+                $medicion = $this->evaluarTasa($metrica, $lectura, $acumuladosPrevios);
+            } elseif ($metrica->esCompuerta()) {
+                $medicion = $this->evaluarCompuerta($lectura);
+            } else {
+                $medicion = $this->evaluarProporcion($metrica, $lectura);
             }
 
-            $medicion = $metrica->esCompuerta()
-                ? $this->evaluarCompuerta($lectura)
-                : $this->evaluarProporcion($metrica, $lectura);
+            if (is_string($medicion)) {
+                $fuera[$codigo] = $medicion;
+                continue;
+            }
 
             if ($medicion === null) {
                 $fuera[$codigo] = self::LECTURA_INCOMPLETA;
                 continue;
             }
 
-            $mediciones[$codigo] = $medicion;
+            $mediciones[$codigo] = $this->conHisteresis($repositorio, $clave, $codigo, $medicion);
         }
 
         $planificadas = count($mediciones) + count(array_filter(
@@ -158,23 +195,7 @@ final class MotorCalculoSalud implements MotorCalculo
             return null;
         }
 
-        if ($metrica->umbral === null) {
-            throw new InvalidArgumentException(
-                "{$metrica->codigo} no es compuerta y no tiene umbral vigente: el catálogo está incompleto."
-            );
-        }
-
-        $crudo = (float) $lectura['valor'];
-        $salud = Escala::normalizar($crudo, $metrica->umbral, $metrica->uMax, $metrica->sentido);
-
-        return [
-            'valor_crudo'       => $crudo,
-            'valor_normalizado' => Escala::publicar($salud),
-            // La banda se decide sobre la salud sin redondear: en las fronteras,
-            // el valor publicado y el exacto caen en bandas distintas.
-            'estado'            => Escala::bandaPorSalud($salud),
-            'umbral_id'         => $metrica->umbral->id,
-        ];
+        return $this->normalizada($metrica, (float) $lectura['valor']);
     }
 
     /**
@@ -480,10 +501,161 @@ final class MotorCalculoSalud implements MotorCalculo
     // ── Catálogo ────────────────────────────────────────────────────────────
 
     /**
-     * @param array<string, mixed> $lecturas
-     * @param array<string, Metrica> $catalogo
-     * @return list<string>
+     * Tasa: se deriva de la diferencia contra la muestra anterior.
+     *
+     * El recolector entrega solo el acumulado desde el arranque de la
+     * instancia, así que la primera muestra no puede producir tasa y un
+     * acumulado que bajó significa que los contadores se reiniciaron: una
+     * resta negativa nunca es una tasa.
+     *
+     * Devuelve un motivo (string) cuando no hay tasa que publicar.
      */
+    private function evaluarTasa(Metrica $metrica, array $lectura, array $previos): array|string|null
+    {
+        if (!isset($lectura['acumulados']) || !is_array($lectura['acumulados'])) {
+            return null;
+        }
+
+        /** @var array<string, int|float> $acumulados */
+        $acumulados = $lectura['acumulados'];
+        $derivacion = self::DERIVACIONES[$metrica->codigo] ?? null;
+
+        $deltas = [];
+
+        foreach ($acumulados as $parte => $valor) {
+            $anterior = $previos[$metrica->codigo . '.' . $parte] ?? $previos[$metrica->codigo] ?? null;
+
+            if ($anterior === null) {
+                return self::SIN_DERIVAR;
+            }
+
+            $delta = (float) $valor - $anterior;
+
+            if ($delta < 0.0) {
+                return self::REINICIO;
+            }
+
+            $deltas[(string) $parte] = $delta;
+        }
+
+        if ($derivacion === null) {
+            $crudo = array_sum($deltas);
+        } else {
+            $denominador = $deltas[$derivacion['denominador']] ?? 0.0;
+
+            if ($denominador <= 0.0) {
+                return self::SIN_ACTIVIDAD;
+            }
+
+            $crudo = ($deltas[$derivacion['numerador']] ?? 0.0) / $denominador * $derivacion['factor'];
+        }
+
+        $medicion = $this->normalizada($metrica, $crudo);
+        $medicion['acumulados'] = $acumulados;
+
+        return $medicion;
+    }
+
+    /** Identidad: compara una huella de texto contra la de la muestra anterior
+     *  (B-7). No mide una magnitud, produce una compuerta.  */
+    private function evaluarIdentidad(Metrica $metrica, array $lectura, array $previas): array|string|null
+    {
+        if (!isset($lectura['identidad']) || !is_string($lectura['identidad'])) {
+            return null;
+        }
+
+        $actual = $lectura['identidad'];
+        $anterior = $previas[$metrica->codigo] ?? null;
+
+        if ($anterior === null) {
+            return self::SIN_DERIVAR;
+        }
+
+        $estable = $anterior === $actual;
+
+        return [
+            'abierta' => $estable,
+            'estado'  => $estable ? Escala::OPTIMO : Escala::CRITICO,
+            'huella'  => $actual,
+            'detalle' => $estable ? [] : ['anterior' => $anterior, 'actual' => $actual],
+        ];
+    }
+
+    /**
+     * Histéresis: un empeoramiento se publica solo si `k` de las últimas `n`
+     * muestras lo sostienen (§5.5 del plan).
+     *
+     * Actúa sobre el estado publicado, no sobre el valor: la cifra sigue siendo
+     * la que se midió y lo que se sostiene es la etiqueta. Sin historial no hay
+     * nada que suavizar.
+     *
+     * **Limitación declarada.** Una mejora se publica de inmediato. El plan
+     * pide `n` de `n` también para bajar, pero `medicion` guarda el estado
+     * publicado y no el observado: una vez suprimido un empeoramiento, la
+     * historia ya no distingue entre una métrica que estuvo mal y una que
+     * pareció estarlo. Sostener una mejora exige una columna nueva.
+     */
+    private function conHisteresis(
+        RepositorioMonitor $repositorio,
+        string $clave,
+        string $codigo,
+        array $medicion,
+    ): array {
+        if (isset($medicion['abierta'])) {
+            return $medicion;
+        }
+
+        $observado = (string) $medicion['estado'];
+        $anteriores = $repositorio->estadosRecientes($clave, $codigo, $this->ventana - 1);
+
+        if ($anteriores === []) {
+            return $medicion;
+        }
+
+        $ultimo = $anteriores[0];
+
+        if ($ultimo === $observado || !Escala::empeora($observado, $ultimo)) {
+            return $medicion;
+        }
+
+        $sostienen = 0;
+
+        foreach ([$observado, ...$anteriores] as $estado) {
+            if (Escala::alMenosTanSevera($estado, $observado)) {
+                $sostienen++;
+            }
+        }
+
+        if ($sostienen >= $this->paraSubir) {
+            return $medicion;
+        }
+
+        // El empeoramiento no está sostenido: se mantiene el estado anterior y
+        // se conserva lo observado para que la cifra siga explicándose.
+        $medicion['estado_observado'] = $observado;
+        $medicion['estado'] = $ultimo;
+
+        return $medicion;
+    }
+
+    private function normalizada(Metrica $metrica, float $crudo): array
+    {
+        if ($metrica->umbral === null) {
+            throw new InvalidArgumentException(
+                "{$metrica->codigo} no es compuerta y no tiene umbral vigente: el catálogo está incompleto."
+            );
+        }
+
+        $salud = Escala::normalizar($crudo, $metrica->umbral, $metrica->uMax, $metrica->sentido);
+
+        return [
+            'valor_crudo'       => $crudo,
+            'valor_normalizado' => Escala::publicar($salud),
+            'estado'            => Escala::bandaPorSalud($salud),
+            'umbral_id'         => $metrica->umbral->id,
+        ];
+    }
+
     private function lecturasDesconocidas(array $lecturas, array $catalogo): array
     {
         $desconocidas = [];
