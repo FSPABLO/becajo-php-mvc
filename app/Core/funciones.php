@@ -83,6 +83,19 @@ if (!function_exists('icono')) {
             'alerta'      => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
 
             /*
+             * Un ícono fijo por cada uno de los 7 dominios del instrumento
+             * (ver iconoDominio() más abajo). 'disco', 'llave' y 'respaldo' ya
+             * existían arriba y se reutilizan aquí porque ningún otro ícono
+             * de esta lista los usa como pestaña principal — así que no hay
+             * ambigüedad de leer el mismo trazo con dos significados en la
+             * misma pantalla. 'balanza', 'engranaje' y 'candado' son nuevos.
+             */
+            'balanza'     => '<path d="M12 3v18"/><path d="M6 21h12"/><path d="m12 3-6.5 4.5M12 3l6.5 4.5"/><path d="M2 7.5h7l-3.5 6-3.5-6Z"/><path d="M15 7.5h7l-3.5 6-3.5-6Z"/>',
+            'engranaje'   => '<path d="M12 2 20 6.5v11L12 22 4 17.5v-11Z"/><circle cx="12" cy="12" r="3.2"/>',
+            'candado'     => '<rect x="4.5" y="11" width="15" height="9.5" rx="2"/><path d="M7.5 11V7.2a4.5 4.5 0 0 1 9 0V11"/>',
+            'ojo'         => '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+
+            /*
              * Escala semántica de estado del sistema visual de Rivendel.
              *
              * Existen porque el color NUNCA puede ser el único canal: todo
@@ -106,6 +119,31 @@ if (!function_exists('icono')) {
         return '<svg class="' . e($clases) . '" width="24" height="24" viewBox="0 0 24 24" fill="none" '
              . 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
              . 'stroke-linejoin="round" aria-hidden="true">' . $trazo . '</svg>';
+    }
+}
+
+if (!function_exists('iconoDominio')) {
+    /**
+     * Ícono fijo por dominio del instrumento: los 7 dominios son un catálogo
+     * cerrado (config/instrumento-bd.php), así que el mapeo vive en un solo
+     * lugar en vez de repetirse en cada vista que pinta un dominio (tabs del
+     * instrumento, tabla del catálogo, cabecera de cada pestaña de dominio).
+     * Si algún día se agrega un octavo dominio, esta es la única línea que
+     * hay que tocar para que deje de caer en el símbolo por defecto.
+     */
+    function iconoDominio(string $claveDominio, string $clases = 'h-4 w-4'): string
+    {
+        static $porDominio = [
+            'gobierno'       => 'balanza',       // Gobierno y riesgo
+            'configuracion'  => 'engranaje',     // Configuración y cambios
+            'almacenamiento' => 'disco',         // Memoria y almacenamiento
+            'accesos'        => 'llave',         // Accesos y privilegios
+            'dato'           => 'candado',       // Protección del dato
+            'continuidad'    => 'respaldo',      // Continuidad
+            'vigilancia'     => 'ojo',           // Vigilancia y terceros
+        ];
+
+        return icono($porDominio[$claveDominio] ?? 'minus', $clases);
     }
 }
 

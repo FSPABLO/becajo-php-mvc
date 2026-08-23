@@ -70,6 +70,16 @@ $enPanel = $enPanel ?? false;
 ?>
 <?php
 /*
+ * SheetJS por CDN, igual que Tailwind en partials/head.php: el proyecto no
+ * usa Composer a propósito (CLAUDE.md), pero eso no dice nada de scripts de
+ * navegador, y "Exportar Excel" abajo lo necesita. Va con "defer" y no
+ * bloqueante, y SOLO en esta página — nadie más del sitio exporta a Excel,
+ * así que no tiene sentido pagar el peso del script en el resto del sitio.
+ */
+?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<?php
+/*
  * El instrumento vive SIEMPRE en pergamino con acento de oro, venga por el
  * marco público (lienzo de noche) o por el del módulo (que ya es claro). Es una
  * región declarada, no un tema: rv-claro pone el lienzo y rv-oro solo repunta

@@ -78,7 +78,13 @@ final class AutenticacionController extends Controlador
             $this->redirigir('/ingresar');
         }
 
-        $this->sesion()->destello('aviso', 'Bienvenido, ' . $usuario->nombre . '.');
+        /*
+         * Ya no se destella «Bienvenido, ...». La barra lateral del panel lleva
+         * el nombre y el rol de quien entró, así que el saludo era la tercera
+         * copia del mismo dato — y además duraba una sola vista, porque un
+         * destello se consume al leerse. Aquí se entra a trabajar; la señal de
+         * que la sesión abrió es estar dentro.
+         */
         $this->redirigir(self::DESTINO);
     }
 
@@ -123,7 +129,7 @@ final class AutenticacionController extends Controlador
         // y la contraseña recién escritos no aporta nada.
         $auth->iniciarSesion($usuario);
 
-        $this->sesion()->destello('aviso', 'Cuenta creada. Bienvenido, ' . $usuario->nombre . '.');
+        $this->sesion()->destello('aviso', 'Cuenta creada.');
         $this->redirigir(self::DESTINO);
     }
 

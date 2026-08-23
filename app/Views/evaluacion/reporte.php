@@ -163,7 +163,12 @@ $colorCelda = static function (int $impacto, int $probabilidad) use ($fondoZona)
         <tbody class="divide-y divide-borde">
             <?php foreach ($dominios as $fila): ?>
                 <tr>
-                    <td class="py-2 font-medium text-texto"><?= e((string) $fila['nombre_dominio']) ?></td>
+                    <td class="py-2 font-medium text-texto">
+                        <span class="inline-flex items-center gap-1.5">
+                            <?= iconoDominio((string) $fila['clave_dominio'], 'h-4 w-4 shrink-0') ?>
+                            <?= e((string) $fila['nombre_dominio']) ?>
+                        </span>
+                    </td>
                     <td class="py-2"><?= e($porcentaje($fila['cumplimiento'] ?? null)) ?></td>
                     <td class="py-2"><?= e((string) ($fila['madurez_promedio'] ?? '—')) ?></td>
                 </tr>

@@ -9,7 +9,11 @@
  * noche», declarado en :root de assets/css/rivendel.css.
  */
 
-/* Menús desplegables del encabezado (Herramientas). */
+/*
+ * Menús desplegables del encabezado: «Nosotros», «Herramientas» y el del
+ * perfil. Recorre todo [data-desplegable] y no una lista escrita aquí, así que
+ * un menú nuevo en la barra no toca este archivo — el del perfil no lo hizo.
+ */
 (function () {
     'use strict';
 

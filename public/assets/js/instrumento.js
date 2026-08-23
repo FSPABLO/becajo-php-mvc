@@ -970,13 +970,14 @@
     }
 
     /**
-     * Exporta los 75 controles.
+     * Arma las filas de la exportación (encabezado + una fila por control).
      *
-     * Delimitador «;» y marca de orden de bytes al inicio: sin las dos cosas,
-     * Excel en español abre el archivo en una sola columna y con las tildes
-     * rotas.
+     * Se comparte entre exportarCsv() y exportarExcel(): son dos formatos de
+     * salida del MISMO contenido, y separar "qué se exporta" de "cómo se
+     * empaqueta" es lo que evita que un cambio de columna se haga en un
+     * archivo y se olvide en el otro.
      */
-    function exportarCsv() {
+    function filasExportacion() {
         const encabezados = [
             'Dominio', 'Proceso', 'Nombre del proceso', 'Control', 'Referencia ISO',
             'Enunciado del control', 'Estado', 'Madurez', 'Nivel alcanzado', 'Criterio',
@@ -1016,12 +1017,58 @@
             ]);
         });
 
-        const csv = filas.map(function (fila) {
+        return filas;
+    }
+
+    /**
+     * Exporta los 75 controles a CSV.
+     *
+     * Delimitador «;» y marca de orden de bytes al inicio: sin las dos cosas,
+     * Excel en español abre el archivo en una sola columna y con las tildes
+     * rotas.
+     */
+    function exportarCsv() {
+        const csv = filasExportacion().map(function (fila) {
             return fila.map(celda).join(';');
         }).join('\r\n');
 
         // ﻿ es la marca de orden de bytes que Excel necesita para las tildes.
         descargar('﻿' + csv, nombreArchivo('csv'), 'text/csv;charset=utf-8;');
+    }
+
+    /**
+     * Exporta los 75 controles a un libro de Excel de verdad (.xlsx), no un
+     * CSV con esa extensión.
+     *
+     * Se apoya en SheetJS (cargado por CDN en herramientas/instrumento-bd.php,
+     * igual que Tailwind) en vez de en una librería PHP: el proyecto no usa
+     * Composer a propósito (ver CLAUDE.md), y aquí no hace falta — el archivo
+     * se arma entero en el navegador con los mismos datos que ya calcula
+     * filasExportacion(), sin pedirle nada al servidor.
+     */
+    function exportarExcel() {
+        if (typeof XLSX === 'undefined') {
+            window.alert('No se pudo cargar el componente de Excel. Revise su conexión e intente de nuevo.');
+
+            return;
+        }
+
+        const libro = XLSX.utils.book_new();
+        const hoja = XLSX.utils.aoa_to_sheet(filasExportacion());
+
+        // Ancho de columna aproximado (en caracteres): sin esto, SheetJS deja
+        // todas las columnas al mismo ancho por defecto y el enunciado de 110
+        // caracteres queda ilegible junto al código de tres.
+        hoja['!cols'] = [
+            { wch: 16 }, { wch: 8 }, { wch: 32 }, { wch: 8 }, { wch: 14 },
+            { wch: 50 }, { wch: 10 }, { wch: 9 }, { wch: 14 }, { wch: 14 },
+            { wch: 12 }, { wch: 14 }, { wch: 14 },
+            { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 12 },
+            { wch: 20 }, { wch: 30 }, { wch: 30 }
+        ];
+
+        XLSX.utils.book_append_sheet(libro, hoja, 'Instrumento');
+        XLSX.writeFile(libro, nombreArchivo('xlsx'));
     }
 
     function exportarJson() {
@@ -1151,6 +1198,7 @@
 
     const acciones = {
         'exportar-csv': exportarCsv,
+        'exportar-excel': exportarExcel,
         'exportar-json': exportarJson,
         'importar-json': function () {
             document.querySelector('[data-archivo-avance]').click();
