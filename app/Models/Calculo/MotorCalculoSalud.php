@@ -144,6 +144,10 @@ final class MotorCalculoSalud implements MotorCalculo
 
             if (is_string($medicion)) {
                 $fuera[$codigo] = $medicion;
+                $rastro = $this->rastroDeContinuidad($metrica, $lectura);
+                if ($rastro !== null) {
+                    $mediciones[$codigo] = $rastro;
+                }
                 continue;
             }
 
@@ -162,12 +166,18 @@ final class MotorCalculoSalud implements MotorCalculo
             );
         }
 
-        $planificadas = count($mediciones) + count(array_filter(
-            $fuera,
-            static fn (string $motivo): bool => !in_array($motivo, self::FUERA_DEL_DENOMINADOR, true),
+
+        $recolectadas = count(array_filter(
+            $mediciones,
+            static fn (array $m): bool => ($m['estado'] ?? null) !== null,
         ));
 
-        $cobertura = $planificadas === 0 ? 0.0 : round(count($mediciones) / $planificadas * 100, 1);
+        $planificadas = $recolectadas + count(array_filter(
+             $fuera,
+             static fn (string $motivo): bool => !in_array($motivo, self::FUERA_DEL_DENOMINADOR, true),
+        ));
+
+        $cobertura = $planificadas === 0 ? 0.0 : round($recolectadas / $planificadas * 100, 1);
         $resultado = $this->resultado($contextos, $cobertura);
         $componentes = $this->componentes($mediciones, $catalogo);
 
@@ -258,8 +268,11 @@ final class MotorCalculoSalud implements MotorCalculo
         $agrupadas = [];
 
         foreach ($mediciones as $codigo => $medicion) {
-            $agrupadas[$catalogo[$codigo]->componente][$codigo] = $medicion;
-        }
+           if (($medicion['estado'] ?? null) === null) {
+              continue;
+           }
+           $agrupadas[$catalogo[$codigo]->componente][$codigo] = $medicion;
+             }
 
         ksort($agrupadas);
 
@@ -652,6 +665,23 @@ final class MotorCalculoSalud implements MotorCalculo
 
         return $medicion;
     }
+
+    private function rastroDeContinuidad(Metrica $metrica, array $lectura): ?array
+    {
+        if ($metrica->esIdentidad && isset($lectura['identidad']) && is_string($lectura['identidad'])) {
+            return ['huella' => $lectura['identidad'], 'estado' => null];
+        }
+
+        if (!$metrica->acumulada || !is_array($lectura['acumulados'] ?? null)) {
+            return null;
+        }
+
+        /** @var array<string, int|float> $acumulados */
+        $acumulados = $lectura['acumulados'];
+
+        return ['acumulados' => $acumulados, 'estado' => null];
+    }
+
 
     /**
      * Compara la salud contra la línea base de la métrica en su mismo tramo

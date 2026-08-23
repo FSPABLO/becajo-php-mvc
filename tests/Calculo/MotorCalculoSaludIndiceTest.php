@@ -224,27 +224,91 @@ final class MotorCalculoSaludIndiceTest extends TestCase
         }
     }
 
+    /**
+     * El mismo criterio, pero con el componente en CRÍTICO por una métrica y
+     * no por una compuerta.
+     *
+     * Es el caso que de verdad exige el tope del índice: con IM e IA cerca de
+     * 98, el promedio ponderado da 80,6 y sin tope se publicaría como
+     * SALUDABLE teniendo PROCESOS en crítico. Con la compuerta cerrada el
+     * componente vale 0 y el promedio ya cae solo bajo 40, así que ese caso no
+     * discrimina esta regla.
+     */
     public function testUnComponenteCriticoTopaUnIndiceQueSeriaSaludable(): void
-        {
-            $cruda = $this->muestraDelCaso();
-            $cruda['lecturas']['X-MEM-01'] = ['estado' => 'OK', 'valor' => 10.0];
-            $cruda['lecturas']['X-MEM-02'] = ['estado' => 'OK', 'valor' => 10.0];
-            $cruda['lecturas']['X-ARC-01'] = ['estado' => 'OK', 'valor' => 10.0];
+    {
+        $cruda = $this->muestraDelCaso();
+        $cruda['lecturas']['X-MEM-01'] = ['estado' => 'OK', 'valor' => 10.0];
+        $cruda['lecturas']['X-MEM-02'] = ['estado' => 'OK', 'valor' => 10.0];
+        $cruda['lecturas']['X-ARC-01'] = ['estado' => 'OK', 'valor' => 10.0];
 
-            $evaluada = $this->motor()->evaluar($cruda, $this->repositorioDelCaso());
-            $indice = $evaluada['indice'];
+        $evaluada = $this->motor()->evaluar($cruda, $this->repositorioDelCaso());
+        $indice = $evaluada['indice'];
 
-            $this->assertSame(Escala::CRITICO, $evaluada['componentes']['PROCESOS']['estado']);
-            $this->assertSame(40.0, $evaluada['componentes']['PROCESOS']['publicado']);
+        $this->assertSame(Escala::CRITICO, $evaluada['componentes']['PROCESOS']['estado']);
+        $this->assertSame(40.0, $evaluada['componentes']['PROCESOS']['publicado']);
 
-            // Sin el tope, 80,6 se publicaría como SALUDABLE.
-            $this->assertSame(80.6, $indice['isbd_bruto']);
-            $this->assertSame(Escala::SALUDABLE, Escala::bandaPorSalud($indice['isbd_bruto']));
+        // Sin el tope, 80,6 se publicaría como SALUDABLE.
+        $this->assertSame(80.6, $indice['isbd_bruto']);
+        $this->assertSame(Escala::SALUDABLE, Escala::bandaPorSalud($indice['isbd_bruto']));
 
-            $this->assertSame(40.0, $indice['isbd']);
-            $this->assertSame(Escala::CRITICO, $indice['estado']);
-            $this->assertSame(['X-PRO-01'], $indice['causa']);
-        }
+        $this->assertSame(40.0, $indice['isbd']);
+        $this->assertSame(Escala::CRITICO, $indice['estado']);
+        $this->assertSame(['X-PRO-01'], $indice['causa']);
+    }
+
+    /**
+     * La otra mitad del criterio: ninguno en DEGRADADO sobre 60.
+     *
+     * Con IM e IA cerca de 98 el promedio da 87,4 y sin tope se publicaría
+     * como SALUDABLE teniendo PROCESOS degradado.
+     */
+    public function testUnComponenteDegradadoTopaElIndiceEn60(): void
+    {
+        $cruda = $this->muestraDelCaso();
+        $cruda['lecturas']['X-PRO-01'] = ['estado' => 'OK', 'valor' => 90.0];  // 50,0 DEGRADADO
+        $cruda['lecturas']['X-PRO-02'] = ['estado' => 'OK', 'valor' => 88.0];  // 56,0 DEGRADADO
+        $cruda['lecturas']['X-MEM-01'] = ['estado' => 'OK', 'valor' => 10.0];
+        $cruda['lecturas']['X-MEM-02'] = ['estado' => 'OK', 'valor' => 10.0];
+        $cruda['lecturas']['X-ARC-01'] = ['estado' => 'OK', 'valor' => 10.0];
+
+        $evaluada = $this->motor()->evaluar($cruda, $this->repositorioDelCaso());
+
+        $this->assertSame(Escala::DEGRADADO, $evaluada['componentes']['PROCESOS']['estado']);
+
+        $indice = $evaluada['indice'];
+
+        $this->assertGreaterThan(60.0, $indice['isbd_bruto']);
+        $this->assertLessThanOrEqual(60.0, $indice['isbd']);
+        $this->assertSame(Escala::DEGRADADO, $indice['estado']);
+    }
+
+    /**
+     * El criterio del §12 en su forma literal: un proceso de fondo ausente
+     * deja PROCESOS en CRÍTICO y el ISBD bajo 40, con memoria y archivos en
+     * ÓPTIMO.
+     *
+     * Se corre contra el catálogo real y `M-PRO-03`, no contra una compuerta
+     * sintética, porque el criterio nombra ese caso.
+     */
+    public function testUnProcesoDeFondoAusenteTopaElIndiceAunqueTodoLoDemasEsteOptimo(): void
+    {
+        $cruda = Muestras::cruda(Muestras::COMPLETA);
+        $cruda['lecturas']['M-PRO-03'] = [
+            'estado'  => 'OK',
+            'abierta' => false,
+            'detalle' => ['esperados' => ['PMON', 'SMON', 'DBW0', 'LGWR', 'CKPT'], 'ausentes' => ['SMON']],
+        ];
+
+        $evaluada = $this->motor()->evaluar($cruda, $this->repositorioCon(self::EVALUABLES));
+
+        $this->assertSame(Escala::OPTIMO, $evaluada['componentes']['ARCHIVOS']['estado']);
+        $this->assertSame(Escala::CRITICO, $evaluada['componentes']['PROCESOS']['estado']);
+        $this->assertSame(0.0, $evaluada['componentes']['PROCESOS']['publicado']);
+
+        $this->assertLessThanOrEqual(40.0, $evaluada['indice']['isbd']);
+        $this->assertSame(Escala::CRITICO, $evaluada['indice']['estado']);
+        $this->assertContains('M-PRO-03', $evaluada['indice']['causa']);
+    }
 
     /** El índice nunca se muestra sin estado y sin causa (invariante 5). */
     public function testElIndiceNuncaViajaSinEstadoNiCausa(): void
@@ -327,3 +391,4 @@ final class MotorCalculoSaludIndiceTest extends TestCase
         ];
     }
 }
+

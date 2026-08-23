@@ -83,7 +83,10 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
     {
         $evaluada = $this->motor()->evaluar($this->muestra('completa'), $this->repositorio());
 
-        $this->assertCount(9, $evaluada['mediciones']);
+        // Nueve medidas más el rastro de continuidad de M-PRO-04, que se
+        // persiste sin estado para que la muestra siguiente pueda derivar.
+        $this->assertCount(10, $evaluada['mediciones']);
+        $this->assertNull($evaluada['mediciones']['M-PRO-04']['estado']);
         $this->assertSame([], $evaluada['ignoradas']);
         $this->assertSame('FREEPDB1', $evaluada['instancia']);
         $this->assertSame('2026-08-19T14:35:02+00:00', $evaluada['tomada_en']);
@@ -122,7 +125,7 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
 
         $this->assertSame(
             ['M-ARC-01', 'M-ARC-02', 'M-ARC-03', 'M-MEM-01', 'M-MEM-02', 'M-MEM-03',
-             'M-PRO-01', 'M-PRO-02', 'M-PRO-03'],
+             'M-PRO-01', 'M-PRO-02', 'M-PRO-03', 'M-PRO-04'],
             array_keys($evaluada['mediciones']),
         );
     }
@@ -264,3 +267,4 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
         $this->motor()->evaluar($this->muestra('completa'), $repositorio);
     }
 }
+

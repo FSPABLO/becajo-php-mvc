@@ -270,6 +270,26 @@ final class RepositorioMonitorOracle implements RepositorioMonitor, RepositorioM
         return array_map(Metrica::desdeFila(...), $filas);
     }
 
+    /**
+     * @return list<array{origen: string, consecuencia: string}>
+     */
+    public function precedencias(): array
+    {
+        $filas = $this->bd->consultar(
+            'SELECT codigo_metrica_origen, codigo_metrica_consecuencia
+               FROM precedencia
+              ORDER BY codigo_metrica_origen, codigo_metrica_consecuencia',
+        );
+
+        return array_map(
+            static fn (array $f): array => [
+                'origen'       => (string) $f['codigo_metrica_origen'],
+                'consecuencia' => (string) $f['codigo_metrica_consecuencia'],
+            ],
+            $filas,
+        );
+    }
+
     // ── RepositorioMonitor — Lo que necesita el motor de cálculo ─────────────
 
     /** @return array<string, float> */

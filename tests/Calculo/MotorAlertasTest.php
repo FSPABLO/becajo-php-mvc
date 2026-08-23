@@ -220,6 +220,31 @@ final class MotorAlertasTest extends TestCase
         $this->assertSame($id, $decisiones[MotorAlertas::CERRAR][0]['id_alerta']);
     }
 
+    public function testUnaCondicionSostenidaGeneraUnaSolaAlerta(): void
+    {
+        $repositorio = $this->repositorio();
+        $motor = new MotorAlertas();
+        $medicion = $this->evaluada(['M-ARC-01' => $this->medicion(Escala::DEGRADADO, 50.0)]);
+
+        $primera = $motor->decidir($medicion, $repositorio);
+
+        $this->assertCount(1, $primera[MotorAlertas::ABRIR]);
+
+        // La persistencia abre la alerta; de ahí en adelante ninguna muestra
+        // debería querer abrir otra.
+        $repositorio->precargarAlerta('FREEPDB1', 'M-ARC-01', Escala::DEGRADADO);
+
+        for ($muestra = 2; $muestra <= 5; $muestra++) {
+            $decisiones = $motor->decidir($medicion, $repositorio);
+
+            $this->assertSame([], $decisiones[MotorAlertas::ABRIR], "muestra {$muestra}");
+            $this->assertCount(1, $decisiones[MotorAlertas::ESCALAR], "muestra {$muestra}");
+            $this->assertSame([], $decisiones[MotorAlertas::CERRAR], "muestra {$muestra}");
+        }
+
+        $this->assertCount(1, $repositorio->alertasAbiertas('FREEPDB1'));
+    }
+
     /**
      * Una métrica que no se pudo medir no cierra su alerta.
      *
@@ -331,3 +356,4 @@ final class MotorAlertasTest extends TestCase
         $this->assertNull($decisiones['episodio']['causa']);
     }
 }
+

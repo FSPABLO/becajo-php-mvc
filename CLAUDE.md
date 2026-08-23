@@ -67,6 +67,44 @@ Las pruebas cubren **únicamente `app/Models/Calculo`**, que es aritmética pura
 no necesita Oracle ni Apache. Para todo lo demás —controladores, vistas,
 repositorios— verificar un cambio sigue significando abrirlo en el navegador.
 
+## Motor de cálculo del monitor (frente 3, parte 2)
+
+`app/Models/Calculo/` convierte lecturas crudas de Oracle en salud, estado y
+alertas. Es el único código del proyecto con pruebas automatizadas, porque es
+el único que es aritmética pura: no toca la base, no abre sesión y no pinta
+nada.
+
+| Clase | Responsabilidad |
+|---|---|
+| `Escala` | Las cinco bandas, la normalización por tramos y los topes del eslabón más débil. Sin estado: umbrales y techo entran por parámetro. |
+| `MotorCalculoSalud` | De muestra cruda a muestra evaluada: mediciones, cobertura, componentes e ISBD. |
+| `LineaBase` | Media y desviación sobre la ventana móvil, para el comportamiento anómalo de A.8.16. |
+| `MotorAlertas` | Decide qué alertas abrir, escalar y cerrar, y las agrupa en episodios. **No escribe**: devuelve decisiones. |
+| `MotorCalculoReal` | Raíz de composición. El único sitio donde se eligen piso, ventana e histéresis. Es la clase que busca `bin/monitor.php`. |
+
+Reglas que conviene no romper al tocar este código:
+
+- **Sin dato no es cero** (invariante 3). Una métrica no recolectada sale del
+  denominador y se anota en `fuera` con su motivo. Publicar un 0 convertiría
+  una falla de recolección en una falla de la base.
+- **Las compuertas no promedian.** Abierta no aporta un 100; cerrada manda el
+  componente a 0 y CRÍTICO sin promediar.
+- **El tope se aplica en los dos niveles** y lo que viaja hacia arriba es el
+  valor ya topado: el ISBD promedia publicados, nunca brutos.
+- **La banda se decide sobre la salud sin redondear.** En las fronteras, el
+  valor publicado y el exacto caen en bandas distintas.
+- **Los umbrales son dato, no código** (B-8). Igual que las precedencias: se
+  leen del repositorio, no de una constante.
+- Una tasa o una identidad que todavía no puede derivar **persiste igual su
+  valor de continuidad**, con `estado` nulo. Sin eso la métrica queda atascada
+  en su primera muestra para siempre.
+
+Dos huecos conocidos, ambos pendientes de decisión con el frente 2:
+`medicion.valor_acumulado` es una sola columna y `M-PRO-04` necesita dos, así
+que su tasa no sobrevive a la persistencia; y `medicion` no guarda el estado
+observado, por lo que la histéresis solo sostiene los empeoramientos y publica
+las mejoras de inmediato.
+
 ## Sistema visual (Rivendel)
 
 Normativo: `documentacion/design/rivendel-sistema-visual-prompt.md` y

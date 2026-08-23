@@ -68,8 +68,15 @@ final class MotorCalculoSaludContinuidadTest extends TestCase
             $this->repositorio(),
         );
 
-        $this->assertArrayNotHasKey('M-PRO-04', $evaluada['mediciones']);
         $this->assertSame(MotorCalculoSalud::SIN_DERIVAR, $evaluada['fuera']['M-PRO-04']);
+
+        // Sin medida, pero el acumulado se guarda: si no, la muestra siguiente
+        // tampoco tendría con qué comparar y la tasa nunca se derivaría.
+        $rastro = $evaluada['mediciones']['M-PRO-04'];
+
+        $this->assertNull($rastro['estado']);
+        $this->assertArrayNotHasKey('valor_normalizado', $rastro);
+        $this->assertSame(['esperas' => 8412, 'micros' => 10430880], $rastro['acumulados']);
     }
 
     /**
@@ -123,8 +130,12 @@ final class MotorCalculoSaludContinuidadTest extends TestCase
             $repositorio,
         );
 
-        $this->assertArrayNotHasKey('M-PRO-04', $evaluada['mediciones']);
         $this->assertSame(MotorCalculoSalud::REINICIO, $evaluada['fuera']['M-PRO-04']);
+        $this->assertNull($evaluada['mediciones']['M-PRO-04']['estado']);
+
+        // El acumulado nuevo se guarda: tras el reinicio, la muestra siguiente
+        // vuelve a tener una base contra la cual derivar.
+        $this->assertSame(120.0, (float) $evaluada['mediciones']['M-PRO-04']['acumulados']['esperas']);
     }
 
     /** Sin escrituras entre muestras la tasa es indefinida, no cero. */
@@ -138,8 +149,8 @@ final class MotorCalculoSaludContinuidadTest extends TestCase
             $repositorio,
         );
 
-        $this->assertArrayNotHasKey('M-PRO-04', $evaluada['mediciones']);
         $this->assertSame(MotorCalculoSalud::SIN_ACTIVIDAD, $evaluada['fuera']['M-PRO-04']);
+        $this->assertNull($evaluada['mediciones']['M-PRO-04']['estado']);
     }
 
     /** Reinicio y primera muestra salen del denominador: no penalizan cobertura. */
@@ -155,6 +166,28 @@ final class MotorCalculoSaludContinuidadTest extends TestCase
         );
 
         $this->assertSame($sinHistorial['cobertura_pct'], $conReinicio['cobertura_pct']);
+    }
+
+    /**
+     * El ciclo completo: la muestra siguiente sí puede derivar.
+     *
+     * Reproduce sin Oracle lo que la integración destapó: si la primera muestra
+     * no persiste su acumulado, la segunda tampoco encuentra con qué comparar y
+     * la tasa queda atascada para siempre por más veces que corra el agente.
+     */
+    public function testElRastroDeLaPrimeraMuestraPermiteDerivarEnLaSegunda(): void
+    {
+        $repositorio = $this->repositorio();
+        $motor = $this->motor();
+
+        $primera = $motor->evaluar($this->cruda('2026-08-19T14:30:00+00:00', 8000, 10000000), $repositorio);
+        $repositorio->precargar($primera);
+
+        $segunda = $motor->evaluar($this->cruda('2026-08-19T14:35:00+00:00', 8500, 11000000), $repositorio);
+
+        $this->assertNull($primera['mediciones']['M-PRO-04']['estado']);
+        $this->assertSame(2.0, $segunda['mediciones']['M-PRO-04']['valor_crudo']);
+        $this->assertSame(Escala::OPTIMO, $segunda['mediciones']['M-PRO-04']['estado']);
     }
 
     // ── Identidad ──────────────────────────────────────────────────────────
@@ -232,6 +265,22 @@ final class MotorCalculoSaludContinuidadTest extends TestCase
         );
 
         $this->assertSame('PMON:1000', $evaluada['mediciones']['M-PRO-05']['huella']);
+    }
+
+    /** Lo mismo para la identidad: la huella de la primera muestra sí se guarda. */
+    public function testElRastroDeLaHuellaPermiteCompararEnLaSegunda(): void
+    {
+        $repositorio = $this->repositorio();
+        $motor = $this->motor();
+
+        $primera = $motor->evaluar($this->crudaConHuella('2026-08-19T14:30:00+00:00', 'PMON:1000'), $repositorio);
+        $repositorio->precargar($primera);
+
+        $segunda = $motor->evaluar($this->crudaConHuella('2026-08-19T14:35:00+00:00', 'PMON:9999'), $repositorio);
+
+        $this->assertSame('PMON:1000', $primera['mediciones']['M-PRO-05']['huella']);
+        $this->assertNull($primera['mediciones']['M-PRO-05']['estado']);
+        $this->assertSame(Escala::CRITICO, $segunda['mediciones']['M-PRO-05']['estado']);
     }
 
     // ── Histéresis ─────────────────────────────────────────────────────────
