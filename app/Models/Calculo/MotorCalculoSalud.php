@@ -63,6 +63,12 @@ final class MotorCalculoSalud implements MotorCalculo
         self::SIN_ACTIVIDAD,
     ];
 
+    /**
+     * Pesos del ISBD. CONSULTAS no aparece: se mide y alerta,
+     * pero no suma (§3.1).
+     *
+     * @var array<string, float>
+     */
     private const PESOS_ISBD = [
         'PROCESOS' => 0.30,
         'MEMORIA'  => 0.35,
@@ -79,6 +85,8 @@ final class MotorCalculoSalud implements MotorCalculo
         private readonly float $pisoCobertura = 80.0,
         private readonly int $ventana = 3,
         private readonly int $paraSubir = 2,
+        private readonly int $diasLineaBase = 14,
+        private readonly ?LineaBase $lineaBase = null,
     ) {
     }
 
@@ -144,7 +152,14 @@ final class MotorCalculoSalud implements MotorCalculo
                 continue;
             }
 
-            $mediciones[$codigo] = $this->conHisteresis($repositorio, $clave, $codigo, $medicion);
+            $medicion = $this->conHisteresis($repositorio, $clave, $codigo, $medicion);
+            $mediciones[$codigo] = $this->conLineaBase(
+                $repositorio,
+                $clave,
+                $codigo,
+                $medicion,
+                (string) ($muestraCruda['tomada_en'] ?? ''),
+            );
         }
 
         $planificadas = count($mediciones) + count(array_filter(
@@ -634,6 +649,47 @@ final class MotorCalculoSalud implements MotorCalculo
         // se conserva lo observado para que la cifra siga explicándose.
         $medicion['estado_observado'] = $observado;
         $medicion['estado'] = $ultimo;
+
+        return $medicion;
+    }
+
+    /**
+     * Compara la salud contra la línea base de la métrica en su mismo tramo
+     * horario. Solo agrega la clave cuando la ventana alcanza.
+     *
+     * @param array<string, mixed> $medicion
+     * @return array<string, mixed>
+     */
+    private function conLineaBase(
+        RepositorioMonitor $repositorio,
+        string $clave,
+        string $codigo,
+        array $medicion,
+        string $tomadaEnUtc,
+    ): array {
+        if (!isset($medicion['valor_normalizado'])) {
+            return $medicion;
+        }
+
+        $instante = strtotime($tomadaEnUtc);
+
+        if ($instante === false) {
+            return $medicion;
+        }
+
+        $ventana = $repositorio->ventanaLineaBase(
+            $clave,
+            $codigo,
+            $this->diasLineaBase,
+            (int) gmdate('G', $instante),
+        );
+
+        $comparacion = ($this->lineaBase ?? new LineaBase())
+            ->evaluar($ventana, (float) $medicion['valor_normalizado']);
+
+        if ($comparacion !== null) {
+            $medicion['linea_base'] = $comparacion;
+        }
 
         return $medicion;
     }

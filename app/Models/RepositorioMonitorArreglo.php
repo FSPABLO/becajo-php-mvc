@@ -41,6 +41,9 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
      */
     private array $muestras = [];
 
+    /** @var list<Alerta> */
+    private array $alertas = [];
+
     private int $siguienteId = 1;
 
     /**
@@ -228,9 +231,41 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
 
     // ── Alertas y episodios ─────────────────────────────────────────────────
 
+    /**Las alertas se cargan con `precargarAlerta()`; este repositorio no las
+     * abre por su cuenta, igual que no persiste muestras.
+     *
+     * @return list<Alerta>
+     */
     public function alertasAbiertas(?string $clave = null): array
     {
-        return [];
+        return array_values(array_filter(
+            $this->alertas,
+            static fn (Alerta $a): bool => $a->estaAbierta()
+                && ($clave === null || $a->claveInstancia === $clave),
+        ));
+    }
+
+    /**
+     * Deja una alerta abierta en el estado del repositorio, para que las
+     * pruebas puedan ejercitar la deduplicación y el escalamiento.
+     */
+    public function precargarAlerta(string $clave, string $codigoMetrica, string $nivel): int
+    {
+        $id = $this->siguienteId++;
+
+        $this->alertas[] = Alerta::desdeFila([
+            'id_alerta'            => $id,
+            'clave_instancia'      => $clave,
+            'codigo_metrica'       => $codigoMetrica,
+            'nivel_actual'         => $nivel,
+            'nivel_maximo'         => $nivel,
+            'estado_atencion'      => Alerta::ABIERTA,
+            'ocurrencias'          => 1,
+            'vista_primera_vez'    => '2026-08-19T14:00:00+00:00',
+            'vista_por_ultima_vez' => '2026-08-19T14:00:00+00:00',
+        ]);
+
+        return $id;
     }
 
     /** @return list<Episodio> */
@@ -247,7 +282,6 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
         return $this->metricas;
     }
 
-    /** @return list<array{origen: string, consecuencia: string}> */
     public function precedencias(): array
     {
         return $this->precedencias;
@@ -399,7 +433,6 @@ final class RepositorioMonitorArreglo implements RepositorioMonitor
 
     // ── Interno ─────────────────────────────────────────────────────────────
 
-    /** @return list<array{id: int, evaluada: array<string, mixed>}> */
     private function entradasDe(string $clave, ?string $desdeUtc = null, ?string $hastaUtc = null): array
     {
         $entradas = array_values(array_filter(
