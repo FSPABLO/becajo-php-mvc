@@ -79,6 +79,12 @@ RUN apt-get update \
 #    Sin este COPY, el contenedor arranca con /var/www/html/public vacío
 #    (el error "DocumentRoot does not exist" que se vio en el log de Render).
 #    .dockerignore excluye lo que no debe viajar dentro de la imagen (.git, etc).
+#
+#    Desde el frente 3 eso incluye tambien tests/, vendor/, composer.json y
+#    phpunit.xml.dist. Composer entro al proyecto SOLO como dependencia de
+#    desarrollo (PHPUnit, para las pruebas del motor de calculo): la imagen que
+#    sirve el sitio no lo necesita, no lo instala y no lo lleva dentro. El
+#    autoloader de la aplicacion sigue siendo app/Core/Autoloader.php.
 COPY . /var/www/html
 
 # 6. Puerto dinámico.

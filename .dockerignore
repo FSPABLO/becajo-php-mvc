@@ -3,3 +3,11 @@
 .gitignore
 README.md
 LICENSE
+
+tests
+vendor
+composer.json
+composer.lock
+phpunit.xml.dist
+.phpunit.cache
+.phpunit.result.cache

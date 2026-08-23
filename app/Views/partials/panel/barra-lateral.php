@@ -64,7 +64,8 @@ $iniciales = $usuarioActual !== null ? iniciales($usuarioActual->nombre) : '';
          */
         ?>
         <a href="<?= e($vista->url()) ?>" class="flex min-w-0 flex-1 items-center gap-[11px]">
-            <span class="rv-extruido grid h-[38px] w-[38px] flex-none place-items-center rounded-[10px] bg-elevado font-marca text-[15px] tracking-[0.02em] text-oro">R</span>
+            <img src="<?= e($vista->recurso('assets/images/branding/rivendel-logo-oscuro.png')) ?>"
+                 alt="" class="h-9 w-auto flex-none">
             <span class="rv-marca truncate text-[15px] text-texto"><?= e($empresa['nombre']) ?></span>
         </a>
 

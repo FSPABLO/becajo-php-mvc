@@ -72,7 +72,7 @@ $umbralConsultaMs = (float) ($configMonitor['umbral_consulta_costosa_ms'] ?? 100
 // nunca se había necesitado antes. Si la clase todavía no existe, el
 // agente sigue recolectando (para no perder la serie de tiempo) pero
 // guarda cada muestra como FALLIDA en vez de inventar un cálculo.
-$claseMotor = 'App\\Servicios\\MotorCalculoReal';
+$claseMotor = 'App\\Models\\Calculo\\MotorCalculoReal';
 $motor = class_exists($claseMotor) ? new $claseMotor() : null;
 
 if ($motor === null) {

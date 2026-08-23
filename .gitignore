@@ -8,6 +8,10 @@ config/monitor.php
 /vendor/
 /node_modules/
 
+# Cache de PHPUnit
+/.phpunit.cache/
+.phpunit.result.cache
+
 # Basura del sistema operativo
 .DS_Store
 Thumbs.db
