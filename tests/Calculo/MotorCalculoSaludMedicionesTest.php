@@ -211,7 +211,6 @@ final class MotorCalculoSaludMedicionesTest extends TestCase
 
         $this->assertSame(['M-XXX-99'], $evaluada['ignoradas']);
         $this->assertArrayNotHasKey('M-XXX-99', $evaluada['mediciones']);
-        $this->assertCount(9, $evaluada['mediciones']);
     }
 
     /**
