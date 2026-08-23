@@ -10,70 +10,45 @@ use App\Models\Entidades\Metrica;
 use InvalidArgumentException;
 
 /**
- * El motor de cálculo: de muestra cruda a muestra evaluada.
+ * De muestra cruda a muestra evaluada .
  *
- * Esta primera etapa resuelve el bloque `mediciones` del §5 del contrato de
- * muestra, es decir, la evaluación de **cada métrica por separado**: qué valor
- * crudo se leyó, a qué salud normaliza y en qué banda cae. Los componentes, el
- * ISBD y la cobertura llegan después; hasta entonces la estructura que devuelve
- * `evaluar()` está incompleta a propósito y no debe persistirse.
+ * No consulta Oracle: recibe la muestra ya recolectada y un RepositorioMonitor
+ * del que toma el catálogo.
  *
- * El motor **no consulta Oracle**. Recibe muestras crudas —de la base o de un
- * archivo de ejemplo, le da igual— y un `RepositorioMonitor` del que solo usa,
- * por ahora, el catálogo. Mirar hacia atrás (tasas, identidad, histéresis,
- * línea base) llega con las etapas que lo necesitan.
- *
- * Dos reglas gobiernan todo lo que hay aquí:
- *
- * **Sin dato no es cero** (invariante 3). Una métrica que no se pudo recolectar
- * no aparece en `mediciones`: se anota en `fuera` con el motivo. Publicar un 0
- * en su lugar convertiría una falla de recolección en una falla de la base, que
- * es el error más peligroso que puede cometer un monitor porque se ve idéntico
- * a un dato real.
- *
- * **Las compuertas no promedian.** Una métrica de familia ESTADO se guarda con
- * su estado y sin valor normalizado. No aporta un 100 al promedio cuando está
- * abierta; cierra el componente cuando está cerrada (§1.3 del catálogo).
+ * Dos reglas gobiernan el cálculo. Sin dato no es cero (invariante 3): una
+ * métrica que no se pudo recolectar sale del denominador y se anota en `fuera`
+ * con su motivo. Y el promedio puede bajar la nota pero nunca sacar del rojo a
+ * lo que está en rojo (§5.4): el tope por peor estado se aplica en los dos
+ * niveles, métrica→componente y componente→ISBD.
  */
 final class MotorCalculoSalud implements MotorCalculo
 {
-    /** La lectura no vino en la muestra. El silencio no es un estado (§8 del contrato). */
+    /** La lectura no vino en la muestra. */
     public const SIN_LECTURA = 'SIN_LECTURA';
 
-    /** La lectura vino incompleta: declaró OK pero le falta el campo de su familia. */
+    /** Declaró OK pero le falta el campo de su familia. */
     public const LECTURA_INCOMPLETA = 'LECTURA_INCOMPLETA';
 
-    /**
-     * Tasa o identidad: su valor no se puede derivar de una sola muestra.
-     *
-     * Es un estado transitorio de esta etapa del motor, no del modelo: la
-     * derivación contra la muestra anterior se implementa con el resto de lo
-     * que depende del tiempo.
-     */
+    /** Tasa o identidad: no se deriva de una sola muestra. */
     public const SIN_DERIVAR = 'SIN_DERIVAR';
 
-    /** La conexión de su ámbito no respondió, la lectura no se intentó o no es fiable.  */
+    /** La conexión de su ámbito no respondió. Manda sobre lo que diga la lectura. */
     public const CONTEXTO_CAIDO = 'CONTEXTO_CAIDO';
 
     /**
-     * Motivos que sacan a la métrica también de las **planificadas**, no solo
-     * de las recolectadas.
-     *
-     * `NO_APLICA`  la métrica no corresponde a esta instancia y nunca iba
-     * a dar datos.
-     *`SIN_DERIVAR` una tasa en su primera muestra no es
-     * una falla de recolección: el acumulado llegó, lo que falta es el punto de
-     * comparación.
-     * Todo lo demás —`VACIA`, `ERROR`, silencio, lectura incompleta, contexto caído—
-     * sí baja la cobertura, porque en esos casos la métrica **debía** dar datos y no los dio.
-     *
      * @var list<string>
      */
-    private const FUERA_DEL_DENOMINADOR = [/'NO_APLICA', self::SIN_DERIVAR];
+    private const FUERA_DEL_DENOMINADOR = ['NO_APLICA', self::SIN_DERIVAR];
+
+    private const PESOS_ISBD = [
+        'PROCESOS' => 0.30,
+        'MEMORIA'  => 0.35,
+        'ARCHIVOS' => 0.35,
+    ];
 
     /**
-     * @param float $pisoCobertura Por debajo de este porcentaje la muestra se
-     *   marca PARCIAL y no publica índice (invariante 4). Se propone 80 %.
+     * @param float $pisoCobertura Bajo este porcentaje la muestra es PARCIAL y
+     *   no publica índice (invariante 4).
      */
     public function __construct(private readonly float $pisoCobertura = 80.0)
     {
@@ -96,12 +71,9 @@ final class MotorCalculoSalud implements MotorCalculo
         $mediciones = [];
         $fuera = [];
 
-        // Se recorre el CATÁLOGO, no las lecturas. Así una métrica planificada
-        // que el recolector no reportó aparece igual —como SIN_LECTURA— en vez
-        // de desaparecer sin dejar rastro, y el orden del resultado es siempre
-        // el mismo aunque el agente reordene su salida.
+        // Se recorre el catálogo y no las lecturas: así una métrica planificada
+        // que el recolector no reportó aparece anotada en vez de desaparecer.
         foreach ($catalogo as $codigo => $metrica) {
-
             if (!$this->contextoRespondio($contextos, $metrica->ambito)) {
                 $fuera[$codigo] = self::CONTEXTO_CAIDO;
                 continue;
@@ -145,6 +117,7 @@ final class MotorCalculoSalud implements MotorCalculo
 
         $cobertura = $planificadas === 0 ? 0.0 : round(count($mediciones) / $planificadas * 100, 1);
         $resultado = $this->resultado($contextos, $cobertura);
+        $componentes = $this->componentes($mediciones, $catalogo);
 
         $evaluada = [
             'instancia'     => (string) ($muestraCruda['instancia'] ?? ''),
@@ -154,10 +127,14 @@ final class MotorCalculoSalud implements MotorCalculo
             'cobertura_pct' => $cobertura,
             'mensaje'       => $this->mensaje($resultado, $contextos, $cobertura, $fuera),
             'mediciones'    => $mediciones,
+            'componentes'   => $componentes,
+            'indice'        => $resultado === 'OK' ? $this->indice($componentes, $mediciones) : null,
             'fuera'         => $fuera,
             'ignoradas'     => $this->lecturasDesconocidas($lecturas, $catalogo),
         ];
 
+        // La evidencia de C-066 viaja intacta (B-11). Solo si viene: un arreglo
+        // vacío diría «no hubo consultas costosas», que no es lo mismo.
         if (isset($muestraCruda['consultas_observadas'])) {
             $evaluada['consultas_observadas'] = $muestraCruda['consultas_observadas'];
         }
@@ -165,12 +142,251 @@ final class MotorCalculoSalud implements MotorCalculo
         return $evaluada;
     }
 
+    // ── Métrica ─────────────────────────────────────────────────────────────
+
     /**
-     * ¿Respondió la conexión de este ámbito?
+     * `valor_crudo` guarda la lectura sin transformar: la conversión
+     * `techo − v` de las métricas «mayor es mejor» vive dentro de la
+     * normalización y no debe llegar al dato que se persiste.
      *
-     * Un contexto que no viene declarado se considera caído. El agente abre las
-     * dos conexiones en cada muestra y el §2 del contrato le exige anotar cómo
-     * fue cada una
+     * @param array<string, mixed> $lectura
+     * @return array<string, mixed>|null
+     */
+    private function evaluarProporcion(Metrica $metrica, array $lectura): ?array
+    {
+        if (!isset($lectura['valor']) || !is_numeric($lectura['valor'])) {
+            return null;
+        }
+
+        if ($metrica->umbral === null) {
+            throw new InvalidArgumentException(
+                "{$metrica->codigo} no es compuerta y no tiene umbral vigente: el catálogo está incompleto."
+            );
+        }
+
+        $crudo = (float) $lectura['valor'];
+        $salud = Escala::normalizar($crudo, $metrica->umbral, $metrica->uMax, $metrica->sentido);
+
+        return [
+            'valor_crudo'       => $crudo,
+            'valor_normalizado' => Escala::publicar($salud),
+            // La banda se decide sobre la salud sin redondear: en las fronteras,
+            // el valor publicado y el exacto caen en bandas distintas.
+            'estado'            => Escala::bandaPorSalud($salud),
+            'umbral_id'         => $metrica->umbral->id,
+        ];
+    }
+
+    /**
+     * Sin valor normalizado: una compuerta no mide cuán bien está algo. El
+     * `detalle` se conserva para que la alerta pueda decir qué falta.
+     *
+     * @param array<string, mixed> $lectura
+     * @return array<string, mixed>|null
+     */
+    private function evaluarCompuerta(array $lectura): ?array
+    {
+        if (!isset($lectura['abierta']) || !is_bool($lectura['abierta'])) {
+            return null;
+        }
+
+        $abierta = $lectura['abierta'];
+
+        $medicion = [
+            'abierta' => $abierta,
+            'estado'  => $abierta ? Escala::OPTIMO : Escala::CRITICO,
+        ];
+
+        if (isset($lectura['detalle']) && is_array($lectura['detalle'])) {
+            $medicion['detalle'] = $lectura['detalle'];
+        }
+
+        return $medicion;
+    }
+
+    // ── Componente ──────────────────────────────────────────────────────────
+
+    /**
+     * `I = Σ(peso × salud) / Σpeso` sobre lo recolectado, topado por el peor
+     * estado del componente.
+     *
+     * Un componente sin mediciones no aparece: su ausencia es distinta de un
+     * cero, y repartir su peso es cosa del ISBD.
+     *
+     * @param array<string, array<string, mixed>> $mediciones
+     * @param array<string, Metrica> $catalogo
+     * @return array<string, array<string, mixed>>
+     */
+    private function componentes(array $mediciones, array $catalogo): array
+    {
+        $agrupadas = [];
+
+        foreach ($mediciones as $codigo => $medicion) {
+            $agrupadas[$catalogo[$codigo]->componente][$codigo] = $medicion;
+        }
+
+        ksort($agrupadas);
+
+        $indicadores = [];
+
+        foreach ($agrupadas as $componente => $suyas) {
+            $indicadores[$componente] = $this->indicador($suyas, $catalogo);
+        }
+
+        return $indicadores;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $mediciones
+     * @param array<string, Metrica> $catalogo
+     * @return array<string, mixed>
+     */
+    private function indicador(array $mediciones, array $catalogo): array
+    {
+        $cerradas = [];
+        $peso = 0.0;
+        $acumulado = 0.0;
+        $estados = [];
+
+        foreach ($mediciones as $codigo => $medicion) {
+            $estados[] = (string) $medicion['estado'];
+
+            if (($medicion['abierta'] ?? null) === false) {
+                $cerradas[] = (string) $codigo;
+                continue;
+            }
+
+            // Una compuerta abierta entra al peor estado, no al promedio.
+            if (!isset($medicion['valor_normalizado'])) {
+                continue;
+            }
+
+            $suPeso = (float) ($catalogo[$codigo]->peso ?? 0);
+
+            if ($suPeso <= 0.0) {
+                continue;
+            }
+
+            $peso += $suPeso;
+            $acumulado += $suPeso * (float) $medicion['valor_normalizado'];
+        }
+
+        // Compuerta cerrada: 0 y CRÍTICO sin promediar (§1.3 del catálogo).
+        if ($cerradas !== []) {
+            return [
+                'bruto'               => 0.0,
+                'publicado'           => 0.0,
+                'estado'              => Escala::CRITICO,
+                'compuertas_cerradas' => $cerradas,
+            ];
+        }
+
+        $peorEstado = Escala::peor($estados);
+
+        // Solo compuertas abiertas: hay estado, pero no hay número que publicar.
+        if ($peso <= 0.0) {
+            return ['bruto' => null, 'publicado' => null, 'estado' => $peorEstado];
+        }
+
+        $bruto = $acumulado / $peso;
+        $publicado = Escala::aplicarTope($bruto, $peorEstado);
+
+        return [
+            'bruto'     => Escala::publicar($bruto),
+            'publicado' => Escala::publicar($publicado),
+            'estado'    => Escala::bandaPorSalud($publicado),
+        ];
+    }
+
+    // ── Índice ──────────────────────────────────────────────────────────────
+
+    /**
+     * `ISBD_bruto = 0,30·IP + 0,35·IM + 0,35·IA`, topado por el peor estado
+     * entre los tres.
+     *
+     * Promedia los valores **publicados** y no los brutos: si promediara los
+     * brutos, un componente que el tope ya rescató del rojo volvería a entrar
+     * como si no lo estuviera. Un componente sin datos reparte su peso entre
+     * los otros; no cuenta como salud cero.
+     *
+     * @param array<string, array<string, mixed>> $componentes
+     * @param array<string, array<string, mixed>> $mediciones
+     * @return array<string, mixed>|null
+     */
+    private function indice(array $componentes, array $mediciones): ?array
+    {
+        $peso = 0.0;
+        $acumulado = 0.0;
+        $estados = [];
+
+        foreach (self::PESOS_ISBD as $componente => $suPeso) {
+            $indicador = $componentes[$componente] ?? null;
+
+            if ($indicador === null || $indicador['publicado'] === null) {
+                continue;
+            }
+
+            $peso += $suPeso;
+            $acumulado += $suPeso * (float) $indicador['publicado'];
+            $estados[] = (string) $indicador['estado'];
+        }
+
+        if ($peso <= 0.0) {
+            return null;
+        }
+
+        $peorEstado = Escala::peor($estados);
+        $bruto = $acumulado / $peso;
+        $isbd = Escala::aplicarTope($bruto, $peorEstado);
+
+        return [
+            'isbd_bruto' => Escala::publicar($bruto),
+            'isbd'       => Escala::publicar($isbd),
+            'estado'     => Escala::bandaPorSalud($isbd),
+            'causa'      => $this->causa($mediciones, $componentes, $peorEstado),
+        ];
+    }
+
+    /**
+     * Las métricas en el peor estado observado, para el invariante 5: el índice
+     * nunca se muestra sin decir qué lo explica.
+     *
+     * @param array<string, array<string, mixed>> $mediciones
+     * @param array<string, array<string, mixed>> $componentes
+     * @return list<string>
+     */
+    private function causa(array $mediciones, array $componentes, ?string $peorEstado): array
+    {
+        if ($peorEstado === null) {
+            return [];
+        }
+
+        $causa = [];
+
+        foreach ($componentes as $componente => $indicador) {
+            if (!isset(self::PESOS_ISBD[$componente]) || $indicador['estado'] !== $peorEstado) {
+                continue;
+            }
+
+            foreach ($indicador['compuertas_cerradas'] ?? [] as $codigo) {
+                $causa[] = (string) $codigo;
+            }
+        }
+
+        foreach ($mediciones as $codigo => $medicion) {
+            if (($medicion['estado'] ?? null) === $peorEstado && !in_array((string) $codigo, $causa, true)) {
+                $causa[] = (string) $codigo;
+            }
+        }
+
+        return $causa;
+    }
+
+    // ── Cabecera de la muestra ──────────────────────────────────────────────
+
+    /**
+     * Un contexto no declarado se considera caído: el agente debe anotar cómo
+     * fue cada conexión, y el silencio no es éxito.
      *
      * @param array<string, array<string, mixed>> $contextos
      */
@@ -180,16 +396,8 @@ final class MotorCalculoSalud implements MotorCalculo
     }
 
     /**
-     * OK, PARCIAL o FALLIDA.
-     *
-     * FALLIDA cuando ninguna conexión respondió: la instancia no contestó a esa
-     * hora. La muestra se persiste igual, porque saltarla dejaría un hueco que
-     * después parece un periodo sano.
-     *
-     * PARCIAL cuando la cobertura queda por debajo del piso. Es el invariante 4:
-     * un índice calculado sobre la mitad de la evidencia es peor que ningún
-     * índice, porque parece uno bueno. El paso que publica el ISBD consulta
-     * este campo, no lo recalcula.
+     * FALLIDA cuando ninguna conexión respondió; la muestra se persiste igual,
+     * porque saltarla dejaría un hueco que después parece un periodo sano.
      *
      * @param array<string, array<string, mixed>> $contextos
      */
@@ -211,11 +419,8 @@ final class MotorCalculoSalud implements MotorCalculo
     }
 
     /**
-     * El texto que acompaña a una muestra que no salió bien.
-     *
-     * Existe para que el tablero pueda decir «muestra incompleta» con su razón
-     * en lugar de un número. Una muestra OK no lleva mensaje: el dato habla
-     * solo.
+     * Resume los motivos de exclusión porque `fuera` no se persiste: sin esto,
+     * de una muestra guardada sobrevive la cifra pero no el porqué.
      *
      * @param array<string, array<string, mixed>> $contextos
      * @param array<string, string> $fuera
@@ -244,11 +449,7 @@ final class MotorCalculoSalud implements MotorCalculo
         );
     }
 
-    /**
-     * «CONTEXTO_CAIDO 10, SIN_LECTURA 3», ordenado de más a menos frecuente.
-     *
-     * @param array<string, string> $fuera
-     */
+    /** @param array<string, string> $fuera */
     private function resumenDeMotivos(array $fuera): string
     {
         $cuenta = [];
@@ -276,82 +477,9 @@ final class MotorCalculoSalud implements MotorCalculo
         return ' Fuera: ' . implode(', ', $partes) . '.';
     }
 
-    /**
-     * Una proporción: se normaliza y se clasifica por la banda de su salud.
-     *
-     * `valor_crudo` guarda la lectura **tal como se midió**, sin transformar.
-     * Para una métrica «mayor es mejor» la transformación `techo − v` ocurre
-     * dentro de la normalización y no debe filtrarse al dato que se persiste:
-     * el tablero tiene que poder decir «18,8 % libre», que es lo que un DBA
-     * reconoce, y no «81,2» que no significa nada fuera del motor.
-     *
-     * @param array<string, mixed> $lectura
-     * @return array<string, mixed>|null
-     */
-    private function evaluarProporcion(Metrica $metrica, array $lectura): ?array
-    {
-        if (!isset($lectura['valor']) || !is_numeric($lectura['valor'])) {
-            return null;
-        }
-
-        if ($metrica->umbral === null) {
-            throw new InvalidArgumentException(
-                "{$metrica->codigo} no es compuerta y no tiene umbral vigente: el catálogo está incompleto."
-            );
-        }
-
-        $crudo = (float) $lectura['valor'];
-
-        $salud = Escala::normalizar($crudo, $metrica->umbral, $metrica->uMax, $metrica->sentido);
-
-        return [
-            'valor_crudo'       => $crudo,
-            'valor_normalizado' => Escala::publicar($salud),
-            // La banda se decide sobre la salud SIN redondear: en las fronteras,
-            // el valor publicado y el exacto pueden caer en bandas distintas.
-            'estado'            => Escala::bandaPorSalud($salud),
-            'umbral_id'         => $metrica->umbral->id,
-        ];
-    }
+    // ── Catálogo ────────────────────────────────────────────────────────────
 
     /**
-     * Una compuerta: abierta u ÓPTIMO, cerrada y CRÍTICO. Sin valor normalizado.
-     *
-     * `detalle` se conserva aunque `medicion` no tenga columna para él. Es lo
-     * que permite que la alerta diga qué proceso falta en vez de «compuerta
-     * cerrada», que obliga a ir a mirar a mano. Viaja dentro de la muestra
-     * evaluada, que es lo que consume el motor de alertas antes de persistir.
-     *
-     * @param array<string, mixed> $lectura
-     * @return array<string, mixed>|null
-     */
-    private function evaluarCompuerta(array $lectura): ?array
-    {
-        if (!isset($lectura['abierta']) || !is_bool($lectura['abierta'])) {
-            return null;
-        }
-
-        $abierta = $lectura['abierta'];
-
-        $medicion = [
-            'abierta' => $abierta,
-            'estado'  => $abierta ? Escala::OPTIMO : Escala::CRITICO,
-        ];
-
-        if (isset($lectura['detalle']) && is_array($lectura['detalle'])) {
-            $medicion['detalle'] = $lectura['detalle'];
-        }
-
-        return $medicion;
-    }
-
-    /**
-     * Lecturas que el catálogo no conoce.
-     *
-     * No detienen la evaluación de las demás: es lo que pasa cuando el agente
-     * va por delante del catálogo, y el §8 del contrato pide ignorarlas y
-     * registrarlas.
-     *
      * @param array<string, mixed> $lecturas
      * @param array<string, Metrica> $catalogo
      * @return list<string>
