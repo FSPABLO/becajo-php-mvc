@@ -69,20 +69,26 @@ final class BaseDatos
      * textarea los pasa sin esfuerzo. Con $clobs se enlaza un descriptor de
      * LOB, que no tiene ese límite.
      *
+     * $confirmar en false NO hace COMMIT: se usa dentro de una transacción
+     * abierta con iniciarTransaccion(), para que varias sentencias se
+     * confirmen o reviertan juntas con confirmarTransaccion() / revertirTransaccion().
+     * Por omisión queda en true — el comportamiento de siempre no cambia para
+     * quien no pide lo contrario.
+     *
      * @param array<string, scalar|null> $parametros
      * @param array<string, string|null> $clobs
      */
-    public function ejecutar(string $sql, array $parametros = [], array $clobs = []): int
+    public function ejecutar(string $sql, array $parametros = [], array $clobs = [], bool $confirmar = true): int
     {
         if ($clobs === []) {
-            $sentencia = $this->ejecutarSentencia($sql, $parametros, confirmar: true);
+            $sentencia = $this->ejecutarSentencia($sql, $parametros, $confirmar);
             $afectadas = oci_num_rows($sentencia);
             oci_free_statement($sentencia);
 
             return $afectadas === false ? 0 : $afectadas;
         }
 
-        return $this->ejecutarConClobs($sql, $parametros, $clobs);
+        return $this->ejecutarConClobs($sql, $parametros, $clobs, $confirmar);
     }
 
     /**
@@ -94,9 +100,11 @@ final class BaseDatos
      *
      *     INSERT INTO auditoria (...) VALUES (...) RETURNING id_auditoria INTO :id
      *
+     * $confirmar en false no hace COMMIT — ver la nota de ejecutar().
+     *
      * @param array<string, scalar|null> $parametros
      */
-    public function insertar(string $sql, array $parametros = [], string $parametroId = 'id'): int
+    public function insertar(string $sql, array $parametros = [], string $parametroId = 'id', bool $confirmar = true): int
     {
         $sentencia = oci_parse($this->conexion(), $sql);
 
@@ -118,7 +126,9 @@ final class BaseDatos
         $id = 0;
         oci_bind_by_name($sentencia, ':' . ltrim($parametroId, ':'), $id, 32, \SQLT_INT);
 
-        if (!oci_execute($sentencia, \OCI_COMMIT_ON_SUCCESS)) {
+        $modo = $confirmar ? \OCI_COMMIT_ON_SUCCESS : \OCI_NO_AUTO_COMMIT;
+
+        if (!oci_execute($sentencia, $modo)) {
             throw $this->error('Falló el INSERT', $sentencia);
         }
 
@@ -208,6 +218,50 @@ final class BaseDatos
         } catch (\RuntimeException) {
             return false;
         }
+    }
+
+    // ── Transacciones ────────────────────────────────────────────────────────
+    //
+    // Por omisión, ejecutar() e insertar() confirman cada sentencia por su
+    // cuenta (OCI_COMMIT_ON_SUCCESS) — es lo que necesita casi todo el
+    // repositorio, una sentencia por operación. Cuando varias sentencias deben
+    // vivir o morir juntas —guardarMuestra() del monitor inserta una cabecera,
+    // N mediciones y opcionalmente un índice con sus causas, y "una muestra a
+    // medio guardar es peor que ninguna" (contrato-repositorio-monitor.md §3)—
+    // se abre una transacción y cada llamada intermedia pasa confirmar: false.
+
+    /**
+     * Abre una transacción. oci8 no tiene un "BEGIN" explícito: la transacción
+     * empieza de hecho en la primera sentencia sin confirmar. Este método solo
+     * fuerza que la conexión ya esté abierta, para que un fallo de conexión no
+     * aparezca a mitad de una transacción que el llamador cree ya iniciada.
+     */
+    public function iniciarTransaccion(): void
+    {
+        $this->conexion();
+    }
+
+    public function confirmarTransaccion(): void
+    {
+        if (!oci_commit($this->conexion())) {
+            throw $this->error('No se pudo confirmar la transacción', $this->conexion());
+        }
+    }
+
+    public function revertirTransaccion(): void
+    {
+        oci_rollback($this->conexion());
+    }
+
+    /**
+     * Tiempo límite por llamada, en segundos. Lo usa bin/monitor.php: una
+     * instancia vigilada que no responde no debe dejar al agente esperando
+     * indefinidamente (§8.2 del plan de la parte 2). El resto de la
+     * aplicación no lo necesita y no lo llama.
+     */
+    public function establecerTiempoLimite(int $segundos): void
+    {
+        oci_set_call_timeout($this->conexion(), $segundos * 1000);
     }
 
     // ── Interno ──────────────────────────────────────────────────────────────
@@ -307,7 +361,7 @@ final class BaseDatos
      * @param array<string, scalar|null> $parametros
      * @param array<string, string|null> $clobs
      */
-    private function ejecutarConClobs(string $sql, array $parametros, array $clobs): int
+    private function ejecutarConClobs(string $sql, array $parametros, array $clobs, bool $confirmar = true): int
     {
         $conexion = $this->conexion();
         $sentencia = oci_parse($conexion, $sql);
@@ -352,7 +406,9 @@ final class BaseDatos
                 $descriptor->writeTemporary($texto, \OCI_TEMP_CLOB);
             }
 
-            if (!oci_execute($sentencia, \OCI_COMMIT_ON_SUCCESS)) {
+            $modo = $confirmar ? \OCI_COMMIT_ON_SUCCESS : \OCI_NO_AUTO_COMMIT;
+
+            if (!oci_execute($sentencia, $modo)) {
                 throw $this->error('Falló la ejecución de la sentencia', $sentencia);
             }
 

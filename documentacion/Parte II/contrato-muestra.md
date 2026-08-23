@@ -91,7 +91,7 @@ diferencia. Es la misma razón por la que la histéresis no está en el recolect
 contenedor— y pueden fallar por separado. Sin este campo, doce lecturas en error
 no dirían si el problema fue de doce métricas o de una conexión.
 
-### 3.1 Los tres tipos de lectura
+### 3.1 Los cuatro tipos de lectura
 
 Uno por familia de señal. El tipo no viaja en la lectura: lo declara el catálogo.
 
@@ -113,6 +113,25 @@ Uno por familia de señal. El tipo no viaja en la lectura: lo declara el catálo
     'acumulados' => ['esperas' => 8412, 'micros' => 10430880],
 ],
 ```
+
+**Identidad** — igual que una tasa, el recolector entrega solo el valor de este
+instante y no dice nada de la historia; a diferencia de una tasa, lo que se
+compara no es una magnitud sino una cadena, y lo que produce no es una medida
+derivada sino una compuerta (§1.3 del catálogo). La usa `M-PRO-05`, que detecta
+un reinicio de proceso de fondo comparando el `spid` actual contra el de la
+muestra anterior — algo que `M-PRO-03` no ve porque solo mira una foto:
+
+```php
+'M-PRO-05' => [
+    'estado'    => 'OK',
+    'identidad' => 'CKPT:1238,DBW0:1236,LGWR:1237,PMON:1234,SMON:1235',
+],
+```
+
+Orden fijo alfabético por nombre de proceso: la comparación contra la huella
+anterior (`RepositorioMonitor::huellasAnteriores()`) es una igualdad de cadenas,
+no una interpretación de qué cambió, y no puede depender del orden en que Oracle
+devolvió las filas.
 
 **Compuerta** — booleano y el detalle de qué falta:
 
@@ -307,6 +326,7 @@ Tres columnas de `metrica` existen por lo que aquí se define:
 | `ambito` | `RAIZ` o `CONTENEDOR`: decide en qué conexión se recolecta y qué contexto la deja fuera cuando falla |
 | `acumulada` | Si es verdadera, el recolector entrega `acumulados` y el motor deriva la tasa |
 | `u_max` | El techo de la normalización, que no siempre es 100 (`M-MEM-02` llega a 150) |
+| `es_identidad` | Si es verdadera, el recolector entrega `identidad` y el motor la compara contra `huellasAnteriores()` en vez de normalizarla (B-7 del plan) |
 
 ---
 

@@ -2,6 +2,7 @@
 .env
 .env.local
 config/base_datos.php
+config/monitor.php
 
 # Dependencias
 /vendor/

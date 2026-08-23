@@ -39,6 +39,37 @@ services:
         # que web espere hasta que el healthcheck de abajo pase.
         condition: service_healthy
 
+  monitor:
+    # Agente de monitoreo (parte 2, §4.1 del plan): recolecta cada N minutos,
+    # fuera de la petición web, para que una instancia colgada no deje una
+    # página esperando y para que la serie de tiempo tenga regularidad real.
+    # Misma imagen que "web" -ya trae oci8-, pero docker/monitor.sh
+    # reemplaza el CMD de abajo: no arranca Apache, corre bin/monitor.php en
+    # un bucle.
+    build: .
+    platform: linux/amd64
+    container_name: becajo-monitor
+    entrypoint: ["/usr/local/bin/monitor.sh"]
+    volumes:
+      - .:/var/www/html
+    environment:
+      # Conexión de ESCRITURA (la cuenta becajo, la misma que usa "web"): el
+      # esquema del monitor vive en este mismo usuario (§7 del plan). No es
+      # la cuenta de solo lectura del agente -esa es C##RIVENDEL_MONITOR,
+      # abajo- y nunca debe confundirse con ella.
+      BD_CADENA: oracle:1521/FREEPDB1
+      BD_USUARIO: becajo
+      BD_CLAVE: becajo
+      # Credenciales de LECTURA contra la instancia vigilada
+      # (Scripts/00_usuario_monitor.sql). host/puerto/servicio van por
+      # instancia en la tabla `instancia`, no aquí (config/monitor.ejemplo.php).
+      BD_MONITOR_USUARIO: C##RIVENDEL_MONITOR
+      BD_MONITOR_CLAVE: RivendelMonitor2026
+      BD_MONITOR_INTERVALO_MINUTOS: "5"
+    depends_on:
+      oracle:
+        condition: service_healthy
+
   oracle:
     # Oracle Database 23ai Free: gratuita para desarrollo y docencia.
     # La variante "slim" ocupa bastante menos y alcanza de sobra para el

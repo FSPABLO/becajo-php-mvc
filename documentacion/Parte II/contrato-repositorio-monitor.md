@@ -169,6 +169,18 @@ interface RepositorioMonitor
     public function acumuladosAnteriores(string $clave): array;
 
     /**
+     * La huella de identidad de la muestra anterior, por código de métrica —
+     * el equivalente de acumuladosAnteriores() para métricas que comparan una
+     * identidad (`spid`) en vez de una magnitud. La usa M-PRO-05 para detectar
+     * un reinicio de proceso de fondo. Arreglo vacío si no hay muestra previa,
+     * y en ese caso la métrica sale del denominador — no es un error
+     * (B-7, Anexo A del plan).
+     *
+     * @return array<string, string>
+     */
+    public function huellasAnteriores(string $clave): array;
+
+    /**
      * Los últimos estados publicados de una métrica, del más reciente al más
      * antiguo. Alimenta la histéresis: k de las últimas n muestras (§5.5).
      *
@@ -300,7 +312,7 @@ Siete, en `App\Models\Entidades`. Ninguna choca con las once que ya existen.
 |---|---|
 | `Instancia` | Una base vigilada: clave, motor, entorno, criticidad, si es demostrativa |
 | `Muestra` | Cabecera de una recolección con su índice: `tomada_en`, `resultado`, `cobertura_pct`, `isbd`, `isbd_bruto`, `estado`, `causa` |
-| `Medicion` | Una métrica dentro de una muestra: crudo, normalizado, estado, `umbral_id` |
+| `Medicion` | Una métrica dentro de una muestra: crudo, normalizado, estado, `umbral_id`, `valor_acumulado` y `huella` |
 | `Metrica` | Entrada del catálogo con sus umbrales vigentes |
 | `Umbral` | Un juego de cuatro umbrales con su vigencia |
 | `Alerta` | Ciclo de vida completo: nivel actual y máximo, ocurrencias, responsable, acción |
@@ -314,6 +326,12 @@ vista tenga que pedir dos cosas para pintar una tarjeta.
 `valor_acumulado`**, nulable. Es donde las métricas de tasa guardan el total leído,
 para que la muestra siguiente pueda restar. Sin ella, `acumuladosAnteriores()` no
 tiene de dónde leer y `M-PRO-04` no se puede calcular nunca.
+
+**Y una segunda que tampoco estaba prevista: `huella`**, nulable, texto. Es el
+equivalente de `valor_acumulado` para métricas que comparan una identidad en vez
+de una magnitud — hoy solo `M-PRO-05`, agregada al catálogo después de cerrada
+esta Fase 0 (B-7, Anexo A del plan). Sin ella, `huellasAnteriores()` no tiene de
+dónde leer y esa compuerta no puede detectar un reinicio.
 
 ---
 
