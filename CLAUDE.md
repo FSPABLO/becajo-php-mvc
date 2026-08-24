@@ -244,6 +244,20 @@ Sobre los gráficos:
   Sin índice publicado el anillo adelgaza a un punteado fino y pierde las muescas
   — un anillo grueso a trazos parece un engranaje, y uno grueso lleno de gris
   parece un valor bajo.
+
+  **El carril va HUNDIDO y el arco EXTRUIDO**: un canal labrado en el pergamino
+  con el índice apoyado dentro. Es la misma pareja de gestos que el producto usa
+  fuera del SVG —y un carril es, literalmente, la pista de una barra de progreso,
+  que es de lo que habla `.rv-hundido`—, así que separa escala y dato por una vía
+  más que el color. El nivel es `rv-relieve-pleno`, el mismo de la tarjeta y el
+  botón de «nueva auditoría»: en el nivel por defecto, calibrado para una tarjeta
+  de 18 px de desenfoque, un anillo de catorce de grueso apenas insinúa el surco.
+  El arco lleva algo MENOS de desplazamiento que el surco a propósito —se apoya
+  dentro del canal, no flota sobre él—, y subirlo más lo despega: en la región
+  oscura, donde el realce es blanco al 5 %, la sombra clara deja de leerse como
+  canto y pasa a leerse como halo. **Sin índice el anillo va PLANO**: el relieve
+  extruye una superficie, y labrar un canal donde no hay nada que alojar promete
+  una pieza que falta.
 - **La tendencia** (`monitor-tendencia`) son 40 lecturas. **Las mesetas planas
   sobre 40, 60, 75 y 90 no son un fallo del dibujo**: son las lecturas en las que
   mordió el eslabón más débil, y por eso caen clavadas en la frontera de la banda.
@@ -427,8 +441,16 @@ utilidades de Tailwind siguen el cambio solas.
   `textarea`. El alto se declara con `rows`; no se devuelve el tirador en
   ninguna vista.
 - **Neumorfismo**: `.rv-extruido` / `.rv-hundido` (+ `.rv-relieve-sutil` en
-  tablas densas). El hundido señala «aquí se recibe algo»: campos, franja de
-  mensajes, estados vacíos.
+  tablas densas y `.rv-relieve-pleno` en lo que manda en su pantalla). El hundido
+  señala «aquí se recibe algo»: campos, franja de mensajes, estados vacíos.
+  **Dentro de un SVG el relieve no es `box-shadow`, son filtros**: los mismos
+  valores llegan como `flood-color` / `flood-opacity` desde `.rv-nm-sombra` y
+  `.rv-nm-realce` (sección «Relieve dentro de un SVG» de `rivendel.css`), de modo
+  que cambiar la paleta o el nivel sigue siendo tocar un solo sitio y los
+  gráficos acompañan. Los desplazamientos, en cambio, viven en cada componente
+  y en unidades de SU viewBox: **los 7 px de una tarjeta sobre una marca de
+  gráfico no son relieve, son un borrón**. Ya lo usan `evolucion-mensual`,
+  `radar-dominios`, `indice-historico` y `monitor-medidor`.
 
 ## Arquitectura
 
