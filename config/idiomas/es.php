@@ -32,6 +32,7 @@ return [
     'panel.grupo_auditorias'      => 'Auditorías',
     'panel.grupo_administracion'  => 'Administración',
     'panel.grupo_referencia'      => 'Referencia',
+    'panel.grupo_monitoreo'       => 'Monitoreo',
     'panel.catalogo_controles'    => 'Catálogo de controles',
     'panel.matriz_cid'            => 'Mapa de procesos vs C-I-D',
     'panel.remediaciones_vencidas' => 'Remediaciones vencidas',
@@ -311,4 +312,128 @@ return [
     'eval.nueva_modelos_texto'   => 'Otros modelos de medición además del ISO 27000. Llegan con el plan Deluxe, '
                                   . 'que cruza las equivalencias entre los tres marcos.',
     'eval.nueva_ver_plan'        => 'Ver el plan Deluxe →',
+
+    // ── Monitor de salud de bases de datos (parte 2) ─────────────────────────
+    //
+    // Vocabulario ÚNICO de cinco bandas: las mismas claves sirven para una
+    // métrica, un componente y el índice. Si alguna pantalla necesitara un
+    // segundo juego de nombres, eso sería la tabla de traducción que el §5.2
+    // del plan existe para evitar.
+    'mon.banda_optimo'       => 'Óptimo',
+    'mon.banda_saludable'    => 'Saludable',
+    'mon.banda_advertencia'  => 'Advertencia',
+    'mon.banda_degradado'    => 'Degradado',
+    'mon.banda_critico'      => 'Crítico',
+    'mon.banda_sin_dato'     => 'Sin dato',
+
+    'mon.monitor'            => 'Monitor',
+    'mon.titulo'             => 'Monitor de salud de bases de datos',
+
+    'mon.instancia_no_encontrada' => 'No hay ninguna instancia con la clave «%s». Se muestra la primera de la cartera.',
+
+    'mon.duracion'           => 'Duración de la toma',
+    'mon.hace_min'           => 'hace %s min',
+    'mon.hace_horas'         => 'hace %s h %s min',
+
+    'mon.contexto_raiz'       => 'Conexión a la raíz sin respuesta',
+    'mon.contexto_contenedor' => 'Conexión al contenedor sin respuesta',
+
+    'mon.isbd'               => 'ISBD',
+    'mon.formula'            => 'ISBD = 0,30·Procesos + 0,35·Memoria + 0,35·Archivos, sobre los valores '
+                              . 'ya publicados de cada componente y topado por el peor estado observado.',
+
+    'mon.sin_respuesta'      => 'Sin respuesta',
+    'mon.caida_explicacion'  => 'La instancia no respondió a esta toma. La muestra se guarda igual, porque '
+                              . '«no respondió a esta hora» también es un dato: saltarla dejaría un hueco '
+                              . 'que después parece un periodo sano.',
+    'mon.ultimo_conocido'    => 'Último valor conocido',
+
+    'mon.muestra_incompleta' => 'Muestra incompleta',
+    'mon.incompleta_explicacion' => 'La cobertura de esta muestra es %s y el piso es %s, así que no se '
+                              . 'publica índice. Un índice calculado sobre la mitad de la evidencia es '
+                              . 'peor que ningún índice, porque parece uno bueno.',
+
+    'mon.componentes'        => 'Componentes',
+    'mon.componentes_vacio'  => 'No hay componentes que calcular: la instancia no respondió a esta toma, así que ninguna métrica llegó a medirse.',
+    'mon.comp_procesos'      => 'Procesos',
+    'mon.comp_memoria'       => 'Memoria',
+    'mon.comp_archivos'      => 'Archivos',
+    'mon.peso'               => 'peso %s %%',
+    'mon.comp_topado'        => 'Promedio %s, topado en %s por el peor estado del componente.',
+    'mon.comp_sin_metricas'  => 'Ninguna de sus métricas se pudo recolectar en esta muestra.',
+
+    // Selector de base de datos vigilada
+    'mon.base_vigilada'      => 'Base de datos vigilada',
+    'mon.conectada'          => 'Conectada',
+    'mon.sin_conexion'       => 'Sin conexión',
+
+    // Consola de operación
+    'mon.consola'            => 'Panel de operación',
+    'mon.medidor_lectura'    => 'Índice de salud de la base de datos: %s, banda %s.',
+    'mon.desc_procesos'      => 'Cupo de sesiones y procesos, vitalidad de los procesos de fondo y espera de escritura de redo.',
+    'mon.desc_memoria'       => 'PGA contra su objetivo, aciertos de caché de PGA y memoria libre de la shared pool.',
+    'mon.desc_archivos'      => 'Ocupación de los tablespaces, datafiles en línea y grupos de redo sin miembros inválidos.',
+
+    // Tendencia del ISBD
+    'mon.tendencia'          => 'Tendencia del ISBD',
+    'mon.isbd_publicado'     => 'ISBD publicado',
+    'mon.leyenda_topada'     => 'Lectura topada por el eslabón más débil',
+    'mon.leyenda_hueco'      => 'Sin índice publicado',
+    'mon.sin_tendencia'      => 'Todavía no hay suficientes lecturas para dibujar una tendencia.',
+    'mon.tendencia_resumen'  => 'Tendencia del índice de salud sobre %s lecturas; la última publicada es %s y %s quedaron topadas por el eslabón más débil.',
+    'mon.tendencia_pie'      => '%s lecturas, una cada %s minutos: las últimas %s minutos. Las mesetas planas sobre '
+                              . '40, 60, 75 y 90 no son un fallo del dibujo: son las lecturas en las que el promedio '
+                              . 'daba más y el eslabón más débil lo bajó a la frontera de la banda.',
+    'mon.punto_lectura'      => 'Lectura %s: %s',
+    'mon.punto_topado'       => 'Lectura %s: %s, topada por el eslabón más débil',
+
+    // Fichas de índice y semáforo
+    'mon.indices_lista'      => 'Índices que componen el ISBD',
+    'mon.ver_procesos'       => 'Ver los %s procesos evaluados',
+    'mon.semaforo_leyenda'   => 'El semáforo agrupa las cinco bandas del instrumento, con sus mismas '
+                              . 'fronteras: rojo es Crítico o Degradado (hasta 60), ámbar es Advertencia '
+                              . '(60 a 75) y verde es Saludable u Óptimo (más de 75). El ISBD se pinta '
+                              . 'de rojo si cualquiera de los tres índices está en rojo, y solo se pinta '
+                              . 'de verde cuando los tres lo están.',
+
+    // Tabla de procesos por índice
+    'mon.procesos_de'        => 'Procesos evaluados · %s',
+    'mon.sin_procesos'       => 'Este índice no tiene procesos declarados en el catálogo.',
+    'mon.col_proceso'        => 'Proceso',
+    'mon.col_metricas'       => 'Métricas',
+    'mon.col_resultado'      => 'Resultado',
+    'mon.col_descripcion'    => 'Descripción',
+    'mon.col_recomendacion'  => 'Recomendación',
+    'mon.ayuda_tabla'        => 'Cómo se lee esta tabla',
+    'mon.ayuda_consola'      => 'Cómo se calcula y se colorea este panel',
+    'mon.res_correcto'       => 'Correcto',
+    'mon.res_hallazgo'       => 'Con hallazgo',
+    'mon.res_sin_dato'       => 'Sin dato',
+    'mon.procesos_nota'      => 'Cada métrica tiene su columna y va normalizada de 0 a 1, para que '
+                              . 'midan lo mismo aunque observen cosas distintas. Una celda EN BLANCO '
+                              . 'significa que esa métrica no evalúa a ese proceso; un guion, que sí lo '
+                              . 'evalúa pero no se pudo recolectar. Un proceso se marca correcto cuando '
+                              . 'ninguna de sus métricas enciende el semáforo, y «sin dato» no es un '
+                              . 'fallo suyo: por eso no lleva aspa.',
+
+    // Gráfico de memoria
+    'mon.memoria_titulo'     => 'Memoria de la base de datos',
+    'mon.memoria_pie'        => 'Se añade una lectura cada %s segundos · ventana de %s minutos',
+    'mon.memoria_nota'       => 'Maqueta: la lectura que aparece cada medio minuto la genera este '
+                              . 'navegador, no el agente de recolección. El eje horizontal es el tiempo '
+                              . 'activo de la instancia, no la hora del reloj.',
+    'mon.mem_de_total'       => 'de %s asignados',
+    'mon.mem_normal'         => 'Bajo el umbral',
+    'mon.mem_sobre_aceptacion' => 'Sobre el umbral de aceptación',
+    'mon.mem_sobre_peligro'  => 'Sobre el umbral de peligro',
+    'mon.mem_resumen'        => 'Memoria en uso: %s de %s asignados, un %s por ciento.',
+    'mon.umbral_aceptacion'  => 'Aceptación %s %% · %s',
+    'mon.umbral_peligro'     => 'Peligro %s %% · %s',
+    'mon.eje_uptime'         => 'Tiempo activo de la instancia',
+    'mon.uptime_min'         => '%s min',
+    'mon.uptime_horas'       => '%s h %s min',
+
+    'mon.vacio_titulo'       => 'Todavía no hay instancias vigiladas',
+    'mon.vacio_texto'        => 'Cuando el agente de recolección deje su primera muestra, esta pantalla '
+                              . 'mostrará el índice de salud de cada instancia, sus componentes y sus alertas.',
 ];

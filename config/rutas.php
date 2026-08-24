@@ -9,6 +9,7 @@ use App\Controllers\ContactoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
+use App\Controllers\MonitorController;
 use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
@@ -75,6 +76,15 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/remediaciones/{idRemediacion}/programar', [AuditoriaController::class, 'programarReauditoria']);
     $enrutador->post('/remediaciones/{idRemediacion}/estado', [AuditoriaController::class, 'actualizarEstadoRemediacion']);
     $enrutador->get('/remediaciones/vencidas', [AuditoriaController::class, 'remediacionesVencidas']);
+
+    // ── Monitor de salud de bases de datos (parte 2) ─────────────────────────
+    //
+    // Maqueta del frente 4: las dos rutas del §9 del plan sobre muestras
+    // sintéticas. El orden no importa —el enrutador resuelve la coincidencia
+    // exacta antes que los patrones—, así que "/monitoreo/alertas", cuando
+    // exista, nunca se lo quedará "/monitoreo/{instancia}".
+    $enrutador->get('/monitoreo', [MonitorController::class, 'panel']);
+    $enrutador->get('/monitoreo/{instancia}', [MonitorController::class, 'panel']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //

@@ -28,6 +28,7 @@ return [
     'panel.grupo_auditorias'      => 'Audits',
     'panel.grupo_administracion'  => 'Administration',
     'panel.grupo_referencia'      => 'Reference',
+    'panel.grupo_monitoreo'       => 'Monitoring',
     'panel.catalogo_controles'    => 'Control catalog',
     'panel.matriz_cid'            => 'Process vs C-I-A map',
     'panel.remediaciones_vencidas' => 'Overdue remediations',
@@ -302,4 +303,127 @@ return [
     'eval.nueva_modelos_texto'   => 'Assessment models other than ISO 27000. They ship with the Deluxe plan, '
                                   . 'which cross-references the three frameworks.',
     'eval.nueva_ver_plan'        => 'See the Deluxe plan →',
+
+    // ── Database health monitor (part 2) ─────────────────────────────────────
+    //
+    // A SINGLE five-band vocabulary: the same keys serve a metric, a component
+    // and the index. A second set of names anywhere would be exactly the
+    // translation table that §5.2 of the plan exists to avoid.
+    'mon.banda_optimo'       => 'Optimal',
+    'mon.banda_saludable'    => 'Healthy',
+    'mon.banda_advertencia'  => 'Warning',
+    'mon.banda_degradado'    => 'Degraded',
+    'mon.banda_critico'      => 'Critical',
+    'mon.banda_sin_dato'     => 'No data',
+
+    'mon.monitor'            => 'Monitor',
+    'mon.titulo'             => 'Database health monitor',
+
+    'mon.instancia_no_encontrada' => 'There is no instance with the key "%s". Showing the first one in the portfolio.',
+
+    'mon.duracion'           => 'Collection time',
+    'mon.hace_min'           => '%s min ago',
+    'mon.hace_horas'         => '%s h %s min ago',
+
+    'mon.contexto_raiz'       => 'Root connection did not respond',
+    'mon.contexto_contenedor' => 'Container connection did not respond',
+
+    'mon.isbd'               => 'DBHI',
+    'mon.formula'            => 'DBHI = 0.30·Processes + 0.35·Memory + 0.35·Files, over each component\'s '
+                              . 'already published value and capped by the worst state observed.',
+
+    'mon.sin_respuesta'      => 'No response',
+    'mon.caida_explicacion'  => 'The instance did not answer this collection. The sample is stored anyway, '
+                              . 'because "it did not answer at this hour" is also data: skipping it would '
+                              . 'leave a gap that later looks like a healthy period.',
+    'mon.ultimo_conocido'    => 'Last known value',
+
+    'mon.muestra_incompleta' => 'Incomplete sample',
+    'mon.incompleta_explicacion' => 'Coverage for this sample is %s and the floor is %s, so no index is '
+                              . 'published. An index computed over half the evidence is worse than no '
+                              . 'index at all, because it looks like a good one.',
+
+    'mon.componentes'        => 'Components',
+    'mon.componentes_vacio'  => 'There is nothing to compute: the instance did not answer this collection, so no metric was ever measured.',
+    'mon.comp_procesos'      => 'Processes',
+    'mon.comp_memoria'       => 'Memory',
+    'mon.comp_archivos'      => 'Files',
+    'mon.peso'               => 'weight %s %%',
+    'mon.comp_topado'        => 'Average %s, capped at %s by the component\'s worst state.',
+    'mon.comp_sin_metricas'  => 'None of its metrics could be collected in this sample.',
+
+    // Monitored database selector
+    'mon.base_vigilada'      => 'Monitored database',
+    'mon.conectada'          => 'Connected',
+    'mon.sin_conexion'       => 'No connection',
+
+    // Operations console
+    'mon.consola'            => 'Operations panel',
+    'mon.medidor_lectura'    => 'Database health index: %s, band %s.',
+    'mon.desc_procesos'      => 'Session and process quota, background process vitality, and redo write wait.',
+    'mon.desc_memoria'       => 'PGA against its target, PGA cache hit ratio, and shared pool free memory.',
+    'mon.desc_archivos'      => 'Tablespace usage, datafiles online, and redo groups with no invalid members.',
+
+    // DBHI trend
+    'mon.tendencia'          => 'DBHI trend',
+    'mon.isbd_publicado'     => 'Published DBHI',
+    'mon.leyenda_topada'     => 'Reading capped by the weakest link',
+    'mon.leyenda_hueco'      => 'No index published',
+    'mon.sin_tendencia'      => 'There are not enough readings yet to draw a trend.',
+    'mon.tendencia_resumen'  => 'Health index trend over %s readings; the latest published one is %s and %s were capped by the weakest link.',
+    'mon.tendencia_pie'      => '%s readings, one every %s minutes: the last %s minutes. The flat plateaus on 40, 60, '
+                              . '75 and 90 are not a drawing glitch: they are the readings where the average came to '
+                              . 'more and the weakest link pulled it down to the band boundary.',
+    'mon.punto_lectura'      => 'Reading %s: %s',
+    'mon.punto_topado'       => 'Reading %s: %s, capped by the weakest link',
+
+    // Index cards and traffic light
+    'mon.indices_lista'      => 'Indices that make up the DBHI',
+    'mon.ver_procesos'       => 'See the %s processes assessed',
+    'mon.semaforo_leyenda'   => 'The traffic light groups the instrument\'s five bands, keeping their '
+                              . 'boundaries: red is Critical or Degraded (up to 60), amber is Warning '
+                              . '(60 to 75) and green is Healthy or Optimal (above 75). The DBHI turns '
+                              . 'red if any of the three indices is red, and only turns green when all '
+                              . 'three are.',
+
+    // Per-index process table
+    'mon.procesos_de'        => 'Processes assessed · %s',
+    'mon.sin_procesos'       => 'This index has no processes declared in the catalogue.',
+    'mon.col_proceso'        => 'Process',
+    'mon.col_metricas'       => 'Metrics',
+    'mon.col_resultado'      => 'Result',
+    'mon.col_descripcion'    => 'Description',
+    'mon.col_recomendacion'  => 'Recommendation',
+    'mon.ayuda_tabla'        => 'How to read this table',
+    'mon.ayuda_consola'      => 'How this panel is computed and coloured',
+    'mon.res_correcto'       => 'Pass',
+    'mon.res_hallazgo'       => 'Finding',
+    'mon.res_sin_dato'       => 'No data',
+    'mon.procesos_nota'      => 'Every metric has its own column and is normalised to 0-1, so they '
+                              . 'measure the same thing even though they observe different ones. A BLANK '
+                              . 'cell means that metric does not assess that process; a dash means it '
+                              . 'does but could not be collected. A process passes when none of its '
+                              . 'metrics trips the traffic light, and "no data" is not a failure of its '
+                              . 'own: that is why it carries no cross.',
+
+    // Memory chart
+    'mon.memoria_titulo'     => 'Database memory',
+    'mon.memoria_pie'        => 'One reading added every %s seconds · %s-minute window',
+    'mon.memoria_nota'       => 'Mock-up: the reading that shows up every half minute is generated by '
+                              . 'this browser, not by the collection agent. The horizontal axis is the '
+                              . 'instance uptime, not wall-clock time.',
+    'mon.mem_de_total'       => 'of %s allocated',
+    'mon.mem_normal'         => 'Below threshold',
+    'mon.mem_sobre_aceptacion' => 'Above acceptance threshold',
+    'mon.mem_sobre_peligro'  => 'Above danger threshold',
+    'mon.mem_resumen'        => 'Memory in use: %s of %s allocated, %s per cent.',
+    'mon.umbral_aceptacion'  => 'Acceptance %s %% · %s',
+    'mon.umbral_peligro'     => 'Danger %s %% · %s',
+    'mon.eje_uptime'         => 'Instance uptime',
+    'mon.uptime_min'         => '%s min',
+    'mon.uptime_horas'       => '%s h %s min',
+
+    'mon.vacio_titulo'       => 'No instances are being monitored yet',
+    'mon.vacio_texto'        => 'Once the collection agent leaves its first sample, this screen will show '
+                              . 'each instance\'s health index, its components and its alerts.',
 ];

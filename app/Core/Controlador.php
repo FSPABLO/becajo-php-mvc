@@ -173,6 +173,9 @@ abstract class Controlador
             // Null si no hay módulo de auditorías o si nadie inició sesión.
             // Así el encabezado sabe si mostrar "Ingresar" o "Mis auditorías".
             'usuarioActual' => $this->contenedor->hayAuditorias() ? $this->autenticacion()->usuario() : null,
+            // La barra lateral oculta la entrada "Monitor" en vez de suponer
+            // que /monitoreo responde — mismo criterio que hayAuditorias().
+            'hayMonitor'    => $this->contenedor->hayMonitor(),
         ];
     }
 

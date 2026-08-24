@@ -26,6 +26,7 @@ declare(strict_types=1);
  * @var list<string>|null      $hojas    Hojas de estilo propias de la página.
  * @var list<string>|null      $guiones  Guiones (scripts) propios de la página.
  * @var \App\Models\Entidades\Usuario|null $usuarioActual
+ * @var bool|null              $hayMonitor  ¿Existe el módulo de monitoreo?
  * @var string|null            $rutaActual
  * @var bool|null              $lateralOculta  Barra lateral plegada (cookie).
  */
@@ -51,6 +52,27 @@ $grupos = [[
         ['etiqueta' => $vista->t('eval.comparar_historico'), 'ruta' => '/evaluacion/comparar', 'icono' => 'grafica'],
     ],
 ]];
+
+/*
+ * Monitoreo continuo. Grupo propio y no una cuarta entrada de «Auditorías»
+ * porque no es lo mismo: una auditoría es una medición fechada que alguien
+ * conduce, y el monitor es una vigilancia que corre sola cada cinco minutos.
+ * Mezclarlos en el mismo grupo diría que se hacen en el mismo momento y con
+ * el mismo gesto, y no es así.
+ *
+ * Nace con una sola entrada a propósito: /monitoreo/alertas y
+ * /monitoreo/metricas ya están en el contrato de rutas y entran aquí sin
+ * mover nada más. El elemento activo gana por ruta declarada MÁS LARGA, así
+ * que /monitoreo/PRODCORE1 —que no tiene entrada propia— ilumina «Monitor».
+ */
+if ($hayMonitor ?? false) {
+    $grupos[] = [
+        'titulo'    => $vista->t('panel.grupo_monitoreo'),
+        'elementos' => [
+            ['etiqueta' => $vista->t('mon.monitor'), 'ruta' => '/monitoreo', 'icono' => 'corazon'],
+        ],
+    ];
+}
 
 if ($esAdministrador) {
     $grupos[] = [
