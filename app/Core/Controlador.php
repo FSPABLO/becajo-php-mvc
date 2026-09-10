@@ -58,6 +58,23 @@ abstract class Controlador
         return $this->contenedor->idioma();
     }
 
+    /**
+     * Traduce una clave, igual que Vista::t().
+     *
+     * Casi todo el texto de pantalla se traduce en la vista, que es donde
+     * pertenece. La excepción son los rótulos que el controlador tiene que
+     * ARMAR porque solo él conoce el dato —«Auditoría 152» para la miga de
+     * pan—: sin esto habría que pasarle a la vista la clave y sus argumentos
+     * sueltos, o dejar el rótulo escrito en español dentro del controlador y
+     * que la barra superior dijera «Audits / My audits / Auditoría 152».
+     */
+    protected function t(string $clave, string ...$argumentos): string
+    {
+        $texto = $this->idioma()->t($clave);
+
+        return $argumentos === [] ? $texto : vsprintf($texto, $argumentos);
+    }
+
     protected function autenticacion(): Autenticacion
     {
         return $this->contenedor->autenticacion();
@@ -173,6 +190,9 @@ abstract class Controlador
             // Null si no hay módulo de auditorías o si nadie inició sesión.
             // Así el encabezado sabe si mostrar "Ingresar" o "Mis auditorías".
             'usuarioActual' => $this->contenedor->hayAuditorias() ? $this->autenticacion()->usuario() : null,
+            // La barra lateral oculta la entrada "Monitor" en vez de suponer
+            // que /monitoreo responde — mismo criterio que hayAuditorias().
+            'hayMonitor'    => $this->contenedor->hayMonitor(),
         ];
     }
 
@@ -225,6 +245,29 @@ abstract class Controlador
     protected function redirigir(string $ruta): never
     {
         header('Location: ' . $this->peticion()->rutaBase() . $ruta);
+
+        exit;
+    }
+
+    /**
+     * Responde en JSON y corta la ejecución. La gemela de redirigir(), para
+     * cuando quien pregunta es un guion y no el navegador.
+     *
+     * No sustituye al patrón PRG: el mismo POST sigue redirigiendo cuando
+     * llega de un formulario. Esto es la otra mitad, y por eso vive al lado.
+     *
+     * JSON_UNESCAPED_UNICODE porque el proyecto está en español y una tilde
+     * escapada a \u00e9 se lee peor al depurar, sin ganar nada: la respuesta
+     * se declara UTF-8 en la misma cabecera.
+     *
+     * @param array<string, mixed> $datos
+     */
+    protected function json(array $datos, int $codigo = 200): never
+    {
+        http_response_code($codigo);
+        header('Content-Type: application/json; charset=utf-8');
+
+        echo json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         exit;
     }

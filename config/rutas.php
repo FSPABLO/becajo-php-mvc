@@ -9,6 +9,7 @@ use App\Controllers\ContactoController;
 use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
+use App\Controllers\MonitorController;
 use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
@@ -63,6 +64,12 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'plantillaControl']);
     $enrutador->post('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'guardarControl']);
 
+    // El adjunto de la evidencia. Cuelga del CONTROL y no de la auditoría
+    // porque es de un control concreto, y se sirve por una ruta propia —y no
+    // desde public/— porque el binario vive en Oracle: leerlo pasa por la misma
+    // comprobación de propiedad que el resto del módulo.
+    $enrutador->get('/evaluacion/{id}/controles/{codigo}/evidencia', [AuditoriaController::class, 'archivoEvidencia']);
+
     $enrutador->post('/evaluacion/{id}/finalizar', [AuditoriaController::class, 'finalizar']);
     $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
 
@@ -75,6 +82,15 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/remediaciones/{idRemediacion}/programar', [AuditoriaController::class, 'programarReauditoria']);
     $enrutador->post('/remediaciones/{idRemediacion}/estado', [AuditoriaController::class, 'actualizarEstadoRemediacion']);
     $enrutador->get('/remediaciones/vencidas', [AuditoriaController::class, 'remediacionesVencidas']);
+
+    // ── Monitor de salud de bases de datos (parte 2) ─────────────────────────
+    //
+    // Maqueta del frente 4: las dos rutas del §9 del plan sobre muestras
+    // sintéticas. El orden no importa —el enrutador resuelve la coincidencia
+    // exacta antes que los patrones—, así que "/monitoreo/alertas", cuando
+    // exista, nunca se lo quedará "/monitoreo/{instancia}".
+    $enrutador->get('/monitoreo', [MonitorController::class, 'panel']);
+    $enrutador->get('/monitoreo/{instancia}', [MonitorController::class, 'panel']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //

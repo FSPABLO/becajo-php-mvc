@@ -58,7 +58,8 @@ $clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medi
 
         <?php /* Cinzel: solo el logotipo. Una palabra, caja alta, 0.09em. */ ?>
         <a href="<?= e($vista->destino('#inicio')) ?>" class="flex flex-none items-center gap-[11px]">
-            <span class="rv-extruido grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-superficie font-marca text-[15px] tracking-[0.02em] text-oro">R</span>
+            <img src="<?= e($vista->recurso('assets/images/branding/rivendel-logo-oscuro.png')) ?>"
+                 alt="" class="h-10 w-auto">
             <span class="rv-marca text-[15px] text-nav-texto"><?= e($empresa['nombre']) ?></span>
         </a>
 
@@ -146,10 +147,19 @@ $clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medi
              * de la portada con este tratamiento, y por eso destaca sin gastar
              * el verde, que aquí significaría cumplimiento.
              *
-             * Con sesión abierta ese sitio lo ocupa el PERFIL, no la salida.
-             * Cerrar sesión se hace desde la barra lateral del módulo, que es
-             * donde vive la ficha de sesión entera —nombre, rol y salir—; el
-             * botón de aquí es el camino hasta ella.
+             * Con sesión abierta ese sitio lo ocupa el PERFIL, que es un
+             * DESPLEGABLE y no un enlace: desde el sitio público solo se le
+             * piden dos cosas a la sesión —entrar al módulo y cerrarla— y un
+             * enlace únicamente sabe hacer la primera. Con el menú, salir deja
+             * de exigir el rodeo de entrar al módulo para llegar a su barra
+             * lateral, que es donde vivía la única salida.
+             *
+             * Reutiliza los ganchos [data-desplegable*] de «Nosotros» y
+             * «Herramientas», así que lo gobierna el guion que ya existe —
+             * recorre todo [data-desplegable] y no una lista de menús. El panel
+             * se ancla a la DERECHA (right-0, no el left-0 de aquellos) porque
+             * el botón vive en el borde derecho de la barra: anclado a la
+             * izquierda se saldría de la ventana.
              *
              * El retrato son las iniciales: el esquema no guarda fotografía de
              * usuario, y un disco con las iniciales es lo que ya usa la barra
@@ -160,13 +170,57 @@ $clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medi
              */
             ?>
             <?php if ($usuarioActual !== null): ?>
-                <a href="<?= e($vista->url('evaluacion')) ?>"
-                   title="<?= e($usuarioActual->nombre) ?>"
-                   class="rv-extruido rv-interactivo flex items-center gap-2.5 rounded-[9px] bg-texto py-[5px] pl-[5px] pr-[14px] text-[13px] font-medium text-fondo">
-                    <span class="grid h-7 w-7 flex-none place-items-center rounded-full bg-fondo text-[11px] font-semibold text-texto"
-                          aria-hidden="true"><?= e(iniciales($usuarioActual->nombre)) ?></span>
-                    <?= e($vista->t('nav.perfil')) ?>
-                </a>
+                <div class="relative" data-desplegable>
+                    <button type="button"
+                            id="boton-perfil"
+                            data-desplegable-boton
+                            title="<?= e($usuarioActual->nombre) ?>"
+                            class="rv-extruido rv-interactivo flex items-center gap-2.5 rounded-[9px] bg-texto py-[5px] pl-[5px] pr-[11px] text-[13px] font-medium text-fondo"
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-controls="menu-perfil">
+                        <span class="grid h-7 w-7 flex-none place-items-center rounded-full bg-fondo text-[11px] font-semibold text-texto"
+                              aria-hidden="true"><?= e(iniciales($usuarioActual->nombre)) ?></span>
+                        <?= e($vista->t('nav.perfil')) ?>
+                        <span data-desplegable-flecha class="text-fondo transition-transform duration-200">
+                            <?= icono('chevron', 'h-3.5 w-3.5') ?>
+                        </span>
+                    </button>
+
+                    <div id="menu-perfil"
+                         data-desplegable-panel
+                         class="absolute right-0 top-full hidden w-[236px] pt-3"
+                         role="menu"
+                         aria-labelledby="boton-perfil">
+                        <div class="rv-extruido flex flex-col gap-1 rounded-rv-lg border border-borde bg-superficie p-2.5">
+                            <a href="<?= e($vista->url('evaluacion')) ?>"
+                               role="menuitem"
+                               class="flex items-center gap-3 rounded-[9px] px-3 py-[11px] text-[13.5px] font-semibold text-texto transition hover:bg-elevado">
+                                <?= icono('tablero', 'h-4 w-4 shrink-0 text-oro') ?>
+                                <?= e($vista->t('nav.ir_tablero')) ?>
+                            </a>
+
+                            <?php
+                            /*
+                             * Salir es POST con token, igual que en la barra
+                             * lateral del módulo: cerrar la sesión de alguien
+                             * no puede ser cosa de un enlace ajeno. El botón se
+                             * disfraza de entrada de menú para que las dos
+                             * opciones se lean como una sola lista.
+                             */
+                            ?>
+                            <form method="post" action="<?= e($vista->url('salir')) ?>">
+                                <?= $vista->campoToken() ?>
+                                <button type="submit"
+                                        role="menuitem"
+                                        class="flex w-full items-center gap-3 rounded-[9px] px-3 py-[11px] text-left text-[13.5px] font-semibold text-texto transition hover:bg-elevado">
+                                    <?= icono('flecha', 'h-4 w-4 shrink-0 text-oro') ?>
+                                    <?= e($vista->t('nav.salir')) ?>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
                    class="rv-extruido rv-interactivo rounded-[9px] bg-texto px-[15px] py-[9px] text-[13px] font-medium text-fondo">
@@ -217,23 +271,40 @@ $clasesEnlace = 'rv-enlace-nav rounded-rv px-[13px] py-2 text-[13.5px] font-medi
             <?php if ($usuarioActual !== null): ?>
                 <?php
                 /*
-                 * Mismo destino y mismo retrato que el botón de la barra: dos
-                 * entradas para la misma sesión en la misma cabecera no pueden
-                 * llamarse distinto según el ancho de la pantalla.
+                 * Las mismas dos opciones que el desplegable de la barra, y no
+                 * un enlace único a «Perfil»: dos entradas para la misma sesión
+                 * en la misma cabecera no pueden ofrecer cosas distintas según
+                 * el ancho de la pantalla. Aquí no hay desplegable —el menú ya
+                 * está desplegado— así que el retrato encabeza la lista en vez
+                 * de abrirla, con el nombre al lado, que es el sitio donde cabe.
                  */
                 ?>
-                <a href="<?= e($vista->url('evaluacion')) ?>"
-                   class="mt-4 flex items-center gap-3 rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                <div class="mt-4 flex items-center gap-3 px-3 py-2">
                     <span class="rv-extruido grid h-7 w-7 flex-none place-items-center rounded-full bg-elevado text-[11px] font-semibold text-texto"
                           aria-hidden="true"><?= e(iniciales($usuarioActual->nombre)) ?></span>
-                    <?= e($vista->t('nav.perfil')) ?>
+                    <span class="min-w-0 truncate text-sm font-semibold text-nav-texto"><?= e($usuarioActual->nombre) ?></span>
+                </div>
+
+                <a href="<?= e($vista->url('evaluacion')) ?>"
+                   class="flex items-center gap-3 rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                    <?= icono('tablero', 'h-4 w-4 shrink-0 text-oro') ?>
+                    <?= e($vista->t('nav.ir_tablero')) ?>
                 </a>
                 <?php if ($usuarioActual->esAdministrador()): ?>
                     <a href="<?= e($vista->url('catalogo')) ?>"
-                       class="block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                       class="flex items-center gap-3 rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                        <?= icono('libro', 'h-4 w-4 shrink-0 text-oro') ?>
                         <?= e($vista->t('nav.catalogo')) ?>
                     </a>
                 <?php endif; ?>
+                <form method="post" action="<?= e($vista->url('salir')) ?>">
+                    <?= $vista->campoToken() ?>
+                    <button type="submit"
+                            class="flex w-full items-center gap-3 rounded-rv px-3 py-2 text-left text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">
+                        <?= icono('flecha', 'h-4 w-4 shrink-0 text-oro') ?>
+                        <?= e($vista->t('nav.salir')) ?>
+                    </button>
+                </form>
             <?php else: ?>
                 <a href="<?= e($vista->url('ingresar')) ?>"
                    class="mt-4 block rounded-rv px-3 py-2 text-sm font-medium text-nav-texto transition hover:bg-elevado hover:text-oro">

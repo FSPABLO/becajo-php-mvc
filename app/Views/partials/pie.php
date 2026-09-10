@@ -50,7 +50,8 @@ $clasesCampo = 'rv-hundido mt-1.5 w-full rounded-rv border border-borde bg-fondo
 
             <div>
                 <div class="flex items-center gap-2.5">
-                    <span class="grid h-9 w-9 place-items-center rounded-rv bg-oro/15 font-marca text-lg text-oro">R</span>
+                    <img src="<?= e($vista->recurso('assets/images/branding/rivendel-logo-oscuro.png')) ?>"
+                         alt="" class="h-11 w-auto">
                     <span class="rv-marca text-lg text-nav-texto"><?= e($empresa['nombre']) ?></span>
                 </div>
                 <p class="rv-titulo mt-4 max-w-sm text-[1.05rem] leading-relaxed text-nav-texto2">

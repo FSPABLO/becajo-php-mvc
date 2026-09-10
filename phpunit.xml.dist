@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Pruebas del motor de calculo (frente 3 del plan de la parte 2).
+
+    Solo se cubre app/Models/Calculo: es el unico codigo del proyecto que es
+    aritmetica pura y se puede probar sin Oracle, sin Apache y sin sesion.
+    Los controladores y las vistas se siguen verificando en el navegador, tal
+    como dice CLAUDE.md.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+
+    <testsuites>
+        <testsuite name="motor-de-calculo">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>app/Models/Calculo</directory>
+        </include>
+    </source>
+</phpunit>

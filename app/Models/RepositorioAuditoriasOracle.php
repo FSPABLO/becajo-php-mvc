@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Core\BaseDatos;
 use App\Models\Contratos\RepositorioAuditorias;
+use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
 use App\Models\Entidades\Remediacion;
@@ -47,11 +48,12 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                a.indice_general_riesgo,
                TO_CHAR(a.fecha_finalizacion, 'YYYY-MM-DD HH24:MI') AS fecha_finalizacion,
                auditor.nombre AS nombre_auditor,
-               dba.nombre AS nombre_administrador_bd,
-               dba.organizacion AS organizacion
+               entrevistado.nombre_administrador_bd,
+               entrevistado.organizacion
           FROM auditoria a
           JOIN usuario auditor ON auditor.id_usuario = a.id_auditor
-          JOIN usuario dba ON dba.id_usuario = a.id_administrador_bd
+          JOIN v_auditoria_entrevistado entrevistado
+            ON entrevistado.id_auditoria = a.id_auditoria
         SQL;
 
     /**
@@ -186,19 +188,32 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
 
     public function crearAuditoria(
         int $idAuditor,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
     ): int {
         return $this->bd->insertar(
             "INSERT INTO auditoria
-                    (id_auditor, id_administrador_bd, area_evaluada, fecha, estado)
-             VALUES (:id_auditor, :id_administrador_bd, :area_evaluada,
-                     TO_DATE(:fecha, 'YYYY-MM-DD'), :estado)
+                    (id_auditor, id_administrador_bd,
+                     administrador_nombre, administrador_organizacion,
+                     area_evaluada, fecha, estado)
+             VALUES (:id_auditor, :id_administrador_bd,
+                     :administrador_nombre, :administrador_organizacion,
+                     :area_evaluada, TO_DATE(:fecha, 'YYYY-MM-DD'), :estado)
              RETURNING id_auditoria INTO :id",
             [
                 'id_auditor'          => $idAuditor,
                 'id_administrador_bd' => $idAdministradorBd,
+                /*
+                 * Los tres van SIEMPRE, y el lado que no se usa va a NULL a
+                 * propósito: es lo que ck_auditoria_administrador exige y lo
+                 * que impide que una auditoría acabe con cuenta y con texto,
+                 * o sea con dos respuestas a «¿a quién se entrevistó?».
+                 */
+                'administrador_nombre'       => $administradorNombre,
+                'administrador_organizacion' => $administradorOrganizacion,
                 'area_evaluada'       => $areaEvaluada,
                 'fecha'               => $fecha,
                 'estado'              => Auditoria::EN_PROGRESO,
@@ -208,18 +223,27 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
 
     public function actualizarAuditoria(
         int $id,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
     ): void {
         $this->bd->ejecutar(
             "UPDATE auditoria
                 SET id_administrador_bd = :id_administrador_bd,
+                    administrador_nombre = :administrador_nombre,
+                    administrador_organizacion = :administrador_organizacion,
                     area_evaluada = :area_evaluada,
                     fecha = TO_DATE(:fecha, 'YYYY-MM-DD')
               WHERE id_auditoria = :id",
             [
                 'id_administrador_bd' => $idAdministradorBd,
+                // Las tres columnas se escriben en el mismo UPDATE: cambiar de
+                // cuenta registrada a nombre escrito a mano tiene que BORRAR
+                // el otro lado, o la fila deja de pasar el CHECK.
+                'administrador_nombre'       => $administradorNombre,
+                'administrador_organizacion' => $administradorOrganizacion,
                 'area_evaluada'       => $areaEvaluada,
                 'fecha'               => $fecha,
                 'id'                  => $id,
@@ -371,6 +395,158 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
         );
 
         return (int) ($fila['total'] ?? 0);
+    }
+
+    // ── Adjunto de la evidencia ──────────────────────────────────────────────
+
+    /**
+     * Las columnas de la FICHA, sin `contenido`.
+     *
+     * Escritas una vez y compartidas por las dos lecturas de ficha para que
+     * ninguna se cuele el BLOB: con SELECT * el driver lo materializa entero
+     * (OCI_RETURN_LOBS), y las 75 tarjetas del panel se traerían varios
+     * megabytes para escribir un nombre y un tamaño.
+     */
+    private const COLUMNAS_FICHA_ARCHIVO =
+        'ea.id_evidencia_archivo, ea.nombre, ea.tipo_mime, ea.tamano_bytes,
+         TO_CHAR(ea.fecha_carga, \'YYYY-MM-DD HH24:MI\') AS fecha_carga,
+         ec.codigo_control';
+
+    /** @return array<string, ArchivoEvidencia> */
+    public function archivosEvidencia(int $idAuditoria): array
+    {
+        $filas = $this->bd->consultar(
+            'SELECT ' . self::COLUMNAS_FICHA_ARCHIVO . '
+               FROM evidencia_archivo ea
+               JOIN evaluacion_control ec
+                 ON ec.id_evaluacion_control = ea.id_evaluacion_control
+              WHERE ec.id_auditoria = :id_auditoria',
+            ['id_auditoria' => $idAuditoria],
+        );
+
+        $porControl = [];
+
+        foreach ($filas as $fila) {
+            $archivo = ArchivoEvidencia::desdeFila($fila);
+            $porControl[$archivo->codigoControl] = $archivo;
+        }
+
+        return $porControl;
+    }
+
+    public function archivoEvidencia(int $idAuditoria, string $codigoControl): ?ArchivoEvidencia
+    {
+        $fila = $this->bd->consultarUna(
+            'SELECT ' . self::COLUMNAS_FICHA_ARCHIVO . '
+               FROM evidencia_archivo ea
+               JOIN evaluacion_control ec
+                 ON ec.id_evaluacion_control = ea.id_evaluacion_control
+              WHERE ec.id_auditoria = :id_auditoria
+                AND ec.codigo_control = :codigo_control',
+            ['id_auditoria' => $idAuditoria, 'codigo_control' => $codigoControl],
+        );
+
+        return $fila === null ? null : ArchivoEvidencia::desdeFila($fila);
+    }
+
+    /**
+     * Los bytes. Aquí sí se pide `contenido`, y solo aquí.
+     *
+     * Llega como cadena porque leerFilas() usa OCI_RETURN_LOBS. Para un tope de
+     * 5 MB eso es aceptable y ahorra la danza de descriptores en la lectura;
+     * si algún día el tope subiera de verdad, este es el método que habría que
+     * convertir en una lectura por trozos.
+     */
+    public function contenidoArchivoEvidencia(int $idAuditoria, string $codigoControl): ?string
+    {
+        $fila = $this->bd->consultarUna(
+            'SELECT ea.contenido
+               FROM evidencia_archivo ea
+               JOIN evaluacion_control ec
+                 ON ec.id_evaluacion_control = ea.id_evaluacion_control
+              WHERE ec.id_auditoria = :id_auditoria
+                AND ec.codigo_control = :codigo_control',
+            ['id_auditoria' => $idAuditoria, 'codigo_control' => $codigoControl],
+        );
+
+        $contenido = $fila['contenido'] ?? null;
+
+        return is_string($contenido) ? $contenido : null;
+    }
+
+    /**
+     * Sustituye el adjunto de un control: fuera el anterior, dentro el nuevo.
+     *
+     * Es un DELETE + INSERT y no un MERGE porque el destino lo identifica
+     * uq_evidarch_evalctrl (una fila por evaluación) y el MERGE necesitaría
+     * enlazar el BLOB dos veces —en el UPDATE y en el INSERT— con un solo
+     * descriptor. Los dos pasos van en UNA transacción: si el INSERT falla, el
+     * adjunto viejo sigue ahí en vez de haberse perdido a cambio de nada.
+     *
+     * La subconsulta resuelve id_evaluacion_control desde (auditoría, control)
+     * para que quien llama no tenga que conocerlo. Si la evaluación no existe,
+     * no inserta nada y el adjunto simplemente no se guarda; el controlador
+     * guarda la evaluación primero, en la misma pulsación.
+     */
+    public function guardarArchivoEvidencia(
+        int $idAuditoria,
+        string $codigoControl,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void {
+        $claves = ['id_auditoria' => $idAuditoria, 'codigo_control' => $codigoControl];
+
+        $this->bd->iniciarTransaccion();
+
+        try {
+            $this->bd->ejecutar($this->sqlBorrarArchivo(), $claves, [], false);
+
+            $this->bd->ejecutar(
+                'INSERT INTO evidencia_archivo
+                     (id_evaluacion_control, nombre, tipo_mime, tamano_bytes, contenido)
+                 SELECT ec.id_evaluacion_control, :nombre, :tipo_mime, :tamano_bytes, :contenido
+                   FROM evaluacion_control ec
+                  WHERE ec.id_auditoria = :id_auditoria
+                    AND ec.codigo_control = :codigo_control',
+                $claves + [
+                    'nombre'       => $nombre,
+                    'tipo_mime'    => $tipoMime,
+                    'tamano_bytes' => strlen($contenido),
+                ],
+                [],
+                false,
+                ['contenido' => $contenido],
+            );
+
+            $this->bd->confirmarTransaccion();
+        } catch (\Throwable $error) {
+            $this->bd->revertirTransaccion();
+
+            throw $error;
+        }
+    }
+
+    public function eliminarArchivoEvidencia(int $idAuditoria, string $codigoControl): void
+    {
+        $this->bd->ejecutar(
+            $this->sqlBorrarArchivo(),
+            ['id_auditoria' => $idAuditoria, 'codigo_control' => $codigoControl],
+        );
+    }
+
+    /**
+     * El DELETE, escrito una vez: lo usan el borrado a secas y el primer paso
+     * de la sustitución, y son la misma sentencia.
+     */
+    private function sqlBorrarArchivo(): string
+    {
+        return 'DELETE FROM evidencia_archivo
+                 WHERE id_evaluacion_control IN (
+                       SELECT ec.id_evaluacion_control
+                         FROM evaluacion_control ec
+                        WHERE ec.id_auditoria = :id_auditoria
+                          AND ec.codigo_control = :codigo_control)';
     }
 
     // ── Indicadores (pkg_indicadores) ────────────────────────────────────────

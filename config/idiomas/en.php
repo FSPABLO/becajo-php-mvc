@@ -10,6 +10,7 @@ return [
     'nav.mis_auditorias'  => 'My Audits',
     'nav.catalogo'        => 'Catalog',
     'nav.perfil'          => 'Profile',
+    'nav.ir_tablero'      => 'Go to dashboard',
     'nav.salir'           => 'Log out',
     'nav.ingresar'        => 'Log in',
     'nav.contactar'       => 'Contact',
@@ -27,6 +28,7 @@ return [
     'panel.grupo_auditorias'      => 'Audits',
     'panel.grupo_administracion'  => 'Administration',
     'panel.grupo_referencia'      => 'Reference',
+    'panel.grupo_monitoreo'       => 'Monitoring',
     'panel.catalogo_controles'    => 'Control catalog',
     'panel.matriz_cid'            => 'Process vs C-I-A map',
     'panel.remediaciones_vencidas' => 'Overdue remediations',
@@ -108,6 +110,8 @@ return [
 
     // Tablero del panel: matriz de la última auditoría y evolución mensual.
     'eval.evolucion_titulo'    => 'Monthly progress',
+    'eval.tablero_titulo'       => 'Status and progress',
+    'eval.empresa_coincidencias' => 'Matching companies',
     'eval.empresa_auditada'    => 'Audited organization',
     'eval.evolucion_texto'     => 'How much of the instrument was applied each month, and what share came out compliant.',
     'eval.cobertura_instrumento' => 'Instrument coverage',
@@ -157,7 +161,6 @@ return [
     'eval.en_progreso'         => 'In progress',
     'eval.sin_calcular'        => 'not calculated',
     'eval.volver'              => 'Back',
-    'eval.volver_auditorias'   => '← My audits',
     'eval.crear_auditoria'     => 'Create audit',
 
     // Assessment module — audit detail (mostrar.php)
@@ -173,6 +176,7 @@ return [
     'eval.editar_encabezado'   => 'Edit header',
     'eval.guardar_encabezado'  => 'Save header',
     'eval.controles_instrumento' => 'Instrument controls',
+    'eval.dominios_lista'       => 'Audit domains',
     'eval.col_codigo'          => 'Code',
     'eval.col_proceso'         => 'Process',
     'eval.col_enunciado'       => 'Statement',
@@ -213,6 +217,34 @@ return [
     'eval.calidad_mejora'       => 'Needs improvement',
     'eval.calidad_declarativo'  => 'Declarative (no real evidence)',
 
+    // Control card inside an audit
+    // (components/tarjeta-control-auditoria.php)
+    'eval.sin_responder'        => 'Not answered',
+    'eval.nivel_riesgo'         => 'Risk level',
+    'eval.dimensiones'          => 'Compromises',
+    'eval.no_marcada'           => 'not marked',
+    'eval.aviso_na_sin_justificar' => 'Marked as "not applicable" with no finding written: it leaves the compliance calculation without any record of why (ISO/IEC 27001, cl. 6.1.3).',
+    'eval.dominio_anterior'     => 'Previous domain',
+    'eval.dominio_siguiente'    => 'Next domain',
+    'eval.guardado'             => 'Saved',
+    'eval.remediaciones'        => 'Remediation',
+    'eval.respondidos'          => 'Answered',
+    'eval.dominios_palabra'     => 'Domains',
+    'eval.evidencia_marcador'   => 'Document, log, screenshot or setting reviewed',
+
+    // The evidence attachment. It accompanies the written description, it does
+    // not replace it. The status line always prints, with or without a file.
+    'eval.evidencia_archivo'          => 'Attached file',
+    'eval.evidencia_archivo_sin'      => 'No file attached.',
+    'eval.evidencia_archivo_quitar'   => 'Remove this file when saving',
+    'eval.evidencia_archivo_soltar'   => 'Drag the file here',
+    'eval.evidencia_archivo_o'        => 'or',
+    'eval.evidencia_archivo_examinar' => 'Browse your computer',
+    'eval.evidencia_archivo_ayuda'    => 'Optional. Image (PNG, JPG, WEBP or GIF) or PDF, up to %s MB.',
+    'eval.evidencia_archivo_sustituir' => 'Choose another file to replace the current one. Image or PDF, up to %s MB.',
+    'eval.hallazgo_marcador'    => 'What was observed during verification',
+    'eval.recomendacion_marcador' => 'Suggested action and its priority',
+
     // Results / report / comparison
     'eval.resultados'           => 'Results',
     'eval.reporte_pdf'          => 'Executive report (PDF)',
@@ -230,6 +262,12 @@ return [
     'eval.sin_impacto_prob'     => 'No controls with rated impact and probability yet.',
     'eval.eje_matriz'           => 'Probability (vertical axis) × Impact (horizontal axis)',
     'eval.eje_matriz_reporte'   => 'Rows: probability 5→1 · Columns: impact 1→5',
+    // Compliance-by-domain column chart.
+    'eval.gr_dominios_resumen'  => 'Compliance by domain, %s in total. The lowest is %s, at %s.',
+    'eval.detalle_dominio'      => 'Domain breakdown',
+    'eval.detalle_dominio_ayuda' => 'Open a domain to see its flagged controls.',
+    'eval.gr_dominios_pie'      => 'The 50 % and 80 % lines are the zone thresholds: below 50 % the risk is high, above 80 % it is low.',
+    'eval.de_cinco'             => 'of 5',
     'eval.cumplimiento_dominio' => 'Compliance by domain',
     'eval.sin_controles_eval'   => 'No controls assessed yet.',
     'eval.col_dominio'          => 'Domain',
@@ -282,6 +320,13 @@ return [
     'eval.admin_entrevistado_label' => 'Database administrator interviewed',
     'eval.seleccione'               => '— Select —',
     'eval.organizacion_registrada'  => 'Their organization is the one recorded as the audited entity.',
+    'eval.origen_registrado'        => 'From the list',
+    'eval.origen_manual'            => 'Edit details',
+    'eval.admin_nombre'             => 'Name of the person interviewed',
+    'eval.admin_nombre_marcador'    => 'E.g. Marta Jimenez',
+    'eval.admin_empresa'            => 'Company they belong to',
+    'eval.admin_empresa_marcador'   => 'E.g. Cooperativa de Ejemplo R.L.',
+    'eval.admin_manual_ayuda'       => 'The company you type here is the one recorded as the audited entity. No account is created: the data lives in this audit.',
     'eval.area_evaluada'            => 'Area assessed',
     'eval.fecha_auditoria'          => 'Audit date',
 
@@ -298,4 +343,127 @@ return [
     'eval.nueva_modelos_texto'   => 'Assessment models other than ISO 27000. They ship with the Deluxe plan, '
                                   . 'which cross-references the three frameworks.',
     'eval.nueva_ver_plan'        => 'See the Deluxe plan →',
+
+    // ── Database health monitor (part 2) ─────────────────────────────────────
+    //
+    // A SINGLE five-band vocabulary: the same keys serve a metric, a component
+    // and the index. A second set of names anywhere would be exactly the
+    // translation table that §5.2 of the plan exists to avoid.
+    'mon.banda_optimo'       => 'Optimal',
+    'mon.banda_saludable'    => 'Healthy',
+    'mon.banda_advertencia'  => 'Warning',
+    'mon.banda_degradado'    => 'Degraded',
+    'mon.banda_critico'      => 'Critical',
+    'mon.banda_sin_dato'     => 'No data',
+
+    'mon.monitor'            => 'Monitor',
+    'mon.titulo'             => 'Database health monitor',
+
+    'mon.instancia_no_encontrada' => 'There is no instance with the key "%s". Showing the first one in the portfolio.',
+
+    'mon.duracion'           => 'Collection time',
+    'mon.hace_min'           => '%s min ago',
+    'mon.hace_horas'         => '%s h %s min ago',
+
+    'mon.contexto_raiz'       => 'Root connection did not respond',
+    'mon.contexto_contenedor' => 'Container connection did not respond',
+
+    'mon.isbd'               => 'DBHI',
+    'mon.formula'            => 'DBHI = 0.30·Processes + 0.35·Memory + 0.35·Files, over each component\'s '
+                              . 'already published value and capped by the worst state observed.',
+
+    'mon.sin_respuesta'      => 'No response',
+    'mon.caida_explicacion'  => 'The instance did not answer this collection. The sample is stored anyway, '
+                              . 'because "it did not answer at this hour" is also data: skipping it would '
+                              . 'leave a gap that later looks like a healthy period.',
+    'mon.ultimo_conocido'    => 'Last known value',
+
+    'mon.muestra_incompleta' => 'Incomplete sample',
+    'mon.incompleta_explicacion' => 'Coverage for this sample is %s and the floor is %s, so no index is '
+                              . 'published. An index computed over half the evidence is worse than no '
+                              . 'index at all, because it looks like a good one.',
+
+    'mon.componentes'        => 'Components',
+    'mon.componentes_vacio'  => 'There is nothing to compute: the instance did not answer this collection, so no metric was ever measured.',
+    'mon.comp_procesos'      => 'Processes',
+    'mon.comp_memoria'       => 'Memory',
+    'mon.comp_archivos'      => 'Files',
+    'mon.peso'               => 'weight %s %%',
+    'mon.comp_topado'        => 'Average %s, capped at %s by the component\'s worst state.',
+    'mon.comp_sin_metricas'  => 'None of its metrics could be collected in this sample.',
+
+    // Monitored database selector
+    'mon.base_vigilada'      => 'Monitored database',
+    'mon.conectada'          => 'Connected',
+    'mon.sin_conexion'       => 'No connection',
+
+    // Operations console
+    'mon.consola'            => 'Operations panel',
+    'mon.medidor_lectura'    => 'Database health index: %s, band %s.',
+    'mon.desc_procesos'      => 'Session and process quota, background process vitality, and redo write wait.',
+    'mon.desc_memoria'       => 'PGA against its target, PGA cache hit ratio, and shared pool free memory.',
+    'mon.desc_archivos'      => 'Tablespace usage, datafiles online, and redo groups with no invalid members.',
+
+    // DBHI trend
+    'mon.tendencia'          => 'DBHI trend',
+    'mon.isbd_publicado'     => 'Published DBHI',
+    'mon.leyenda_topada'     => 'Reading capped by the weakest link',
+    'mon.leyenda_hueco'      => 'No index published',
+    'mon.sin_tendencia'      => 'There are not enough readings yet to draw a trend.',
+    'mon.tendencia_resumen'  => 'Health index trend over %s readings; the latest published one is %s and %s were capped by the weakest link.',
+    'mon.tendencia_pie'      => '%s readings, one every %s minutes: the last %s minutes. The flat plateaus on 40, 60, '
+                              . '75 and 90 are not a drawing glitch: they are the readings where the average came to '
+                              . 'more and the weakest link pulled it down to the band boundary.',
+    'mon.punto_lectura'      => 'Reading %s: %s',
+    'mon.punto_topado'       => 'Reading %s: %s, capped by the weakest link',
+
+    // Index cards and traffic light
+    'mon.indices_lista'      => 'Indices that make up the DBHI',
+    'mon.ver_procesos'       => 'See the %s processes assessed',
+    'mon.semaforo_leyenda'   => 'The traffic light groups the instrument\'s five bands, keeping their '
+                              . 'boundaries: red is Critical or Degraded (up to 60), amber is Warning '
+                              . '(60 to 75) and green is Healthy or Optimal (above 75). The DBHI turns '
+                              . 'red if any of the three indices is red, and only turns green when all '
+                              . 'three are.',
+
+    // Per-index process table
+    'mon.procesos_de'        => 'Processes assessed · %s',
+    'mon.sin_procesos'       => 'This index has no processes declared in the catalogue.',
+    'mon.col_proceso'        => 'Process',
+    'mon.col_metricas'       => 'Metrics',
+    'mon.col_resultado'      => 'Result',
+    'mon.col_descripcion'    => 'Description',
+    'mon.col_recomendacion'  => 'Recommendation',
+    'mon.ayuda_tabla'        => 'How to read this table',
+    'mon.ayuda_consola'      => 'How this panel is computed and coloured',
+    'mon.res_correcto'       => 'Pass',
+    'mon.res_hallazgo'       => 'Finding',
+    'mon.res_sin_dato'       => 'No data',
+    'mon.procesos_nota'      => 'Every metric has its own column and is normalised to 0-1, so they '
+                              . 'measure the same thing even though they observe different ones. A BLANK '
+                              . 'cell means that metric does not assess that process; a dash means it '
+                              . 'does but could not be collected. A process passes when none of its '
+                              . 'metrics trips the traffic light, and "no data" is not a failure of its '
+                              . 'own: that is why it carries no cross.',
+
+    // Memory chart
+    'mon.memoria_titulo'     => 'Database memory',
+    'mon.memoria_pie'        => 'One reading added every %s seconds · %s-minute window',
+    'mon.memoria_nota'       => 'Mock-up: the reading that shows up every half minute is generated by '
+                              . 'this browser, not by the collection agent. The horizontal axis is the '
+                              . 'instance uptime, not wall-clock time.',
+    'mon.mem_de_total'       => 'of %s allocated',
+    'mon.mem_normal'         => 'Below threshold',
+    'mon.mem_sobre_aceptacion' => 'Above acceptance threshold',
+    'mon.mem_sobre_peligro'  => 'Above danger threshold',
+    'mon.mem_resumen'        => 'Memory in use: %s of %s allocated, %s per cent.',
+    'mon.umbral_aceptacion'  => 'Acceptance %s %% · %s',
+    'mon.umbral_peligro'     => 'Danger %s %% · %s',
+    'mon.eje_uptime'         => 'Instance uptime',
+    'mon.uptime_min'         => '%s min',
+    'mon.uptime_horas'       => '%s h %s min',
+
+    'mon.vacio_titulo'       => 'No instances are being monitored yet',
+    'mon.vacio_texto'        => 'Once the collection agent leaves its first sample, this screen will show '
+                              . 'each instance\'s health index, its components and its alerts.',
 ];

@@ -96,8 +96,23 @@ if (is_file($archivoBaseDatos)) {
 $archivoConexiones = RAIZ . '/config/conexiones.php';
 $conexiones = is_file($archivoConexiones) ? require $archivoConexiones : [];
 
+/*
+ * Monitor de salud (parte 2). Hoy son MUESTRAS DE MAQUETA: cifras sintéticas
+ * para dibujar la pantalla del frente 4 mientras los frentes 2 y 3 se fusionan.
+ * La vista lo advierte de forma permanente y no debe dejar de hacerlo mientras
+ * la fuente sea esta.
+ *
+ * Aquí está la única costura que hay que mover cuando el monitoreo se conecte
+ * de verdad: se cambia este `require` por el repositorio, y ni el controlador
+ * ni las vistas del monitor cambian. Sin el archivo, el módulo no existe y la
+ * entrada del menú no se pinta — mismo interruptor que config/base_datos.php.
+ */
+$archivoMonitor = RAIZ . '/config/monitor-mockup.php';
+$monitor = is_file($archivoMonitor) ? require $archivoMonitor : [];
+
 $contenedor = new Contenedor(
-    $peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias, $conexiones
+    $peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias,
+    $conexiones, $monitor
 );
 
 // Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a

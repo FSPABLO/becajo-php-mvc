@@ -110,7 +110,10 @@ $dimensionesRiesgo = [
                 <?php foreach ($dominios as $dominio): ?>
                     <tr data-fila-mapa-calor="<?= e($dominio->clave) ?>" class="border-t border-borde">
                         <th scope="row" class="px-3 py-2 text-left font-medium text-texto">
-                            <?= e($dominio->nombre) ?>
+                            <span class="inline-flex items-center gap-1.5">
+                                <?= iconoDominio($dominio->clave, 'h-4 w-4 shrink-0 text-primario') ?>
+                                <?= e($dominio->nombre) ?>
+                            </span>
                         </th>
                         <td class="px-3 py-3 text-center">
                             <span class="rv-extruido-xs tabular inline-flex min-w-[3.75rem] justify-center rounded-md px-2.5 py-1 font-bold text-texto-2 transition-colors duration-300"

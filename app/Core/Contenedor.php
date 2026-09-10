@@ -47,6 +47,19 @@ final class Contenedor
          * @var list<array<string, mixed>>
          */
         private readonly array $conexiones = [],
+        /**
+         * Muestras del monitor de salud (parte 2, frente 4).
+         *
+         * Entra igual que $conexiones y por la misma razón: hoy es
+         * configuración —un arreglo de muestras de maqueta leído de
+         * config/monitor-mockup.php— y todavía no hay nada que consultar.
+         * Cuando los frentes 2 y 3 estén fusionados, esto pasa a ser un
+         * RepositorioMonitor y solo cambia public/index.php; el controlador y
+         * las vistas del monitor no se enteran.
+         *
+         * @var array<string, mixed>
+         */
+        private readonly array $monitor = [],
     ) {
     }
 
@@ -58,6 +71,28 @@ final class Contenedor
     public function conexiones(): array
     {
         return $this->conexiones;
+    }
+
+    /**
+     * Muestras del monitor de salud.
+     *
+     * @return array<string, mixed>
+     */
+    public function monitor(): array
+    {
+        return $this->monitor;
+    }
+
+    /**
+     * ¿Existe el módulo de monitoreo?
+     *
+     * Lo consultan las vistas para ocultar la entrada del menú en vez de
+     * suponer que la ruta responde — mismo criterio que hayAuditorias() y
+     * hayCatalogo().
+     */
+    public function hayMonitor(): bool
+    {
+        return $this->monitor !== [];
     }
 
     /**

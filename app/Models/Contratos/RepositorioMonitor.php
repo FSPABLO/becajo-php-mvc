@@ -158,4 +158,16 @@ interface RepositorioMonitor
         int $dias,
         int $tramoHora,
     ): array;
+
+    /**
+     * Qué métrica suele arrastrar a cuál. Materia prima de la agrupación en
+     * episodios (§6.1): dentro de un episodio, la alerta que no es consecuencia
+     * de ninguna otra presente se marca como causa probable.
+     *
+     * Es conocimiento declarado en el catálogo, revisable y discutible, no una
+     * correlación calculada.
+     *
+     * @return list<array{origen: string, consecuencia: string}>
+     */
+    public function precedencias(): array;
 }

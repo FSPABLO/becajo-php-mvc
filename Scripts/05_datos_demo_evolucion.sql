@@ -34,8 +34,12 @@ DECLARE
 
     v_id_auditor   NUMBER;
     v_id_admin     NUMBER;
+    -- El entrevistado de la auditoría de partida puede estar escrito a
+    -- mano en vez de ser una cuenta: entonces v_id_admin viene NULO y lo
+    -- que se copia son estas dos columnas de texto.
+    v_nombre_admin VARCHAR2(150);
     v_id_previa    NUMBER;
-    v_organizacion VARCHAR2(150);
+    v_organizacion VARCHAR2(200);   -- el ancho de la columna, no uno menor
     v_id_auditoria NUMBER;
     v_controles    NUMBER;
     v_existe       NUMBER;
@@ -248,10 +252,10 @@ BEGIN
           FROM auditoria
          WHERE id_auditor = v_id_auditor;
 
-        SELECT a.id_administrador_bd, u.organizacion
-          INTO v_id_admin, v_organizacion
+        SELECT a.id_administrador_bd, a.administrador_nombre, e.organizacion
+          INTO v_id_admin, v_nombre_admin, v_organizacion
           FROM auditoria a
-          JOIN usuario u ON u.id_usuario = a.id_administrador_bd
+          JOIN v_auditoria_entrevistado e ON e.id_auditoria = a.id_auditoria
          WHERE a.id_auditoria = v_id_previa;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -286,8 +290,16 @@ BEGIN
                 || ' (' || v_planes(i).area || ')');
         ELSE
             -- Quedan EN_PROGRESO: son las auditorías pendientes del auditor.
-            INSERT INTO auditoria (id_auditor, id_administrador_bd, area_evaluada, fecha, estado)
-            VALUES (v_id_auditor, v_id_admin, v_planes(i).area, v_planes(i).fecha, 'EN_PROGRESO')
+            -- El entrevistado se copia del lado del que viniera: con la cuenta,
+            -- las dos columnas de texto van a NULL, y al revés. Rellenar los
+            -- tres campos choca contra ck_auditoria_administrador.
+            INSERT INTO auditoria (id_auditor, id_administrador_bd,
+                                   administrador_nombre, administrador_organizacion,
+                                   area_evaluada, fecha, estado)
+            VALUES (v_id_auditor, v_id_admin,
+                    CASE WHEN v_id_admin IS NULL THEN v_nombre_admin END,
+                    CASE WHEN v_id_admin IS NULL THEN v_organizacion END,
+                    v_planes(i).area, v_planes(i).fecha, 'EN_PROGRESO')
             RETURNING id_auditoria INTO v_id_auditoria;
 
             DBMS_OUTPUT.PUT_LINE('  creada la auditoría ' || v_id_auditoria

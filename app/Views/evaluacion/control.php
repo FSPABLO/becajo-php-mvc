@@ -13,6 +13,8 @@ declare(strict_types=1);
  * @var \App\Models\Entidades\Control $control
  * @var \App\Models\Entidades\Proceso|null $proceso
  * @var \App\Models\Entidades\EvaluacionControl|null $evaluacion
+ * @var \App\Models\Entidades\ArchivoEvidencia|null $archivo  El adjunto ya guardado.
+ * @var int|null $limiteArchivo  Tope real de subida en bytes, ya cruzado con php.ini.
  * @var list<array{nivel: int, nombre: string, descripcion: string}> $escala
  * @var list<string> $estados
  * @var list<string> $criterios
@@ -22,6 +24,11 @@ declare(strict_types=1);
  */
 $abierta = !$auditoria->estaFinalizada();
 $base = 'evaluacion/' . $auditoria->id;
+$archivo = $archivo ?? null;
+
+// El tope que se anuncia es el que el servidor va a respetar; ver la nota
+// gemela en components/tarjeta-control-auditoria.
+$limiteArchivoMb = number_format(($limiteArchivo ?? \App\Models\Entidades\ArchivoEvidencia::MAXIMO_BYTES) / (1024 * 1024), 1, ',', '');
 
 $etiquetaEstado = ['SI' => $vista->t('eval.estado_si'), 'NO' => $vista->t('eval.estado_no'), 'NA' => $vista->t('eval.estado_na')];
 $etiquetaCriterio = [
@@ -65,7 +72,10 @@ $etiquetaCalidad = [
         <?php endif; ?>
     </div>
 
-    <form method="post" action="<?= e($vista->url($base . '/controles/' . $control->id)) ?>" class="space-y-7">
+    <?php /* enctype multipart: sin él $_FILES llega vacío y el adjunto se
+             pierde sin ningún error. Ver la nota de la tarjeta del panel. */ ?>
+    <form method="post" action="<?= e($vista->url($base . '/controles/' . $control->id)) ?>"
+          enctype="multipart/form-data" class="space-y-7">
         <?= $vista->campoToken() ?>
         <fieldset <?= $abierta ? '' : 'disabled' ?> class="space-y-7">
 
@@ -120,36 +130,6 @@ $etiquetaCalidad = [
                         </option>
                     <?php endforeach; ?>
                 </select>
-            </div>
-
-            <!-- Evidencia verificada (ISO-IEC 27007) -->
-            <div data-requiere-evidencia="<?= $evaluacion?->estado === 'SI' ? '1' : '0' ?>">
-                <label for="evidencia" class="block text-sm font-semibold text-texto">
-                    <?= e($vista->t('eval.evidencia_verificada')) ?>
-                    <span class="font-normal text-texto-2">(<?= e($vista->t('eval.estado_si')) ?>)</span>
-                </label>
-                <p class="mt-1 text-xs text-texto-2"><?= e($vista->t('eval.evidencia_ayuda')) ?></p>
-                <textarea id="evidencia" name="evidencia" rows="3"
-                          class="mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition <?= isset($errores['evidencia']) ? 'border-bad' : 'border-borde focus:border-primario' ?>"><?= e($evaluacion?->evidenciaVerificada ?? '') ?></textarea>
-                <?php if (isset($errores['evidencia'])): ?>
-                    <p class="mt-1.5 text-sm text-bad"><?= e($errores['evidencia']) ?></p>
-                <?php endif; ?>
-
-                <label for="calidad" class="mt-4 block text-sm font-semibold text-texto">
-                    <?= e($vista->t('eval.calidad_evidencia')) ?>
-                </label>
-                <select id="calidad" name="calidad"
-                        class="mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition <?= isset($errores['calidad']) ? 'border-bad' : 'border-borde focus:border-primario' ?>">
-                    <option value=""><?= e($vista->t('eval.ninguno')) ?></option>
-                    <?php foreach ($etiquetaCalidad as $valor => $etiqueta): ?>
-                        <option value="<?= e($valor) ?>" <?= $evaluacion?->calidadEvidencia === $valor ? 'selected' : '' ?>>
-                            <?= e($etiqueta) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <?php if (isset($errores['calidad'])): ?>
-                    <p class="mt-1.5 text-sm text-bad"><?= e($errores['calidad']) ?></p>
-                <?php endif; ?>
             </div>
 
             <!-- Dimensiones CID -->
@@ -218,6 +198,66 @@ $etiquetaCalidad = [
                 <label for="recomendacion" class="block text-sm font-semibold text-texto"><?= e($vista->t('eval.recomendacion')) ?></label>
                 <textarea id="recomendacion" name="recomendacion" rows="3"
                           class="mt-1.5 rv-hundido w-full rounded-rv border border-borde px-3.5 py-2.5 text-texto outline-none transition focus:border-primario"><?= e($evaluacion?->recomendacion ?? '') ?></textarea>
+            </div>
+
+            <?php
+            /*
+             * La evidencia, al FINAL: es lo que respalda todo lo anterior, así
+             * que se llena cuando ya se sabe qué se está respaldando. Antes iba
+             * entre el criterio y las dimensiones, partiendo en dos la
+             * valoración. Mismo orden que la tarjeta del panel — las dos
+             * pantallas recorren el mismo control y verlo ordenado distinto
+             * según desde dónde se abra obliga a reaprender la ficha.
+             *
+             * Dentro: descripción -> calidad -> adjunto. La calidad CALIFICA la
+             * descripción y por eso la sigue; el adjunto es lo opcional y
+             * cierra. La pareja descripción + calidad es la que ISO/IEC 27007
+             * exige para poder decir «Si».
+             */
+            ?>
+            <div data-requiere-evidencia="<?= $evaluacion?->estado === 'SI' ? '1' : '0' ?>">
+                <label for="evidencia" class="block text-sm font-semibold text-texto">
+                    <?= e($vista->t('eval.evidencia_verificada')) ?>
+                    <span class="font-normal text-texto-2">(<?= e($vista->t('eval.estado_si')) ?>)</span>
+                </label>
+                <p class="mt-1 text-xs text-texto-2"><?= e($vista->t('eval.evidencia_ayuda')) ?></p>
+                <textarea id="evidencia" name="evidencia" rows="3"
+                          class="mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition <?= isset($errores['evidencia']) ? 'border-bad' : 'border-borde focus:border-primario' ?>"><?= e($evaluacion?->evidenciaVerificada ?? '') ?></textarea>
+                <?php if (isset($errores['evidencia'])): ?>
+                    <p class="mt-1.5 text-sm text-bad"><?= e($errores['evidencia']) ?></p>
+                <?php endif; ?>
+
+                <label for="calidad" class="mt-3 block text-sm font-semibold text-texto">
+                    <?= e($vista->t('eval.calidad_evidencia')) ?>
+                </label>
+                <select id="calidad" name="calidad"
+                        class="mt-1.5 w-full rounded-rv border px-3.5 py-2.5 text-texto outline-none transition <?= isset($errores['calidad']) ? 'border-bad' : 'border-borde focus:border-primario' ?>">
+                    <option value=""><?= e($vista->t('eval.ninguno')) ?></option>
+                    <?php foreach ($etiquetaCalidad as $valor => $etiqueta): ?>
+                        <option value="<?= e($valor) ?>" <?= $evaluacion?->calidadEvidencia === $valor ? 'selected' : '' ?>>
+                            <?= e($etiqueta) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if (isset($errores['calidad'])): ?>
+                    <p class="mt-1.5 text-sm text-bad"><?= e($errores['calidad']) ?></p>
+                <?php endif; ?>
+                <?php
+                /*
+                 * El adjunto. El MISMO componente que pinta la tarjeta del
+                 * panel —la otra cara de este endpoint—, así que los `name` no
+                 * pueden separarse: viven en un solo archivo.
+                 */
+                ?>
+                <?= $vista->componente('campo-archivo-evidencia', [
+                    'vista'           => $vista,
+                    'idAuditoria'     => $auditoria->id,
+                    'codigoControl'   => $control->id,
+                    'archivo'         => $archivo,
+                    'limiteArchivoMb' => $limiteArchivoMb,
+                    'error'           => $errores['archivo'] ?? null,
+                ]) ?>
+
             </div>
 
             <?php if ($abierta): ?>
