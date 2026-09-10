@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Contratos;
 
+use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
 use App\Models\Entidades\Remediacion;
@@ -73,19 +74,32 @@ interface RepositorioAuditorias
 
     public function auditoria(int $id): ?Auditoria;
 
-    /** Crea una auditoría EN_PROGRESO y devuelve su identificador. */
+    /**
+     * Crea una auditoría EN_PROGRESO y devuelve su identificador.
+     *
+     * El entrevistado llega de UNA de dos formas, nunca de las dos: con
+     * $idAdministradorBd si es una cuenta registrada, o con el nombre y la
+     * organización escritos a mano si no la tiene. Quien pase las dos —o
+     * ninguna— choca contra ck_auditoria_administrador, que es donde la regla
+     * está escrita de verdad; esta firma solo la deja expresable.
+     */
     public function crearAuditoria(
         int $idAuditor,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
     ): int;
 
+    /** Reescribe el encabezado, entrevistado incluido. Ver crearAuditoria(). */
     public function actualizarAuditoria(
         int $id,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
     ): void;
 
     /** Marca la auditoría como FINALIZADA y sella la fecha de cierre. */
@@ -118,6 +132,43 @@ interface RepositorioAuditorias
 
     /** Cuántos controles llevan estado asignado. Alimenta la barra de avance. */
     public function controlesEvaluados(int $idAuditoria): int;
+
+    // ── Adjunto de la evidencia ──────────────────────────────────────────────
+
+    /**
+     * Las FICHAS de los adjuntos de una auditoría, indexadas por código de
+     * control. Sin el binario: las pintan las 75 tarjetas del panel a la vez.
+     *
+     * @return array<string, ArchivoEvidencia>
+     */
+    public function archivosEvidencia(int $idAuditoria): array;
+
+    /** La ficha de UN adjunto, o null si ese control no tiene ninguno. */
+    public function archivoEvidencia(int $idAuditoria, string $codigoControl): ?ArchivoEvidencia;
+
+    /**
+     * Los BYTES del adjunto. Es la única lectura que toca el BLOB, y existe
+     * separada de la ficha justamente para que nadie lo arrastre sin querer.
+     */
+    public function contenidoArchivoEvidencia(int $idAuditoria, string $codigoControl): ?string;
+
+    /**
+     * Guarda el adjunto de un control, sustituyendo el que hubiera.
+     *
+     * La evaluación tiene que existir ya: el adjunto cuelga de ella por llave
+     * foránea. Quien llama guarda primero la evaluación — en la práctica es la
+     * misma pulsación de «Guardar».
+     */
+    public function guardarArchivoEvidencia(
+        int $idAuditoria,
+        string $codigoControl,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void;
+
+    /** Quita el adjunto de un control. No toca el resto de la evaluación. */
+    public function eliminarArchivoEvidencia(int $idAuditoria, string $codigoControl): void;
 
     // ── Indicadores (pkg_indicadores) ────────────────────────────────────────
 

@@ -64,6 +64,12 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'plantillaControl']);
     $enrutador->post('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'guardarControl']);
 
+    // El adjunto de la evidencia. Cuelga del CONTROL y no de la auditoría
+    // porque es de un control concreto, y se sirve por una ruta propia —y no
+    // desde public/— porque el binario vive en Oracle: leerlo pasa por la misma
+    // comprobación de propiedad que el resto del módulo.
+    $enrutador->get('/evaluacion/{id}/controles/{codigo}/evidencia', [AuditoriaController::class, 'archivoEvidencia']);
+
     $enrutador->post('/evaluacion/{id}/finalizar', [AuditoriaController::class, 'finalizar']);
     $enrutador->post('/evaluacion/{id}/reabrir', [AuditoriaController::class, 'reabrir']);
 

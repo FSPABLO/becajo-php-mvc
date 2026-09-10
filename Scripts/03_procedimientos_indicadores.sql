@@ -406,7 +406,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
                     ), 0)
                 , 2) AS madurez_promedio
             FROM auditoria aud
-            JOIN usuario u ON u.id_usuario = aud.id_administrador_bd
+            -- La vista, no USUARIO: una auditoría con el entrevistado
+            -- escrito a mano no tiene cuenta que unir, y con el JOIN
+            -- antiguo desaparecía del histórico sin decirlo.
+            JOIN v_auditoria_entrevistado u ON u.id_auditoria = aud.id_auditoria
             JOIN evaluacion_control ec ON ec.id_auditoria = aud.id_auditoria
             JOIN control c ON c.codigo = ec.codigo_control
             JOIN proceso p ON p.numero = c.numero_proceso
@@ -472,7 +475,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
                         END
                     ) AS peso_total
                 FROM auditoria aud
-                JOIN usuario adm ON adm.id_usuario = aud.id_administrador_bd
+                JOIN v_auditoria_entrevistado adm ON adm.id_auditoria = aud.id_auditoria
                 LEFT JOIN evaluacion_control ec ON ec.id_auditoria = aud.id_auditoria
                 LEFT JOIN control c ON c.codigo = ec.codigo_control
                 WHERE aud.id_auditor = p_id_auditor
@@ -550,7 +553,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
             JOIN evaluacion_control ec ON ec.id_evaluacion_control = r.id_evaluacion_control
             JOIN control c ON c.codigo = ec.codigo_control
             JOIN auditoria aud ON aud.id_auditoria = ec.id_auditoria
-            JOIN usuario u ON u.id_usuario = aud.id_administrador_bd
+            JOIN v_auditoria_entrevistado u ON u.id_auditoria = aud.id_auditoria
             WHERE r.estado IN ('PENDIENTE', 'EN_PROCESO')
               AND r.fecha_limite < TRUNC(SYSDATE)
             ORDER BY r.fecha_limite;

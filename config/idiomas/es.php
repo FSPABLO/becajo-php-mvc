@@ -116,6 +116,8 @@ return [
 
     // Tablero del panel: matriz de la última auditoría y evolución mensual.
     'eval.evolucion_titulo'    => 'Evolución mensual',
+    'eval.tablero_titulo'       => 'Estado y evolución',
+    'eval.empresa_coincidencias' => 'Empresas que coinciden',
     'eval.empresa_auditada'    => 'Empresa auditada',
     'eval.evolucion_texto'     => 'Cuánto del instrumento se aplicó cada mes y qué proporción resultó conforme.',
     'eval.cobertura_instrumento' => 'Cobertura del instrumento',
@@ -167,7 +169,6 @@ return [
     'eval.en_progreso'         => 'En progreso',
     'eval.sin_calcular'        => 'sin calcular',
     'eval.volver'              => 'Volver',
-    'eval.volver_auditorias'   => '← Mis auditorías',
     'eval.crear_auditoria'     => 'Crear auditoría',
 
     // Módulo de evaluación — detalle de auditoría (mostrar.php)
@@ -184,8 +185,6 @@ return [
     'eval.guardar_encabezado'  => 'Guardar encabezado',
     'eval.controles_instrumento' => 'Controles del instrumento',
     'eval.dominios_lista'       => 'Dominios de la auditoría',
-    'eval.pestana_resumen'      => 'Resumen',
-    'eval.secciones_panel'      => 'Secciones del panel',
     'eval.col_codigo'          => 'Código',
     'eval.col_proceso'         => 'Proceso',
     'eval.col_enunciado'       => 'Enunciado',
@@ -226,6 +225,37 @@ return [
     'eval.calidad_mejora'       => 'Requiere mejora',
     'eval.calidad_declarativo'  => 'Declarativo (sin evidencia real)',
 
+    // Tarjeta de un control dentro de una auditoría
+    // (components/tarjeta-control-auditoria.php)
+    'eval.sin_responder'        => 'Sin responder',
+    'eval.nivel_riesgo'         => 'Nivel de riesgo',
+    'eval.dimensiones'          => 'Compromete',
+    'eval.no_marcada'           => 'no marcada',
+    'eval.aviso_na_sin_justificar' => 'Marcado como «no aplica» y sin hallazgo escrito: sale del cálculo de cumplimiento sin dejar constancia de por qué (ISO/IEC 27001, cl. 6.1.3).',
+    'eval.dominio_anterior'     => 'Dominio anterior',
+    'eval.dominio_siguiente'    => 'Dominio siguiente',
+    'eval.guardado'             => 'Guardado',
+    'eval.remediaciones'        => 'Remediaciones',
+    'eval.respondidos'          => 'Respondidos',
+    'eval.dominios_palabra'     => 'Dominios',
+    'eval.evidencia_marcador'   => 'Documento, log, captura o configuración revisada',
+
+    // El adjunto de la evidencia. Acompaña a la descripción escrita y no la
+    // sustituye: por eso «Archivo adjunto» y no «Evidencia», que ya es el
+    // rótulo del texto de arriba. La línea de estado se imprime SIEMPRE, con
+    // archivo o sin él — un campo de archivo vacío no distingue «no hay
+    // ninguno» de «hay uno que el navegador no puede repoblar».
+    'eval.evidencia_archivo'          => 'Archivo adjunto',
+    'eval.evidencia_archivo_sin'      => 'Sin archivo adjunto.',
+    'eval.evidencia_archivo_quitar'   => 'Quitar este archivo al guardar',
+    'eval.evidencia_archivo_soltar'   => 'Arrastre el archivo aquí',
+    'eval.evidencia_archivo_o'        => 'o',
+    'eval.evidencia_archivo_examinar' => 'Búsquelo en el equipo',
+    'eval.evidencia_archivo_ayuda'    => 'Opcional. Imagen (PNG, JPG, WEBP o GIF) o PDF, hasta %s MB.',
+    'eval.evidencia_archivo_sustituir' => 'Elija otro archivo para sustituir el actual. Imagen o PDF, hasta %s MB.',
+    'eval.hallazgo_marcador'    => 'Lo observado durante la verificación',
+    'eval.recomendacion_marcador' => 'Acción sugerida y su prioridad',
+
     // Resultados / reporte / comparación
     'eval.resultados'           => 'Resultados',
     'eval.reporte_pdf'          => 'Reporte ejecutivo (PDF)',
@@ -243,6 +273,14 @@ return [
     'eval.sin_impacto_prob'     => 'Todavía no hay controles con impacto y probabilidad calificados.',
     'eval.eje_matriz'           => 'Probabilidad (eje vertical) × Impacto (eje horizontal)',
     'eval.eje_matriz_reporte'   => 'Filas: probabilidad 5→1 · Columnas: impacto 1→5',
+    // Gráfico de columnas del cumplimiento por dominio.
+    // El resumen NO describe el dibujo («un gráfico de barras»), que a quien no
+    // lo ve no le sirve: da la lectura, que es con lo que uno se queda al mirarlo.
+    'eval.gr_dominios_resumen'  => 'Cumplimiento por dominio, %s en total. El más bajo es %s, con %s.',
+    'eval.detalle_dominio'      => 'Detalle por dominio',
+    'eval.detalle_dominio_ayuda' => 'Abra un dominio para ver sus controles señalados.',
+    'eval.gr_dominios_pie'      => 'Las líneas de 50 % y 80 % son los cortes de zona: por debajo del 50 % el riesgo es alto, y por encima del 80 % es bajo.',
+    'eval.de_cinco'             => 'de 5',
     'eval.cumplimiento_dominio' => 'Cumplimiento por dominio',
     'eval.sin_controles_eval'   => 'Sin controles evaluados todavía.',
     'eval.col_dominio'          => 'Dominio',
@@ -296,6 +334,13 @@ return [
     'eval.admin_entrevistado_label' => 'Administrador de base de datos entrevistado',
     'eval.seleccione'               => '— Seleccione —',
     'eval.organizacion_registrada'  => 'Su organización es la que queda registrada como entidad auditada.',
+    'eval.origen_registrado'        => 'De la lista',
+    'eval.origen_manual'            => 'Editar detalles',
+    'eval.admin_nombre'             => 'Nombre de la persona entrevistada',
+    'eval.admin_nombre_marcador'    => 'Ej.: Marta Jiménez',
+    'eval.admin_empresa'            => 'Empresa a la que pertenece',
+    'eval.admin_empresa_marcador'   => 'Ej.: Cooperativa de Ejemplo R.L.',
+    'eval.admin_manual_ayuda'       => 'La empresa que escriba aquí es la que queda registrada como entidad auditada. No se crea ninguna cuenta: el dato vive en esta auditoría.',
     'eval.area_evaluada'            => 'Área evaluada',
     'eval.fecha_auditoria'          => 'Fecha de la auditoría',
 

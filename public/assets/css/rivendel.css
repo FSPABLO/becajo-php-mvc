@@ -241,8 +241,21 @@ body {
  * El alto lo fija el atributo 'rows' de cada vista, que es donde se sabe
  * cuánto texto se espera. Lo que no cabe se recorre con la barra del propio
  * campo: no se pierde ni se recorta nada.
+ *
+ * EL `html` DE DELANTE NO SOBRA. Preflight, la base de Tailwind, trae su
+ * propio `textarea { resize: vertical }`, y como el CDN inyecta su <style> en
+ * el <head> al ejecutarse, entra DESPUÉS del <link> de esta hoja. A igual
+ * especificidad —las dos son un selector de tipo— gana la última, así que la
+ * regla de arriba se escribió, se documentó y nunca llegó a aplicarse: los
+ * campos de la auditoría se estiraban con el ratón hasta empujar los controles
+ * fuera de la pantalla. Con `html` delante son dos elementos contra uno y ya
+ * no depende del orden en que cargue nada.
+ *
+ * Deja de ganar, a propósito, ante una utilidad `resize-y` escrita a mano en
+ * una vista: eso es una decisión explícita de quien la escribe y debe poder
+ * tomarse. Hoy no hay ninguna, y no debería haberla.
  */
-textarea {
+html textarea {
     resize: none;
 }
 
@@ -637,6 +650,198 @@ textarea {
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
+}
+
+/* ── Aviso flotante (destello de confirmación) ───────────────────────────
+ * Confirmación de una acción que YA se hizo: se asoma abajo a la derecha,
+ * se queda dos segundos y se va. No lleva botón de cerrar porque no pide
+ * nada — cerrar algo que se cierra solo es una tarea inventada.
+ *
+ * Solo los AVISOS. Un error se queda en su franja de siempre, arriba del
+ * contenido: un mensaje que dice qué salió mal y desaparece a los dos
+ * segundos es un mensaje que se puede perder, y el que lo pierde no tiene
+ * cómo recuperarlo.
+ *
+ * Abajo a la derecha, y no arriba: arriba taparía la barra del módulo y la
+ * miga de pan justo cuando el auditor acaba de navegar. Aquí solo pisa el
+ * pie de página.
+ *
+ * Es `fixed`, así que no importa en qué punto del documento se pinte —el
+ * parcial va donde iba la franja—, mientras ningún ancestro tenga
+ * `transform` o `filter`: eso convertiría a este elemento en fijo RESPECTO
+ * A ÉL y lo dejaría a media página. En el módulo el único transformado es
+ * la barra lateral, que ya es `fixed` y no envuelve al contenido.
+ */
+.rv-aviso-flotante {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 60;
+    max-width: min(26rem, calc(100vw - 3rem));
+    animation: rv-aviso-asoma 2.6s ease forwards;
+}
+
+/*
+ * 2,6 s en total: 0,2 de entrada, DOS de lectura y 0,4 de salida. Lo que se
+ * pidió son los dos segundos visibles, no los dos de reloj — un aviso que
+ * empieza a irse mientras aparece no llega a leerse.
+ *
+ * Termina en `visibility: hidden` y no solo en opacidad 0: un elemento
+ * transparente sigue estando ahí, y este flota sobre el pie de página.
+ */
+@keyframes rv-aviso-asoma {
+    0%   { opacity: 0; transform: translateY(0.75rem); }
+    8%   { opacity: 1; transform: translateY(0); }
+    85%  { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0.5rem); visibility: hidden; }
+}
+
+/*
+ * Con movimiento reducido se va el DESPLAZAMIENTO, no el aviso. La regla
+ * general de más abajo recorta toda animación a 0,01 ms, que aquí dejaría
+ * un parpadeo ilegible; esta la recupera —gana por selector de clase frente
+ * al universal— y cambia el fotograma por uno que solo funde.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rv-aviso-flotante {
+        animation-name: rv-aviso-funde !important;
+        animation-duration: 2.6s !important;
+    }
+}
+
+@keyframes rv-aviso-funde {
+    0%   { opacity: 0; }
+    8%   { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+/* ── Conmutador de dos paneles excluyentes ───────────────────────────────
+ * Dos radios eligen cuál de dos grupos de campos se rellena. Hoy lo usa el
+ * encabezado de una auditoría: el entrevistado sale de una cuenta registrada
+ * o se escribe a mano, nunca de los dos sitios.
+ *
+ * Está aquí y no resuelto con `peer-checked/nombre:` de Tailwind por una
+ * razón práctica: Tailwind entra por CDN y esa variante con nombre depende de
+ * la versión que el CDN sirva ese día. Si un día sirviera una anterior, los
+ * dos paneles se verían a la vez y el formulario mandaría los dos lados sin
+ * que nadie se enterase hasta leer la fila en la base. Con selectores de
+ * hermano escritos a mano, el conmutador no depende de nada.
+ *
+ * Sin CSS —o con la hoja sin cargar— los dos paneles quedan visibles y el
+ * formulario sigue funcionando: los radios son radios, y quien decide qué
+ * lado se lee es el servidor. Se degrada a más largo, no a roto.
+ */
+.rv-conmutador > input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.rv-conmutador > [data-panel] {
+    display: none;
+}
+
+.rv-conmutador > input[value="registrado"]:checked ~ [data-panel="registrado"] {
+    display: block;
+}
+
+.rv-conmutador > input[value="manual"]:checked ~ [data-panel="manual"] {
+    display: grid;
+}
+
+/* La pastilla activa: relleno primario y su tinta, como el orden de la tabla
+ * de auditorías o la página actual de la paginación. */
+.rv-conmutador > input[value="registrado"]:checked ~ * [data-para="registrado"],
+.rv-conmutador > input[value="manual"]:checked ~ * [data-para="manual"] {
+    background-color: rgb(var(--rv-primary));
+    color: rgb(var(--rv-on-primary));
+}
+
+/* El foco se ve en la pastilla, que es lo que se ve; el radio está oculto. */
+.rv-conmutador > input[value="registrado"]:focus-visible ~ * [data-para="registrado"],
+.rv-conmutador > input[value="manual"]:focus-visible ~ * [data-para="manual"] {
+    outline: 2px solid rgb(var(--rv-primary));
+    outline-offset: 2px;
+}
+/* ── Zona de soltar archivos ─────────────────────────────────────────────
+ *
+ * El campo de archivo del adjunto de la evidencia. La pieza ES un <label> que
+ * envuelve al <input type="file">, y eso resuelve casi todo sin una línea de
+ * guion: pulsar en cualquier punto de la zona abre el diálogo del sistema
+ * porque eso es lo que hace un label sobre su campo, y el campo sigue en el
+ * árbol de accesibilidad y en el orden de tabulación (va en .sr-only, que lo
+ * oculta a la vista pero no al lector de pantalla ni al teclado).
+ *
+ * Lo ÚNICO que necesita JavaScript es soltar de verdad: arrastrar un archivo
+ * hasta un elemento y que acabe dentro del input no tiene equivalente en HTML.
+ * Sin guion la zona se queda como un botón grande que abre el diálogo — más
+ * discreta, pero entera.
+ *
+ * HUNDIDA, como el resto de campos: en el sistema visual el inset significa
+ * «aquí se recibe algo», y no hay nada que lo signifique más literalmente que
+ * esto. El borde va PUNTEADO y no continuo porque es el gesto con el que se
+ * dibuja un contenedor que espera contenido; un borde macizo lo leería como
+ * una caja ya cerrada.
+ */
+.rv-soltar {
+    display: block;
+    cursor: pointer;
+    border: 2px dashed rgb(var(--rv-border));
+    border-radius: var(--rv-radio-lg);
+    background-color: rgb(var(--rv-surface));
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/*
+ * El foco se ve en la ZONA porque el campo está oculto. Sin esto, tabular
+ * hasta aquí no dibujaría nada en ninguna parte: el anillo iría a un elemento
+ * de un píxel recortado. Es el mismo oro del foco general (§10).
+ */
+.rv-soltar:hover,
+.rv-soltar:focus-within {
+    border-color: rgb(var(--rv-primary));
+    background-color: rgb(var(--rv-primary) / 0.05);
+}
+
+.rv-soltar:focus-within {
+    outline: 2px solid var(--rv-gold-hex);
+    outline-offset: 3px;
+}
+
+/*
+ * Mientras el archivo sobrevuela la zona. Lo pone y lo quita el guion, que es
+ * quien puede saberlo; el estilo vive aquí para que siga los tokens como todo
+ * lo demás. Más marcado que el hover a propósito: hay que poder distinguir
+ * «el cursor pasa por encima» de «suelte aquí y se queda».
+ */
+.rv-soltar[data-soltando] {
+    border-color: rgb(var(--rv-primary));
+    border-style: solid;
+    background-color: rgb(var(--rv-primary) / 0.12);
+}
+
+/*
+ * Elegido un archivo, la zona deja de pedirlo y dice cuál es. El intercambio se
+ * hace por CSS a partir de UN atributo que pone el guion, y no ocultando y
+ * mostrando trozos desde JavaScript: así el estado de partida —sin guion, o
+ * antes de que arranque— es el correcto sin que nadie tenga que ponerlo, y no
+ * hay forma de dejar los dos textos visibles a la vez.
+ */
+.rv-soltar [data-soltar-nombre] {
+    display: none;
+}
+
+.rv-soltar[data-elegido] [data-soltar-nombre] {
+    display: block;
+}
+
+.rv-soltar[data-elegido] [data-soltar-pedir] {
+    display: none;
 }
 
 /* ── Formato numérico español (§2.3): 68,0 % ─────────────────────────── */

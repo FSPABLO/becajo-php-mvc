@@ -12,9 +12,16 @@ namespace App\Models\Entidades;
  * falta, y solo al pasar a FINALIZADA se congelan sus resultados.
  *
  * Los nombres del auditor, del administrador de BD y de la organización llegan
- * resueltos desde la consulta (un JOIN con usuario) y no como una segunda
- * consulta por fila: la lista "Mis auditorías" los necesita todos y pedirlos de
- * a uno sería el problema N+1 de manual.
+ * resueltos desde la consulta (un JOIN con usuario y otro con la vista
+ * v_auditoria_entrevistado) y no como una segunda consulta por fila: la lista
+ * "Mis auditorías" los necesita todos y pedirlos de a uno sería el problema N+1
+ * de manual.
+ *
+ * $idAdministradorBd es NULO cuando al entrevistado se le escribió a mano: esa
+ * persona no tiene cuenta en el sistema. Su nombre y su empresa llegan igual en
+ * $nombreAdministradorBd y $organizacion —la vista resuelve de cuál de los dos
+ * orígenes salen—, así que quien solo quiera MOSTRARLOS no tiene que saber nada
+ * de esto. El id es para enlazar a la cuenta, y por eso puede faltar.
  */
 final class Auditoria
 {
@@ -24,7 +31,7 @@ final class Auditoria
     public function __construct(
         public readonly int $id,
         public readonly int $idAuditor,
-        public readonly int $idAdministradorBd,
+        public readonly ?int $idAdministradorBd,
         public readonly string $areaEvaluada,
         public readonly string $fecha,
         public readonly string $estado,
@@ -44,7 +51,11 @@ final class Auditoria
         return new self(
             id:                    (int) ($fila['id_auditoria'] ?? 0),
             idAuditor:             (int) ($fila['id_auditor'] ?? 0),
-            idAdministradorBd:     (int) ($fila['id_administrador_bd'] ?? 0),
+            // Sin cast a int: 0 no es «ninguna cuenta», es la cuenta 0, y
+            // la vista ya distingue el entrevistado escrito a mano.
+            idAdministradorBd:     isset($fila['id_administrador_bd'])
+                ? (int) $fila['id_administrador_bd']
+                : null,
             areaEvaluada:          (string) ($fila['area_evaluada'] ?? ''),
             fecha:                 (string) ($fila['fecha'] ?? ''),
             estado:                (string) ($fila['estado'] ?? self::EN_PROGRESO),
@@ -63,5 +74,11 @@ final class Auditoria
     public function estaFinalizada(): bool
     {
         return $this->estado === self::FINALIZADA;
+    }
+
+    /** ¿Al entrevistado se le escribió a mano, sin cuenta en el sistema? */
+    public function entrevistadoEscritoAMano(): bool
+    {
+        return $this->idAdministradorBd === null;
     }
 }

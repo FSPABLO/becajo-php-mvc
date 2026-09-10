@@ -70,6 +70,13 @@ RUN apt-get update \
     && apt-get purge -y --auto-remove unzip curl \
     && rm -rf /var/lib/apt/lists/*
 
+# 4b. Límites de subida.
+#
+#     El adjunto de la evidencia (imagen o PDF, hasta 5 MB) no cabe en los
+#     valores de fábrica de PHP: upload_max_filesize son 2 MB. Ver docker/php.ini
+#     para por qué post_max_size va por encima del tope de archivo.
+COPY docker/php.ini /usr/local/etc/php/conf.d/becajo.ini
+
 # 5. Copiar el proyecto dentro de la imagen.
 #
 #    En tu máquina, docker-compose.yml monta la carpeta del proyecto como

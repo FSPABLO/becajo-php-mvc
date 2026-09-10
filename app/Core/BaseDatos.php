@@ -75,12 +75,25 @@ final class BaseDatos
      * Por omisión queda en true — el comportamiento de siempre no cambia para
      * quien no pide lo contrario.
      *
+     * $blobs es lo mismo para columnas BLOB —el adjunto de la evidencia—, y va
+     * al final de la firma para no romper las llamadas que ya existían: quien
+     * lo necesite lo pasa por nombre (blobs: [...]). El contenido es binario,
+     * así que a diferencia de un CLOB una cadena de un solo byte nulo SÍ es un
+     * valor legítimo; ver la nota de ejecutarConLobs() sobre qué se considera
+     * "vacío" en cada caso.
+     *
      * @param array<string, scalar|null> $parametros
      * @param array<string, string|null> $clobs
+     * @param array<string, string|null> $blobs
      */
-    public function ejecutar(string $sql, array $parametros = [], array $clobs = [], bool $confirmar = true): int
-    {
-        if ($clobs === []) {
+    public function ejecutar(
+        string $sql,
+        array $parametros = [],
+        array $clobs = [],
+        bool $confirmar = true,
+        array $blobs = [],
+    ): int {
+        if ($clobs === [] && $blobs === []) {
             $sentencia = $this->ejecutarSentencia($sql, $parametros, $confirmar);
             $afectadas = oci_num_rows($sentencia);
             oci_free_statement($sentencia);
@@ -88,7 +101,23 @@ final class BaseDatos
             return $afectadas === false ? 0 : $afectadas;
         }
 
-        return $this->ejecutarConClobs($sql, $parametros, $clobs, $confirmar);
+        /*
+         * Los dos tipos se mezclan en una sola lista porque el mecanismo es el
+         * mismo —descriptor, enlace, writeTemporary— y solo cambian las dos
+         * constantes de OCI. Dos rutas paralelas serían dos sitios donde
+         * arreglar la próxima fuga de descriptores.
+         */
+        $lobs = [];
+
+        foreach ($clobs as $nombre => $texto) {
+            $lobs[$nombre] = [\OCI_B_CLOB, \OCI_TEMP_CLOB, $texto];
+        }
+
+        foreach ($blobs as $nombre => $binario) {
+            $lobs[$nombre] = [\OCI_B_BLOB, \OCI_TEMP_BLOB, $binario];
+        }
+
+        return $this->ejecutarConLobs($sql, $parametros, $lobs, $confirmar);
     }
 
     /**
@@ -350,18 +379,21 @@ final class BaseDatos
     }
 
     /**
-     * Variante de ejecutar() que enlaza descriptores de LOB.
+     * Variante de ejecutar() que enlaza descriptores de LOB, de texto (CLOB) o
+     * binarios (BLOB). Los dos comparten camino: solo cambian las constantes
+     * que llegan en cada entrada de $lobs.
      *
-     * El texto se escribe en el descriptor ANTES de ejecutar (writeTemporary):
+     * El contenido se escribe en el descriptor ANTES de ejecutar (writeTemporary):
      * en ese momento el descriptor ya está enlazado a la sentencia, así que al
      * ejecutar Oracle encuentra el contenido esperándolo. Los descriptores se
      * liberan siempre, incluso si la sentencia falla, para no dejar LOBs
      * temporales colgando en la sesión.
      *
      * @param array<string, scalar|null> $parametros
-     * @param array<string, string|null> $clobs
+     * @param array<string, array{0: int, 1: int, 2: string|null}> $lobs
+     *        nombre => [constante de enlace, constante de LOB temporal, contenido]
      */
-    private function ejecutarConClobs(string $sql, array $parametros, array $clobs, bool $confirmar = true): int
+    private function ejecutarConLobs(string $sql, array $parametros, array $lobs, bool $confirmar = true): int
     {
         $conexion = $this->conexion();
         $sentencia = oci_parse($conexion, $sql);
@@ -382,14 +414,19 @@ final class BaseDatos
         $descriptores = [];
 
         try {
-            foreach ($clobs as $nombre => $texto) {
+            foreach ($lobs as $nombre => [$tipoEnlace, $tipoTemporal, $contenido]) {
                 $clave = ':' . ltrim((string) $nombre, ':');
 
                 // Un campo que el auditor dejó en blanco se guarda como NULL,
                 // no como un LOB vacío: así "sin hallazgo" y "hallazgo vacío"
                 // no son dos estados distintos en la base. Para eso basta un
                 // enlace normal, sin descriptor.
-                if ($texto === null || $texto === '') {
+                //
+                // La cadena vacía cuenta como "en blanco" también para un BLOB,
+                // y ahí no es una suposición sobre el contenido: un archivo de
+                // cero bytes no es evidencia de nada, y la validación de PHP
+                // ya lo rechaza antes de llegar hasta aquí.
+                if ($contenido === null || $contenido === '') {
                     $valores[$clave] = null;
                     oci_bind_by_name($sentencia, $clave, $valores[$clave]);
                     continue;
@@ -402,8 +439,8 @@ final class BaseDatos
                 }
 
                 $descriptores[$clave] = $descriptor;
-                oci_bind_by_name($sentencia, $clave, $descriptores[$clave], -1, \OCI_B_CLOB);
-                $descriptor->writeTemporary($texto, \OCI_TEMP_CLOB);
+                oci_bind_by_name($sentencia, $clave, $descriptores[$clave], -1, $tipoEnlace);
+                $descriptor->writeTemporary($contenido, $tipoTemporal);
             }
 
             $modo = $confirmar ? \OCI_COMMIT_ON_SUCCESS : \OCI_NO_AUTO_COMMIT;

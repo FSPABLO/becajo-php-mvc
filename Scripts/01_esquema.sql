@@ -9,7 +9,7 @@
 -- backfill incluido). Este script crea el esquema completo desde cero, en
 -- su estado final, para quien monta el proyecto por primera vez.
 --
--- 8 tablas. Decisiones que aplican en esta versión:
+-- 9 tablas. Decisiones que aplican en esta versión:
 --   - No existe tabla ORGANIZACION: la afiliación institucional es el campo
 --     de texto usuario.organizacion.
 --   - resultado_riesgo.zona es VARCHAR2 con CHECK ('ROJO','AMARILLO','VERDE')
@@ -36,6 +36,7 @@
 --   CONTROL                    (depende de PROCESO)
 --   AUDITORIA                  (depende de USUARIO)
 --   EVALUACION_CONTROL         (depende de AUDITORIA, CONTROL)
+--   EVIDENCIA_ARCHIVO          (depende de EVALUACION_CONTROL)
 --   RESULTADO_RIESGO           (depende de AUDITORIA)
 --   REMEDIACION                (depende de EVALUACION_CONTROL, AUDITORIA)
 -- ============================================================================
@@ -121,11 +122,26 @@ CREATE TABLE control (
 
 -- ── AUDITORIA ────────────────────────────────────────────────────────────
 -- Sin referencia a ninguna tabla de organizaciones: la organización auditada
--- se identifica a través de id_administrador_bd -> USUARIO.organizacion.
+-- se identifica a través del entrevistado, y hay DOS formas de identificarlo:
+--
+--   a) id_administrador_bd -> USUARIO (cuenta registrada con rol ADMIN_BD).
+--      Es el caso normal y el único que existía antes.
+--   b) administrador_nombre + administrador_organizacion, escritos a mano.
+--      Un auditor entrevista a gente que no tiene —ni va a tener— cuenta en
+--      el sistema; obligarlo a registrarla antes de abrir la auditoría era
+--      pedirle que creara un usuario falso para poder trabajar.
+--
+-- ck_auditoria_administrador obliga a UNA de las dos, nunca las dos ni
+-- ninguna: con la cuenta y el texto rellenos a la vez, «¿de quién es esta
+-- auditoría?» tendría dos respuestas y quien lea la fila elegiría una.
+-- Por eso el id ya no es NOT NULL — la restricción lo cubre mejor que la
+-- columna, porque sabe de la alternativa.
 CREATE TABLE auditoria (
     id_auditoria            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_auditor              NUMBER         NOT NULL,
-    id_administrador_bd     NUMBER         NOT NULL,
+    id_administrador_bd     NUMBER,
+    administrador_nombre       VARCHAR2(150),
+    administrador_organizacion VARCHAR2(200),
     area_evaluada           VARCHAR2(200)  NOT NULL,
     fecha                   DATE           NOT NULL,
     estado                  VARCHAR2(20)   NOT NULL,
@@ -137,7 +153,16 @@ CREATE TABLE auditoria (
     CONSTRAINT fk_auditoria_administrador_bd
         FOREIGN KEY (id_administrador_bd) REFERENCES usuario (id_usuario),
     CONSTRAINT ck_auditoria_estado
-        CHECK (estado IN ('EN_PROGRESO', 'FINALIZADA'))
+        CHECK (estado IN ('EN_PROGRESO', 'FINALIZADA')),
+    CONSTRAINT ck_auditoria_administrador
+        CHECK (
+            (id_administrador_bd IS NOT NULL
+             AND administrador_nombre IS NULL
+             AND administrador_organizacion IS NULL)
+         OR (id_administrador_bd IS NULL
+             AND administrador_nombre IS NOT NULL
+             AND administrador_organizacion IS NOT NULL)
+        )
 );
 
 -- ── EVALUACION_CONTROL ───────────────────────────────────────────────────
@@ -195,6 +220,48 @@ CREATE TABLE evaluacion_control (
         CHECK (estado != 'SI' OR (evidencia_verificada IS NOT NULL AND calidad_evidencia IS NOT NULL))
 );
 
+-- ── EVIDENCIA_ARCHIVO ────────────────────────────────────────────────────
+-- El adjunto de la evidencia: la captura, el PDF de la política, el log
+-- exportado. evaluacion_control.evidencia_verificada sigue siendo la
+-- DESCRIPCIÓN escrita por el auditor y no se sustituye — ISO/IEC 27007 pide
+-- que quede constancia de qué se revisó, y un archivo sin una línea que diga
+-- qué se miró en él obliga a abrirlo para saberlo.
+--
+-- Tabla APARTE y no una columna BLOB en evaluacion_control, por una razón
+-- práctica: el repositorio lee esa tabla con SELECT * (las 75 evaluaciones de
+-- una auditoría de una vez) y el driver trae los LOB ya materializados, así
+-- que abrir el panel se llevaría por delante los 75 adjuntos. Aquí el binario
+-- solo se toca cuando alguien pide el archivo.
+--
+-- UNIQUE sobre id_evaluacion_control: un adjunto por control evaluado. Si
+-- mañana hacen falta varios, se cae esa restricción y no cambia nada más.
+--
+-- ON DELETE CASCADE: borrar la evaluación de un control se lleva su adjunto.
+-- Sin eso, eliminarEvaluacion() dejaría binarios huérfanos que nadie puede
+-- alcanzar ya desde ninguna pantalla.
+CREATE TABLE evidencia_archivo (
+    id_evidencia_archivo   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_evaluacion_control  NUMBER         NOT NULL,
+    nombre                 VARCHAR2(255)  NOT NULL,
+    tipo_mime              VARCHAR2(100)  NOT NULL,
+    tamano_bytes           NUMBER         NOT NULL,
+    contenido              BLOB           NOT NULL,
+    fecha_carga            TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_evidarch_evalctrl
+        FOREIGN KEY (id_evaluacion_control)
+        REFERENCES evaluacion_control (id_evaluacion_control) ON DELETE CASCADE,
+    CONSTRAINT uq_evidarch_evalctrl
+        UNIQUE (id_evaluacion_control),
+    -- La lista blanca vive TAMBIÉN aquí, no solo en PHP: es el mismo criterio
+    -- que el resto del esquema — la validación en PHP da el mensaje, la
+    -- restricción es la última línea de defensa.
+    CONSTRAINT ck_evidarch_tipo
+        CHECK (tipo_mime IN ('image/png', 'image/jpeg', 'image/webp',
+                             'image/gif', 'application/pdf')),
+    CONSTRAINT ck_evidarch_tamano
+        CHECK (tamano_bytes BETWEEN 1 AND 5242880)
+);
+
 -- ── RESULTADO_RIESGO ─────────────────────────────────────────────────────
 -- promedio_madurez: promedio PONDERADO (por control.peso) de la madurez de
 -- los controles que afectan cada dimensión, normalizado sobre 1 — no un
@@ -241,5 +308,25 @@ CREATE TABLE remediacion (
     CONSTRAINT ck_remediacion_estado
         CHECK (estado IN ('PENDIENTE', 'EN_PROCESO', 'CUMPLIDO', 'VENCIDO'))
 );
+
+-- ── V_AUDITORIA_ENTREVISTADO ─────────────────────────────────────────────
+-- La ÚNICA definición de «quién fue entrevistado y de qué empresa».
+--
+-- Con dos orígenes posibles (cuenta registrada o texto a mano), resolver la
+-- pareja es un NVL sobre un LEFT JOIN. Ese NVL se necesita en cinco sitios
+-- —la consulta de auditorías en PHP y tres procedimientos de 03— y repetirlo
+-- es garantizar que un día uno se quede con el JOIN antiguo y las auditorías
+-- escritas a mano desaparezcan de ese informe sin avisar. La vista lo escribe
+-- una vez; los demás la consultan por id_auditoria.
+--
+-- No es un indicador y por eso es una vista y no un procedimiento: no calcula
+-- nada, solo dice de dónde sale un dato que la tabla guarda en dos columnas.
+CREATE OR REPLACE VIEW v_auditoria_entrevistado AS
+SELECT a.id_auditoria,
+       NVL(dba.nombre,       a.administrador_nombre)       AS nombre_administrador_bd,
+       NVL(dba.organizacion, a.administrador_organizacion) AS organizacion,
+       CASE WHEN a.id_administrador_bd IS NULL THEN 1 ELSE 0 END AS es_manual
+  FROM auditoria a
+  LEFT JOIN usuario dba ON dba.id_usuario = a.id_administrador_bd;
 
 COMMIT;

@@ -110,6 +110,8 @@ return [
 
     // Tablero del panel: matriz de la última auditoría y evolución mensual.
     'eval.evolucion_titulo'    => 'Monthly progress',
+    'eval.tablero_titulo'       => 'Status and progress',
+    'eval.empresa_coincidencias' => 'Matching companies',
     'eval.empresa_auditada'    => 'Audited organization',
     'eval.evolucion_texto'     => 'How much of the instrument was applied each month, and what share came out compliant.',
     'eval.cobertura_instrumento' => 'Instrument coverage',
@@ -159,7 +161,6 @@ return [
     'eval.en_progreso'         => 'In progress',
     'eval.sin_calcular'        => 'not calculated',
     'eval.volver'              => 'Back',
-    'eval.volver_auditorias'   => '← My audits',
     'eval.crear_auditoria'     => 'Create audit',
 
     // Assessment module — audit detail (mostrar.php)
@@ -176,8 +177,6 @@ return [
     'eval.guardar_encabezado'  => 'Save header',
     'eval.controles_instrumento' => 'Instrument controls',
     'eval.dominios_lista'       => 'Audit domains',
-    'eval.pestana_resumen'      => 'Overview',
-    'eval.secciones_panel'      => 'Panel sections',
     'eval.col_codigo'          => 'Code',
     'eval.col_proceso'         => 'Process',
     'eval.col_enunciado'       => 'Statement',
@@ -218,6 +217,34 @@ return [
     'eval.calidad_mejora'       => 'Needs improvement',
     'eval.calidad_declarativo'  => 'Declarative (no real evidence)',
 
+    // Control card inside an audit
+    // (components/tarjeta-control-auditoria.php)
+    'eval.sin_responder'        => 'Not answered',
+    'eval.nivel_riesgo'         => 'Risk level',
+    'eval.dimensiones'          => 'Compromises',
+    'eval.no_marcada'           => 'not marked',
+    'eval.aviso_na_sin_justificar' => 'Marked as "not applicable" with no finding written: it leaves the compliance calculation without any record of why (ISO/IEC 27001, cl. 6.1.3).',
+    'eval.dominio_anterior'     => 'Previous domain',
+    'eval.dominio_siguiente'    => 'Next domain',
+    'eval.guardado'             => 'Saved',
+    'eval.remediaciones'        => 'Remediation',
+    'eval.respondidos'          => 'Answered',
+    'eval.dominios_palabra'     => 'Domains',
+    'eval.evidencia_marcador'   => 'Document, log, screenshot or setting reviewed',
+
+    // The evidence attachment. It accompanies the written description, it does
+    // not replace it. The status line always prints, with or without a file.
+    'eval.evidencia_archivo'          => 'Attached file',
+    'eval.evidencia_archivo_sin'      => 'No file attached.',
+    'eval.evidencia_archivo_quitar'   => 'Remove this file when saving',
+    'eval.evidencia_archivo_soltar'   => 'Drag the file here',
+    'eval.evidencia_archivo_o'        => 'or',
+    'eval.evidencia_archivo_examinar' => 'Browse your computer',
+    'eval.evidencia_archivo_ayuda'    => 'Optional. Image (PNG, JPG, WEBP or GIF) or PDF, up to %s MB.',
+    'eval.evidencia_archivo_sustituir' => 'Choose another file to replace the current one. Image or PDF, up to %s MB.',
+    'eval.hallazgo_marcador'    => 'What was observed during verification',
+    'eval.recomendacion_marcador' => 'Suggested action and its priority',
+
     // Results / report / comparison
     'eval.resultados'           => 'Results',
     'eval.reporte_pdf'          => 'Executive report (PDF)',
@@ -235,6 +262,12 @@ return [
     'eval.sin_impacto_prob'     => 'No controls with rated impact and probability yet.',
     'eval.eje_matriz'           => 'Probability (vertical axis) × Impact (horizontal axis)',
     'eval.eje_matriz_reporte'   => 'Rows: probability 5→1 · Columns: impact 1→5',
+    // Compliance-by-domain column chart.
+    'eval.gr_dominios_resumen'  => 'Compliance by domain, %s in total. The lowest is %s, at %s.',
+    'eval.detalle_dominio'      => 'Domain breakdown',
+    'eval.detalle_dominio_ayuda' => 'Open a domain to see its flagged controls.',
+    'eval.gr_dominios_pie'      => 'The 50 % and 80 % lines are the zone thresholds: below 50 % the risk is high, above 80 % it is low.',
+    'eval.de_cinco'             => 'of 5',
     'eval.cumplimiento_dominio' => 'Compliance by domain',
     'eval.sin_controles_eval'   => 'No controls assessed yet.',
     'eval.col_dominio'          => 'Domain',
@@ -287,6 +320,13 @@ return [
     'eval.admin_entrevistado_label' => 'Database administrator interviewed',
     'eval.seleccione'               => '— Select —',
     'eval.organizacion_registrada'  => 'Their organization is the one recorded as the audited entity.',
+    'eval.origen_registrado'        => 'From the list',
+    'eval.origen_manual'            => 'Edit details',
+    'eval.admin_nombre'             => 'Name of the person interviewed',
+    'eval.admin_nombre_marcador'    => 'E.g. Marta Jimenez',
+    'eval.admin_empresa'            => 'Company they belong to',
+    'eval.admin_empresa_marcador'   => 'E.g. Cooperativa de Ejemplo R.L.',
+    'eval.admin_manual_ayuda'       => 'The company you type here is the one recorded as the audited entity. No account is created: the data lives in this audit.',
     'eval.area_evaluada'            => 'Area assessed',
     'eval.fecha_auditoria'          => 'Audit date',
 

@@ -29,8 +29,13 @@ declare(strict_types=1);
  * @var bool|null              $hayMonitor  ¿Existe el módulo de monitoreo?
  * @var string|null            $rutaActual
  * @var bool|null              $lateralOculta  Barra lateral plegada (cookie).
+ * @var list<array{etiqueta: string, ruta?: string|null}>|null $migaPagina
+ *      Niveles de miga POR DEBAJO de la entrada del menú, que el menú no puede
+ *      saber: «Auditoría 152» no es una sección, es un registro. Los pone el
+ *      controlador, que es quien tiene el dato. Ver partials/panel/barra-superior.
  */
 $lateralOculta = $lateralOculta ?? false;
+$migaPagina    = $migaPagina ?? [];
 $hojas         = $hojas ?? [];
 $guiones       = $guiones ?? [];
 $herramientas  = $herramientas ?? [];
@@ -201,7 +206,8 @@ foreach ($grupos as $grupo) {
         <?= $vista->renderizar('partials/panel/barra-superior', [
             'migaGrupo'     => $migaGrupo,
             'migaElemento'  => $migaElemento,
-            'usuarioActual' => $usuarioActual,
+            'migaRuta'      => $rutaActiva !== '' ? $rutaActiva : null,
+            'migaPagina'    => $migaPagina,
             'rutaActual'    => $rutaActual,
             'lateralOculta' => $lateralOculta,
         ]) ?>
