@@ -409,7 +409,23 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Monitor de salud de bases de datos',
 
-    'mon.instancia_no_encontrada' => 'No hay ninguna instancia con la clave «%s». Se muestra la primera de la cartera.',
+    'mon.instancia_no_encontrada' => 'No hay ninguna base de datos vigilada con esa clave.',
+
+    // Antesala: una ficha por base de datos vigilada
+    'mon.buscar_etiqueta'    => 'Buscar por clave, motor o entorno',
+    'mon.buscar_marcador'    => 'Ej.: prodcore, 19c, legado…',
+    'mon.filtro_banda'       => 'Estado de salud',
+    'mon.filtro_conexion'    => 'Conexión',
+    'mon.filtro_entorno'     => 'Entorno',
+    'mon.filtro_motor'       => 'Motor',
+    'mon.filtro_sin_indice'  => 'Sin índice',
+    'mon.instancias_rango'   => 'Bases de datos: %s de %s',
+    'mon.orden_atencion'     => 'Más urgente',
+    'mon.orden_indice'       => 'Mejor índice',
+    'mon.orden_reciente'     => 'Muestra más reciente',
+    'mon.orden_clave'        => 'Clave (A-Z)',
+    'mon.sin_instancias_filtro' => 'Ninguna base de datos coincide con el filtro.',
+    'mon.ultima_muestra'     => 'Última muestra %s',
 
     'mon.duracion'           => 'Duración de la toma',
     'mon.hace_min'           => 'hace %s min',

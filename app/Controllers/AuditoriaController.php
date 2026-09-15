@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controlador;
+use App\Core\Facetas;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\Control;
@@ -276,22 +277,6 @@ final class AuditoriaController extends Controlador
             $b->fecha <=> $a->fecha ?: $b->id <=> $a->id);
 
         return $auditorias;
-    }
-
-    /**
-     * Pasa un texto a minúsculas y sin tildes, para comparar.
-     *
-     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
-     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
-     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
-     * devuelve cosas distintas en la máquina de cada quien.
-     */
-    private function normalizar(string $texto): string
-    {
-        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
-            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
-        ]);
     }
 
     // ── Alta de auditoría ────────────────────────────────────────────────────
@@ -1046,22 +1031,16 @@ final class AuditoriaController extends Controlador
         $base   = $this->buscarEmpresas($empresas, $buscar);
 
         /*
-         * Lo que está marcado en el panel de filtros. Cada grupo es una lista:
-         * dentro de un grupo las opciones SUMAN (verde o ámbar) y entre grupos
-         * se cruzan (verde Y con tendencia). Es lo que espera quien ha usado
-         * cualquier buscador con facetas, y es lo que impide que dos casillas
-         * del mismo grupo se anulen entre sí en vez de ampliar el resultado.
+         * Lo que está marcado en el panel de filtros: dentro de un grupo las
+         * opciones SUMAN (verde o ámbar) y entre grupos se cruzan (verde Y con
+         * tendencia). Las reglas viven en App\Core\Facetas, que comparte esta
+         * pantalla con la antesala del monitor.
          *
          * Nada de esto viaja al repositorio: se filtra sobre la lista que ya
-         * está en memoria, que es la del auditor conectado y de nadie más. Un
-         * valor inventado en la URL no casa con ninguna empresa y deja la
-         * rejilla vacía; no abre ninguna puerta.
+         * está en memoria, que es la del auditor conectado y de nadie más.
          */
-        $seleccion = [];
-
-        foreach (array_keys($this->facetasEmpresa()) as $grupo) {
-            $seleccion[$grupo] = $this->peticion()->entradaLista($grupo);
-        }
+        $facetas   = $this->facetasEmpresa();
+        $seleccion = $facetas->seleccion($this->peticion());
 
         // Cualquier valor que no conozcamos cae en el de por defecto: un orden
         // inventado en la URL no debe poder dejar la rejilla sin ordenar.
@@ -1069,7 +1048,7 @@ final class AuditoriaController extends Controlador
             ? (string) $this->peticion()->entrada('orden')
             : self::ORDENES_EMPRESA[0];
 
-        $visibles = $this->ordenarEmpresas($this->filtrarEmpresas($base, $seleccion), $orden);
+        $visibles = $this->ordenarEmpresas($facetas->filtrar($base, $seleccion), $orden);
 
         $datos = [
             'meta'      => $this->meta('Comparar histórico'),
@@ -1079,7 +1058,7 @@ final class AuditoriaController extends Controlador
             // ha auditado a nadie», que es otra cosa muy distinta.
             'total'     => count($empresas),
             'empresas'  => $visibles,
-            'facetas'   => $this->contarFacetas($base, $seleccion),
+            'facetas'   => $facetas->contar($base, $seleccion),
             'seleccion' => $seleccion,
             'buscar'    => $buscar,
             'orden'     => $orden,
@@ -1107,15 +1086,19 @@ final class AuditoriaController extends Controlador
             $this->json([
                 'html' => $this->contenedor->vista()->renderizar('evaluacion/comparar', [
                     ...$datos,
-                    'mensajes'  => ['aviso' => null, 'error' => null],
-                    // Sin el guion: ya está en pie desde la carga completa, y
-                    // repetirlo en cada tecla son seis kilobytes por letra.
-                    'asincrona' => true,
+                    'mensajes' => ['aviso' => null, 'error' => null],
                 ]),
             ]);
         }
 
-        $this->verPanel('evaluacion/comparar', [...$this->contexto(), ...$datos]);
+        $this->verPanel('evaluacion/comparar', [
+            ...$this->contexto(),
+            ...$datos,
+            // El filtrado vivo es un archivo aparte y no un <script> dentro de
+            // la vista: lo comparte con /monitoreo, y así la respuesta a cada
+            // tecla ya no tiene que acordarse de dejarlo fuera.
+            'guiones' => ['assets/js/facetas.js'],
+        ]);
     }
 
     /**
@@ -1360,13 +1343,12 @@ final class AuditoriaController extends Controlador
      * Una tabla de cierres y no un match repartido por dos métodos: filtrar y
      * contar recorren los mismos grupos, y con la regla escrita dos veces basta
      * con que alguien afine una para que el recuento deje de corresponderse con
-     * lo que la rejilla enseña.
-     *
-     * @return array<string, \Closure(array<string, mixed>): list<string>>
+     * lo que la rejilla enseña. Cómo se filtra y se cuenta con ella lo decide
+     * App\Core\Facetas, igual para esta pantalla que para /monitoreo.
      */
-    private function facetasEmpresa(): array
+    private function facetasEmpresa(): Facetas
     {
-        return [
+        return new Facetas([
             // La zona de la ÚLTIMA lectura con índice. 'SIN' no es una zona
             // más: es no tener ninguna, y por eso se puede filtrar aparte.
             'zona' => static fn (array $empresa): array => [$empresa['zona'] ?? 'SIN'],
@@ -1386,100 +1368,7 @@ final class AuditoriaController extends Controlador
             // El único grupo con varios valores por empresa: una auditada en
             // respaldos y en accesos aparece en los dos.
             'area' => static fn (array $empresa): array => $empresa['areas'],
-        ];
-    }
-
-    /**
-     * Aplica los filtros marcados. Un grupo sin nada marcado no filtra.
-     *
-     * @param list<array<string, mixed>>  $empresas
-     * @param array<string, list<string>> $seleccion
-     * @param string|null $excepto Grupo que NO se aplica; lo usa el recuento de
-     *                             facetas para contar sin contarse a sí mismo.
-     * @return list<array<string, mixed>>
-     */
-    private function filtrarEmpresas(array $empresas, array $seleccion, ?string $excepto = null): array
-    {
-        $facetas = $this->facetasEmpresa();
-
-        return array_values(array_filter(
-            $empresas,
-            static function (array $empresa) use ($facetas, $seleccion, $excepto): bool {
-                foreach ($facetas as $grupo => $valoresDe) {
-                    $marcadas = $seleccion[$grupo] ?? [];
-
-                    if ($grupo === $excepto || $marcadas === []) {
-                        continue;
-                    }
-
-                    if (array_intersect($valoresDe($empresa), $marcadas) === []) {
-                        return false;
-                    }
-                }
-
-                return true;
-            },
-        ));
-    }
-
-    /**
-     * Cuántas empresas tiene detrás cada casilla del panel de filtros.
-     *
-     * Cada grupo se cuenta con los DEMÁS aplicados pero sin el suyo. Si se
-     * contara a sí mismo, al marcar «Riesgo bajo» las otras tres zonas caerían a
-     * cero y el panel se vaciaría con el primer clic: el recuento dejaría de
-     * decir «cuántas hay si marco esto» para decir «cuántas hay de lo que ya
-     * marqué», que no le sirve a nadie.
-     *
-     * @param list<array<string, mixed>>  $empresas
-     * @param array<string, list<string>> $seleccion
-     * @return array<string, array<string, int>>
-     */
-    private function contarFacetas(array $empresas, array $seleccion): array
-    {
-        $facetas = [];
-
-        foreach ($this->facetasEmpresa() as $grupo => $valoresDe) {
-            $candidatas = $this->filtrarEmpresas($empresas, $seleccion, $grupo);
-            $marcadas   = $seleccion[$grupo] ?? [];
-
-            // Las opciones declaradas salen siempre y en su orden, y las
-            // marcadas también aunque hoy no cuenten ninguna: una casilla activa
-            // que desaparece del panel es un filtro que no hay forma de quitar.
-            $conteo = array_fill_keys(self::OPCIONES_FACETA[$grupo] ?? [], 0)
-                    + array_fill_keys($marcadas, 0);
-
-            foreach ($candidatas as $empresa) {
-                foreach ($valoresDe($empresa) as $valor) {
-                    $conteo[$valor] = ($conteo[$valor] ?? 0) + 1;
-                }
-            }
-
-            // Los grupos SIN orden declarado son datos (las áreas): se ofrecen
-            // por frecuencia y, a igualdad, por nombre. Sin el segundo criterio
-            // el panel saldría en otro orden entre dos cargas iguales.
-            //
-            // Las claves van tipadas int|string y no string: PHP convierte a
-            // entero toda clave que parezca un número, así que un área evaluada
-            // llamada «2024» llegaría aquí como int y, con strict_types, un
-            // parámetro string reventaría con TypeError.
-            if (!isset(self::OPCIONES_FACETA[$grupo])) {
-                uksort($conteo, static fn (int|string $a, int|string $b): int
-                    => [$conteo[$b], (string) $a] <=> [$conteo[$a], (string) $b]);
-            }
-
-            // Una opción que no tiene ninguna empresa detrás y que nadie marcó
-            // no se ofrece: un filtro que solo puede vaciar la rejilla no es una
-            // opción, es una trampa.
-            $facetas[$grupo] = array_filter(
-                $conteo,
-                static fn (int $n, int|string $valor): bool
-                    => $n > 0 || in_array((string) $valor, $marcadas, true),
-                \ARRAY_FILTER_USE_BOTH,
-            );
-        }
-
-        return $facetas;
+        ], self::OPCIONES_FACETA);
     }
 
     /**

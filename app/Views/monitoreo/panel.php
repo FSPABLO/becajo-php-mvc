@@ -5,11 +5,13 @@ declare(strict_types=1);
 /**
  * Monitor de salud — pantalla principal (maqueta del frente 4).
  *
- * Es la ruta `/monitoreo` del §9 del plan de la parte 2, reordenada como PANEL
- * DE OPERACIÓN: primero el instrumento (medidor, los tres índices y la
+ * Es la ruta `/monitoreo/{clave}` del §9 del plan de la parte 2, ordenada como
+ * PANEL DE OPERACIÓN: primero el instrumento (medidor, los tres índices y la
  * tendencia), después la evidencia (mediciones y alertas). Antes la pantalla
  * abría con una rejilla de fichas, que es un índice de instancias y no un
- * instrumento — se leía como un menú, no como un tablero.
+ * instrumento — se leía como un menú, no como un tablero. Esa rejilla volvió,
+ * pero a SU pantalla (`/monitoreo`, monitoreo/cartera): elegir y operar son dos
+ * gestos, y en la misma página el índice empujaba la consola hacia abajo.
  *
  * ── El lienzo de la consola ──────────────────────────────────────────────────
  *
@@ -32,20 +34,18 @@ declare(strict_types=1);
  *
  * No normaliza, no promedia, no aplica topes y no decide bandas. Recibe una
  * MUESTRA YA EVALUADA y la pinta. Esa frontera es del contrato de la muestra
- * —el recolector no razona, el motor no consulta, la vista no calcula—. Lo
- * único que decide aquí es el ORDEN del selector, y ordenar por una banda que
- * ya viene dada no es calcular salud: es poner delante lo que hay que atender.
+ * —el recolector no razona, el motor no consulta, la vista no calcula—. Ni
+ * siquiera el ORDEN del selector se decide aquí: llega ya ordenado del
+ * controlador, que es quien ordena también la rejilla de la antesala.
  *
  * @var \App\Core\Vista $vista
- * @var array<string, array<string, mixed>> $instancias
+ * @var list<array<string, mixed>> $cartera  Para el selector, ya ordenada.
  * @var array<string, mixed> $seleccionada
  * @var array<string, list<array<string, mixed>>> $procesos
  * @var float $pisoCobertura
  * @var array<string, float> $pesos
- * @var string|null $noEncontrada  Instancia pedida en la URL que no existe.
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
-$noEncontrada = $noEncontrada ?? null;
 
 /*
  * Ayudantes de formato, declarados una vez y repartidos a los componentes.
@@ -76,34 +76,6 @@ $antiguedad = static function (int $minutos) use ($vista): string {
 // Etiqueta traducida de una banda. El tono lo da tonoBanda(), en funciones.php.
 $etiquetaBanda = static fn (?string $banda): string =>
     $banda === null ? $vista->t('mon.banda_sin_dato') : $vista->t('mon.banda_' . strtolower($banda));
-
-/*
- * Orden del selector: primero lo que hay que atender.
- *
- * La severidad es un orden declarado, no calculado. Una muestra que no publica
- * ISBD (caída o incompleta) va PRIMERO y no al final: «no sé cómo está» es más
- * urgente que «está degradada», porque la segunda al menos se está midiendo.
- */
-$severidad = static function (array $ins): int {
-    if ($ins['muestra'] === 'FALLIDA') {
-        return 0;
-    }
-
-    if ($ins['isbd'] === null) {
-        return 1;
-    }
-
-    return match ($ins['banda']) {
-        'CRITICO'     => 2,
-        'DEGRADADO'   => 3,
-        'ADVERTENCIA' => 4,
-        'SALUDABLE'   => 5,
-        default       => 6,
-    };
-};
-
-$cartera = array_values($instancias);
-usort($cartera, static fn (array $a, array $b): int => $severidad($a) <=> $severidad($b));
 
 $sel     = $seleccionada;
 $publica = $sel['isbd'] !== null;
@@ -195,12 +167,6 @@ $luzGeneral = semaforoGeneral(array_map(
     <h1 class="sr-only"><?= e($vista->t('mon.titulo')) ?></h1>
 
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
-
-    <?php if ($noEncontrada !== null): ?>
-        <p class="rv-hundido mb-6 rounded-rv border border-borde bg-superficie px-4 py-3 text-sm text-texto-2">
-            <?= e($vista->t('mon.instancia_no_encontrada', $noEncontrada)) ?>
-        </p>
-    <?php endif; ?>
 
     <?php /* ── Qué base se está mirando ── */ ?>
     <?= $vista->componente('monitor-selector', [

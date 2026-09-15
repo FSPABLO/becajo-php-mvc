@@ -97,6 +97,18 @@ if (!function_exists('icono')) {
             // vitales de una instancia— y no se repite en ninguna otra
             // entrada del menú, así que no hay dos lecturas del mismo trazo.
             'corazon'     => '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+            /*
+             * Base de datos: la ficha de una instancia vigilada en /monitoreo.
+             * Es a esa antesala lo que 'expediente' es a /evaluacion/comparar,
+             * y por lo mismo no se gasta en otra pantalla.
+             *
+             * No es 'disco': aquel tiene dos anillos y ya significa «Memoria y
+             * almacenamiento» en los dominios y «Catálogo» en el menú. Este
+             * lleva la tapa y TRES anillos iguales —la silueta clásica del
+             * servidor de datos—, repartidos a partes iguales para que a 48 px
+             * no se lea como una lata con una tira.
+             */
+            'base-datos'  => '<ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5"/><path d="M4 9.7c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/><path d="M4 14.3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/>',
 
             /*
              * Un ícono fijo por cada uno de los 7 dominios del instrumento

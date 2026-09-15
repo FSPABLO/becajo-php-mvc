@@ -393,7 +393,23 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Database health monitor',
 
-    'mon.instancia_no_encontrada' => 'There is no instance with the key "%s". Showing the first one in the portfolio.',
+    'mon.instancia_no_encontrada' => 'There is no monitored database with that key.',
+
+    // Lobby: one card per monitored database
+    'mon.buscar_etiqueta'    => 'Search by key, engine or environment',
+    'mon.buscar_marcador'    => 'e.g. prodcore, 19c…',
+    'mon.filtro_banda'       => 'Health status',
+    'mon.filtro_conexion'    => 'Connection',
+    'mon.filtro_entorno'     => 'Environment',
+    'mon.filtro_motor'       => 'Engine',
+    'mon.filtro_sin_indice'  => 'No index',
+    'mon.instancias_rango'   => 'Databases: %s of %s',
+    'mon.orden_atencion'     => 'Most urgent',
+    'mon.orden_indice'       => 'Best index',
+    'mon.orden_reciente'     => 'Most recent sample',
+    'mon.orden_clave'        => 'Key (A-Z)',
+    'mon.sin_instancias_filtro' => 'No database matches the filter.',
+    'mon.ultima_muestra'     => 'Last sample %s',
 
     'mon.duracion'           => 'Collection time',
     'mon.hace_min'           => '%s min ago',

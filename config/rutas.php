@@ -109,10 +109,13 @@ return static function (Enrutador $enrutador): void {
     // ── Monitor de salud de bases de datos (parte 2) ─────────────────────────
     //
     // Maqueta del frente 4: las dos rutas del §9 del plan sobre muestras
-    // sintéticas. El orden no importa —el enrutador resuelve la coincidencia
-    // exacta antes que los patrones—, así que "/monitoreo/alertas", cuando
-    // exista, nunca se lo quedará "/monitoreo/{instancia}".
-    $enrutador->get('/monitoreo', [MonitorController::class, 'panel']);
+    // sintéticas. /monitoreo es la antesala —una ficha por base vigilada— y
+    // /monitoreo/{instancia} la consola de una sola, igual que el par
+    // /evaluacion/comparar y /evaluacion/comparar/{empresa}. El orden no
+    // importa —el enrutador resuelve la coincidencia exacta antes que los
+    // patrones—, así que "/monitoreo/alertas", cuando exista, nunca se lo
+    // quedará "/monitoreo/{instancia}".
+    $enrutador->get('/monitoreo', [MonitorController::class, 'cartera']);
     $enrutador->get('/monitoreo/{instancia}', [MonitorController::class, 'panel']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────

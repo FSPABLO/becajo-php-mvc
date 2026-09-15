@@ -75,6 +75,26 @@ abstract class Controlador
         return $argumentos === [] ? $texto : vsprintf($texto, $argumentos);
     }
 
+    /**
+     * Pasa un texto a minúsculas y sin tildes, para comparar.
+     *
+     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
+     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
+     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
+     * devuelve cosas distintas en la máquina de cada quien.
+     *
+     * Vive aquí y no en AuditoriaController porque buscan con él las dos
+     * antesalas con buscador —empresas e instancias vigiladas—, y dos copias de
+     * «qué cuenta como la misma palabra» acaban encontrando cosas distintas.
+     */
+    protected function normalizar(string $texto): string
+    {
+        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
+        ]);
+    }
+
     protected function autenticacion(): Autenticacion
     {
         return $this->contenedor->autenticacion();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controlador;
+use App\Core\Facetas;
 
 /**
  * Monitor de salud de bases de datos — MAQUETA del frente 4.
@@ -16,6 +17,12 @@ use App\Core\Controlador;
  * arreglo desde el primer día»— llevado a su forma más simple mientras los
  * frentes 2 y 3 se fusionan.
  *
+ * Son DOS pantallas, igual que el histórico de auditorías:
+ *
+ * - `/monitoreo` es la antesala: una ficha por base de datos vigilada, con el
+ *   mismo panel de facetas que /evaluacion/comparar. Solo se ELIGE.
+ * - `/monitoreo/{clave}` es la consola de operación de UNA instancia.
+ *
  * Igual que HerramientasController, aquí no hay aritmética: el controlador
  * pide una muestra YA EVALUADA y se la entrega a la vista. Cuando el módulo
  * se conecte de verdad, cambia de dónde sale el arreglo (public/index.php) y
@@ -24,6 +31,98 @@ use App\Core\Controlador;
  */
 final class MonitorController extends Controlador
 {
+    /**
+     * Órdenes de la rejilla de instancias. El primero es el de por defecto:
+     * quien abre un monitor viene a ver qué está mal, no a leer la lista en
+     * orden alfabético.
+     */
+    private const ORDENES = ['atencion', 'indice', 'reciente', 'clave'];
+
+    /**
+     * Opciones de los grupos de filtro que son una ESCALA, en el orden en que
+     * se ofrecen. Entorno y motor no están: son datos de cada instancia, y se
+     * ofrecen por frecuencia.
+     */
+    private const OPCIONES_FACETA = [
+        // De mejor a peor, como las zonas del histórico. 'SIN' no es una banda
+        // más: es no tener índice publicado.
+        'banda'    => ['OPTIMO', 'SALUDABLE', 'ADVERTENCIA', 'DEGRADADO', 'CRITICO', 'SIN'],
+        'conexion' => ['COMPLETA', 'PARCIAL', 'FALLIDA'],
+    ];
+
+    /**
+     * La ANTESALA: una ficha por base de datos vigilada.
+     *
+     * Antes `/monitoreo` abría directamente la consola de la primera instancia,
+     * y el único índice de la cartera era el desplegable de su cabecera. Con
+     * cuatro bases alcanzaba; con veinte, elegir a ciegas en un desplegable no
+     * es elegir. Aquí se busca, se filtra y se entra — la misma forma que
+     * /evaluacion/comparar, porque es el mismo gesto sobre otro sujeto.
+     *
+     * Todo sale del mismo arreglo que ya lee la consola: ni una consulta más.
+     */
+    public function cartera(): void
+    {
+        $this->exigirUsuario();
+
+        $instancias = array_values($this->contenedor->monitor()['instancias'] ?? []);
+
+        if ($instancias === []) {
+            $this->verVacio();
+
+            return;
+        }
+
+        // El buscador va ANTES que las facetas, para que sus recuentos hablen
+        // de lo que se está mirando. Ver AuditoriaController::comparar().
+        $buscar  = $this->peticion()->entrada('buscar');
+        $base    = $this->buscarInstancias($instancias, $buscar);
+        $facetas = $this->facetasInstancia();
+
+        $seleccion = $facetas->seleccion($this->peticion());
+
+        // Un orden inventado en la URL cae en el de por defecto.
+        $orden = in_array($this->peticion()->entrada('orden'), self::ORDENES, true)
+            ? (string) $this->peticion()->entrada('orden')
+            : self::ORDENES[0];
+
+        $datos = [
+            'meta'       => $this->meta(
+                'Monitor de salud',
+                'Bases de datos bajo vigilancia: índice de salud (ISBD), estado de la '
+                . 'última muestra y entorno de cada instancia.',
+            ),
+            'total'      => count($instancias),
+            'instancias' => $this->ordenarInstancias($facetas->filtrar($base, $seleccion), $orden),
+            'facetas'    => $facetas->contar($base, $seleccion),
+            'seleccion'  => $seleccion,
+            'buscar'     => $buscar,
+            'orden'      => $orden,
+            'ordenes'    => self::ORDENES,
+        ];
+
+        /*
+         * El guion que refiltra al escribir recibe ESTA MISMA VISTA sin el
+         * marco, igual que en /evaluacion/comparar. Los destellos van vacíos:
+         * leerlos los consume, y una tecla no puede gastarse un aviso.
+         */
+        if ($this->peticion()->esAsincrona()) {
+            $this->json([
+                'html' => $this->contenedor->vista()->renderizar('monitoreo/cartera', [
+                    ...$datos,
+                    'mensajes' => ['aviso' => null, 'error' => null],
+                ]),
+            ]);
+        }
+
+        $this->verPanel('monitoreo/cartera', [
+            ...$this->contexto(),
+            ...$datos,
+            'guiones' => ['assets/js/facetas.js'],
+        ]);
+    }
+
+    /** La consola de operación de UNA instancia. */
     public function panel(): void
     {
         $usuario = $this->exigirUsuario();
@@ -31,12 +130,6 @@ final class MonitorController extends Controlador
 
         /** @var array<string, array<string, mixed>> $instancias */
         $instancias = $datos['instancias'] ?? [];
-
-        if ($instancias === []) {
-            $this->verVacio();
-
-            return;
-        }
 
         /*
          * Qué instancia se está mirando.
@@ -48,25 +141,40 @@ final class MonitorController extends Controlador
          * todavía no hay secreto que proteger porque los datos son de mentira,
          * pero la comprobación se escribe ahora para que no falte después,
          * cuando cada instancia sea la de un cliente distinto.
+         *
+         * Lo que no casa vuelve a la antesala con un destello, igual que una
+         * empresa desconocida en /evaluacion/comparar/{empresa}. Antes se
+         * enseñaba la primera de la cartera con un aviso encima, y eso es
+         * pintar la consola de una base que nadie pidió: con cuatro instancias
+         * de nombre parecido, el aviso se lee tarde y la cifra se lee primero.
+         * El destello no repite la clave pedida: es texto de la URL, y
+         * devolverlo impreso deja a cualquiera escribir en la pantalla de otro.
          */
-        $pedida = $this->parametro('instancia');
-        $clave  = ($pedida !== null && isset($instancias[$pedida]))
-            ? $pedida
-            : array_key_first($instancias);
+        $pedida = (string) $this->parametro('instancia', '');
 
-        $seleccionada = $instancias[$clave];
+        if (!isset($instancias[$pedida])) {
+            $this->sesion()->destello('error', $this->t('mon.instancia_no_encontrada'));
+            $this->redirigir('/monitoreo');
+        }
+
+        $seleccionada = $instancias[$pedida];
 
         $this->verPanel('monitoreo/panel', [
             ...$this->contexto(),
             'meta'          => $this->meta(
-                'Monitor de salud',
+                'Monitor de salud · ' . $pedida,
                 'Índice de salud de base de datos (ISBD), componentes, procesos '
                 . 'evaluados y memoria de las instancias bajo vigilancia.',
             ),
+            // Por debajo de «Monitor» la miga la pone el controlador: una
+            // instancia no es una sección del menú, es un registro.
+            'migaPagina'    => [['etiqueta' => $pedida]],
             'usuarioActual' => $usuario,
             'pisoCobertura' => (float) ($datos['piso_cobertura'] ?? 80.0),
             'pesos'         => $datos['pesos'] ?? [],
-            'instancias'    => $instancias,
+            // Para el desplegable de la cabecera, ya en el orden de la
+            // antesala por defecto: las dos listas no pueden discrepar.
+            'cartera'       => $this->ordenarInstancias(array_values($instancias), self::ORDENES[0]),
             'seleccionada'  => $seleccionada,
             'procesos'      => $this->procesosPorIndice($datos, $seleccionada),
             /*
@@ -76,10 +184,129 @@ final class MonitorController extends Controlador
              * lectura — se pierde comodidad, no información.
              */
             'guiones'       => ['assets/js/monitor.js'],
-            // Lo que se pidió y no existe: la vista lo dice en vez de callarse
-            // y enseñar otra instancia como si fuera la que se pidió.
-            'noEncontrada'  => $pedida !== null && !isset($instancias[$pedida]) ? $pedida : null,
         ]);
+    }
+
+    /**
+     * Qué valores tiene cada instancia en cada grupo de filtro.
+     *
+     * Ninguno CALCULA salud: todos leen un campo que la muestra evaluada ya
+     * trae. Filtrar por una banda dada no es decidir la banda, igual que
+     * ordenar por ella no lo era en el selector de la consola.
+     */
+    private function facetasInstancia(): Facetas
+    {
+        return new Facetas([
+            'banda' => static fn (array $ins): array => [
+                $ins['isbd'] === null ? 'SIN' : (string) $ins['banda'],
+            ],
+
+            // Cómo terminó la última toma: es lo que dice si la cifra de la
+            // ficha se puede creer, y por eso se filtra aparte de la banda.
+            'conexion' => static fn (array $ins): array => [(string) $ins['muestra']],
+
+            'entorno' => static fn (array $ins): array => [(string) $ins['entorno']],
+            'motor'   => static fn (array $ins): array => [(string) $ins['motor']],
+        ], self::OPCIONES_FACETA);
+    }
+
+    /**
+     * Filtra por lo que se escribió: clave, motor o entorno.
+     *
+     * Las tres a la vez por lo mismo que buscarEmpresas() mira nombre y áreas:
+     * quien escribe «19c» busca un motor y quien escribe «producción» busca un
+     * entorno, y obligarle a saber en qué campo vive lo que recuerda es
+     * trasladarle la estructura del arreglo.
+     *
+     * @param list<array<string, mixed>> $instancias
+     * @return list<array<string, mixed>>
+     */
+    private function buscarInstancias(array $instancias, ?string $termino): array
+    {
+        if ($termino === null) {
+            return $instancias;
+        }
+
+        $buscado = $this->normalizar($termino);
+
+        return array_values(array_filter($instancias, function (array $ins) use ($buscado): bool {
+            foreach (['clave', 'motor', 'entorno'] as $campo) {
+                if (str_contains($this->normalizar((string) $ins[$campo]), $buscado)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+    }
+
+    /**
+     * Ordena la rejilla (y el desplegable de la consola).
+     *
+     * A igualdad siempre desempata la clave: sin un segundo criterio, dos
+     * instancias en la misma banda cambiarían de sitio entre dos cargas.
+     *
+     * @param list<array<string, mixed>> $instancias
+     * @return list<array<string, mixed>>
+     */
+    private function ordenarInstancias(array $instancias, string $orden): array
+    {
+        usort($instancias, function (array $a, array $b) use ($orden): int {
+            $porClave = $this->normalizar((string) $a['clave']) <=> $this->normalizar((string) $b['clave']);
+
+            return match ($orden) {
+                /*
+                 * Mejor índice primero, y las SIN ÍNDICE al final —nunca
+                 * mezcladas con las de índice bajo—. Un null no es un cero:
+                 * invariante 3.
+                 */
+                'indice' => (($a['isbd'] === null ? 1 : 0) <=> ($b['isbd'] === null ? 1 : 0))
+                    ?: ((float) $b['isbd'] <=> (float) $a['isbd'])
+                    ?: $porClave,
+
+                // La muestra más fresca primero.
+                'reciente' => ((int) $a['hace_min'] <=> (int) $b['hace_min']) ?: $porClave,
+
+                'clave' => $porClave,
+
+                default => (self::gravedad($a) <=> self::gravedad($b)) ?: $porClave,
+            };
+        });
+
+        return $instancias;
+    }
+
+    /**
+     * Cuánta atención pide una instancia: menos es más urgente.
+     *
+     * Es un orden DECLARADO, no calculado: se lee de la banda que la muestra ya
+     * trae. Una muestra que no publica ISBD (caída o incompleta) va PRIMERO y no
+     * al final: «no sé cómo está» es más urgente que «está degradada», porque la
+     * segunda al menos se está midiendo.
+     *
+     * Vivía en la vista de la consola, que ordenaba su desplegable. Subió aquí
+     * al llegar la antesala: con dos copias, la rejilla y el desplegable podían
+     * poner primero bases distintas.
+     *
+     * @param array<string, mixed> $ins
+     */
+    private static function gravedad(array $ins): int
+    {
+        if ($ins['muestra'] === 'FALLIDA') {
+            return 0;
+        }
+
+        if ($ins['isbd'] === null) {
+            return 1;
+        }
+
+        return match ($ins['banda']) {
+            'CRITICO'     => 2,
+            'DEGRADADO'   => 3,
+            'ADVERTENCIA' => 4,
+            'SALUDABLE'   => 5,
+            default       => 6,
+        };
     }
 
     /**

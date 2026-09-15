@@ -174,12 +174,47 @@ invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el fre
   cobertura bajo el piso, instancia caída). **Si toca esos números, recompruebe
   que siguen cuadrando** — es fácil dejar una maqueta que enseña aritmética falsa.
 
+### La antesala: `/monitoreo`
+
+**El monitor son DOS pantallas, como el histórico de auditorías.** `/monitoreo`
+(`MonitorController::cartera()`, vista `monitoreo/cartera`) lista una FICHA por
+base de datos vigilada, y la consola de una sola vive en `/monitoreo/{clave}`.
+Antes `/monitoreo` abría la consola de la primera instancia y el único índice
+de la cartera era el desplegable de su cabecera: con cuatro bases alcanzaba, con
+veinte elegir a ciegas no es elegir.
+
+- **Misma distribución que `/evaluacion/comparar`, por construcción**: las dos
+  usan `components/rejilla-facetas`, `App\Core\Facetas` y `assets/js/facetas.js`
+  (ver «Comparar histórico» más abajo). Grupos: estado de salud (las cinco
+  bandas + «Sin índice», de mejor a peor), conexión (las tres palabras del
+  selector), entorno y motor — estos dos son datos y se ofrecen por frecuencia;
+  el motor nace plegado. El buscador mira clave, motor y entorno.
+- **La ficha**: ícono `base-datos` —tapa y tres anillos, exclusivo de esta
+  antesala igual que `expediente` lo es del histórico; no es `disco`, que tiene
+  dos y ya significa almacenamiento y catálogo—, clave, motor · entorno,
+  «Última muestra hace N min» y el estado: cifra del ISBD + `pill()` de su
+  banda, o guion + `pill('na')` con el motivo (muestra incompleta / sin
+  conexión). **La antigüedad vuelve a estar a la vista aquí** (§9), aunque la
+  consola la retirara.
+- **El orden por defecto es «Más urgente»** (`MonitorController::gravedad()`):
+  caída, luego sin índice, luego de CRÍTICO a ÓPTIMO. Es el mismo orden del
+  desplegable de la consola, que antes lo calculaba la vista — subió al
+  controlador para que rejilla y desplegable no pudieran poner primero bases
+  distintas.
+- **Una clave que no existe vuelve a `/monitoreo` con un destello** que no
+  repite la clave (es texto de la URL). Antes se pintaba la consola de la
+  primera instancia con un aviso encima, que es enseñar una base que nadie pidió.
+- Va en `max-w-6xl`, como el histórico: la excepción de ancho completo es de la
+  consola, que tiene una matriz que recortar; una rejilla de tres fichas no.
+
 ### La pantalla: consola de operación
 
-`/monitoreo` se ordena como un panel de guardia y no como un listado: primero el
-instrumento, después la evidencia.
+`/monitoreo/{clave}` se ordena como un panel de guardia y no como un listado:
+primero el instrumento, después la evidencia. Lleva `migaPagina` con la clave
+(«Monitoreo / Monitor / PRODCORE1»), así que «Monitor» enlaza de vuelta a la
+antesala.
 
-0. **A todo el ancho, y sin rótulo.** `/monitoreo` es la única pantalla del
+0. **A todo el ancho, y sin rótulo.** La consola es la única pantalla del
    módulo sin el `max-w-6xl` que centra a las demás: su tabla es una matriz de
    seis columnas de métrica y con la caja centrada pedía barra horizontal
    habiendo sitio de sobra a los lados. Lo que NO se estira es la prosa —los
@@ -187,7 +222,8 @@ instrumento, después la evidencia.
    deja de leerse por mucho ancho que haya. El `<h1>` sigue existiendo en
    `sr-only` aunque no haya título visible: sin él, quien no ve la pantalla se
    queda sin saber en qué página está.
-1. **Selector de base de datos** (`monitor-selector`). Es un `<details>` con
+1. **Selector de base de datos** (`monitor-selector`). Es el ATAJO para saltar
+   de una base a otra sin volver a la antesala, no el índice de la cartera. Es un `<details>` con
    enlaces, no un `<select>`: elegir una instancia NAVEGA a `/monitoreo/{clave}`,
    así que las opciones son enlaces de verdad —se abren en otra pestaña, se
    comparten, funcionan sin JavaScript— y el navegador no permite marcado dentro
@@ -702,7 +738,7 @@ fácil al añadir una pantalla:
   puede saberlo —«Auditoría 152» no es una sección, es un registro— y sin eso
   las cuatro pantallas de una auditoría (ficha, resultados, remediaciones y cada
   uno de los 75 controles) decían todas «Mis auditorías». Hoy lo usan esas
-  cuatro; `/catalogo` y `/monitoreo` pueden hacerlo pasando la misma clave.
+  cuatro y `/monitoreo/{clave}`; `/catalogo` puede hacerlo pasando la misma clave.
   **El rótulo se traduce en el controlador** con `Controlador::t()` —el gemelo
   de `Vista::t()`— porque solo él tiene el dato con el que armarlo; sin eso, en
   inglés saldría «Audits / My audits / Auditoría 152».
@@ -792,11 +828,22 @@ fácil al añadir una pantalla:
   Todo funciona sin JavaScript —formulario GET con su botón, `<details>`
   nativos, el orden en enlaces—, y cada combinación deja su propia URL.
 
+  **Esa distribución ES un componente, y lo comparte con `/monitoreo`**: panel
+  de facetas, recuento, orden, pastillas de lo aplicado y rejilla viven en
+  `components/rejilla-facetas`; filtrar y contar, en `App\Core\Facetas`; el
+  filtrado vivo, en `assets/js/facetas.js`. Cada pantalla solo aporta sus
+  grupos (cierres que dicen qué valores tiene una fila), sus rótulos y el cierre
+  `$ficha` que dibuja una tarjeta. Vivían dentro de `comparar` —el guion como
+  `<script>` en línea— y salieron al llegar la segunda antesala. **No vuelva a
+  copiar ninguna de las tres a una pantalla nueva**: las dos antesalas se
+  recorren igual porque no hay dos copias que puedan separarse.
+
   **Encima de eso, el filtro es VIVO: se refiltra al escribir.** Y el guion no
   filtra: pide la misma ruta con la cabecera `X-Becajo-Asincrona` y recibe ESTA
-  MISMA VISTA ya dibujada por PHP —sin el marco del módulo y sin el propio
-  guion—, de la que copia cuatro regiones (`data-comparar-limpiar`, `-grupos`,
-  `-orden`, `-resultados`) más el texto del recuento. Es la decisión de
+  MISMA VISTA ya dibujada por PHP —sin el marco del módulo, y por tanto sin el
+  guion, que el controlador pasa en `guiones`—, de la que copia cuatro regiones
+  (`data-facetas-limpiar`, `-grupos`, `-orden`, `-resultados`) más el texto del
+  recuento. Es la decisión de
   `guardarControl()` otra vez: **el HTML lo arma el servidor y el guion solo
   sustituye**, porque contar una faceta, ordenar la rejilla y pintar una ficha
   son reglas del producto y una copia en JavaScript es una copia que un día dirá
