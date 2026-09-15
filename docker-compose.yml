@@ -32,6 +32,20 @@ services:
       BD_CADENA: oracle:1521/FREEPDB1
       BD_USUARIO: becajo
       BD_CLAVE: becajo
+      # Lembas. Los valores salen del archivo .env de la raíz, que compose lee
+      # solo al levantar (ver .env.ejemplo), y se pasan UNO A UNO: el contenedor
+      # recibe estas variables y no el archivo entero. Sin .env todo queda con
+      # su valor por defecto y la clave vacía, o sea, Lembas apagado; nadie del
+      # equipo necesita una clave para levantar el proyecto.
+      #
+      # Solo "web": el agente de monitoreo no habla con ningún modelo, y una
+      # credencial que un servicio no usa es una credencial que puede filtrar.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LEMBAS_MODELO: ${LEMBAS_MODELO:-claude-opus-5}
+      LEMBAS_ESFUERZO: ${LEMBAS_ESFUERZO:-low}
+      LEMBAS_MAX_TOKENS: ${LEMBAS_MAX_TOKENS:-8000}
+      LEMBAS_LIMITE_DIARIO_USUARIO: ${LEMBAS_LIMITE_DIARIO_USUARIO:-20}
+      LEMBAS_LIMITE_DIARIO_TOTAL: ${LEMBAS_LIMITE_DIARIO_TOTAL:-150}
     depends_on:
       oracle:
         # No basta con que el contenedor exista: Oracle tarda un par de

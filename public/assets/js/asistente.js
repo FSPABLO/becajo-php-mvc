@@ -11,8 +11,11 @@
  *   2. Abrir y cerrar, con el mismo reparto que la barra lateral: en pantalla
  *      ancha es una preferencia que se recuerda en cookie (y el servidor la
  *      devuelve ya aplicada); en angosta es un cajón que no se recuerda.
- *   3. La conversación. Hoy es solo la VISTA: no hay servicio detrás, y el
- *      panel lo dice en vez de fingir una respuesta.
+ *   3. La conversación. Manda el formulario a POST /asistente y SUSTITUYE el
+ *      globo de espera por el HTML que devuelve el servidor, que ya trae el
+ *      texto de Lembas y las fichas con los datos. El guion no dibuja ninguna
+ *      respuesta: lo único que escribe él es el aviso de un fallo de red,
+ *      cuando no llegó nada que pintar.
  */
 (function () {
     'use strict';
@@ -207,29 +210,85 @@
     /* ── Conversación ───────────────────────────────────────────────────── */
 
     const plantillaUsuario = panel.querySelector('[data-asistente-plantilla="usuario"]');
+    const plantillaPensando = panel.querySelector('[data-asistente-plantilla="pensando"]');
     const plantillaAsistente = panel.querySelector('[data-asistente-plantilla="asistente"]');
     const bienvenida = panel.querySelector('[data-asistente-bienvenida]');
-    const respuestaPendiente = panel.getAttribute('data-asistente-pendiente') || '';
+    const botonEnviar = formulario.querySelector('[type="submit"]');
+    const botonNueva = panel.querySelector('[data-asistente-nueva]');
+    const errorRed = panel.getAttribute('data-asistente-error-red') || '';
+    const urlOlvidar = panel.getAttribute('data-asistente-olvidar') || '';
+
+    let enviando = false;
+
+    /* La conversación repintada al cambiar de pantalla: se abre por el final. */
+    conversacion.scrollTop = conversacion.scrollHeight;
 
     /*
-     * El globo sale de la <template> que dibujó PHP y el texto entra con
-     * textContent, nunca como HTML: es lo que escribió el usuario y, mañana, lo
-     * que devuelva un modelo de lenguaje. Ninguna de las dos cosas es marcado.
+     * Clona una <template> dibujada por PHP y la añade al final. El texto, si
+     * lo hay, entra con textContent y nunca como HTML: es lo que escribió el
+     * usuario. Devuelve el elemento añadido, para poder sustituirlo después.
      */
-    function globo(plantilla, texto) {
+    function agregar(plantilla, texto) {
         if (!plantilla) {
-            return;
+            return null;
         }
 
         const fragmento = plantilla.content.cloneNode(true);
+        const elemento = fragmento.firstElementChild;
         const destino = fragmento.querySelector('[data-asistente-texto]');
 
-        if (destino) {
+        if (destino && typeof texto === 'string') {
             destino.textContent = texto;
         }
 
         conversacion.appendChild(fragmento);
         conversacion.scrollTop = conversacion.scrollHeight;
+
+        return elemento;
+    }
+
+    /*
+     * Sustituye el globo de espera por la respuesta del servidor.
+     *
+     * insertAdjacentHTML sin miedo, y es el único sitio donde se hace: ese HTML
+     * lo dibujó partials/panel/asistente/turno con todo dato pasado por e(), y
+     * llega de nuestra propia ruta. El texto del modelo viaja DENTRO de él ya
+     * escapado, no suelto.
+     *
+     * Se desplaza hasta el PRINCIPIO del turno nuevo y no hasta el final del
+     * panel: una ficha de resumen es más alta que el panel, y bajar hasta el
+     * fondo dejaría a la vista su pie en vez de su título.
+     */
+    function sustituir(espera, html) {
+        if (!espera) {
+            conversacion.insertAdjacentHTML('beforeend', html);
+            return;
+        }
+
+        espera.insertAdjacentHTML('afterend', html);
+        const nuevo = espera.nextElementSibling;
+        espera.remove();
+
+        if (nuevo) {
+            nuevo.scrollIntoView({ block: 'start', behavior: 'auto' });
+        }
+    }
+
+    function sustituirConError(espera) {
+        if (espera) {
+            espera.remove();
+        }
+
+        agregar(plantillaAsistente, errorRed);
+    }
+
+    function ocupado(estado) {
+        enviando = estado;
+        formulario.setAttribute('aria-busy', String(estado));
+
+        if (botonEnviar) {
+            botonEnviar.disabled = estado;
+        }
     }
 
     formulario.addEventListener('submit', function (evento) {
@@ -237,7 +296,12 @@
 
         const texto = campo.value.trim();
 
-        if (texto === '') {
+        /*
+         * Una pregunta a la vez. El campo no se bloquea —se puede ir escribiendo
+         * la siguiente—, pero el envío sí: dos respuestas cruzadas dejarían el
+         * historial de la sesión en un orden distinto del de la pantalla.
+         */
+        if (texto === '' || enviando) {
             campo.focus();
             return;
         }
@@ -247,12 +311,85 @@
             bienvenida.hidden = true;
         }
 
-        globo(plantillaUsuario, texto);
+        // El FormData se toma ANTES de vaciar el campo: lleva el token y la ruta.
+        const datos = new FormData(formulario);
+
+        agregar(plantillaUsuario, texto);
         campo.value = '';
 
-        // Mientras no haya servicio, la única respuesta honesta es decirlo.
-        globo(plantillaAsistente, respuestaPendiente);
+        const espera = agregar(plantillaPensando);
+        ocupado(true);
+
+        fetch(formulario.action, {
+            method: 'POST',
+            body: datos,
+            credentials: 'same-origin',
+            headers: { 'X-Becajo-Asincrona': '1' }
+        })
+            .then(function (respuesta) {
+                // Los errores también traen su globo en JSON (401, 429, 502…).
+                return respuesta.json().catch(function () { return null; });
+            })
+            .then(function (json) {
+                if (json && typeof json.html === 'string') {
+                    sustituir(espera, json.html);
+                } else {
+                    sustituirConError(espera);
+                }
+            })
+            .catch(function () {
+                sustituirConError(espera);
+            })
+            .finally(function () {
+                ocupado(false);
+            });
     });
+
+    /*
+     * Nueva conversación: olvida el historial en el servidor y vacía el panel.
+     * El panel se vacía SOLO si el servidor confirmó: vaciarlo antes haría
+     * creer que se olvidó algo que la sesión todavía le va a reenviar al modelo.
+     */
+    if (botonNueva) {
+        botonNueva.addEventListener('click', function () {
+            const token = formulario.querySelector('[name="_token"]');
+
+            if (enviando || !token || urlOlvidar === '') {
+                return;
+            }
+
+            const datos = new FormData();
+            datos.append('_token', token.value);
+
+            fetch(urlOlvidar, {
+                method: 'POST',
+                body: datos,
+                credentials: 'same-origin',
+                headers: { 'X-Becajo-Asincrona': '1' }
+            })
+                .then(function (respuesta) {
+                    if (!respuesta.ok) {
+                        throw new Error('olvidar');
+                    }
+
+                    Array.prototype.slice.call(conversacion.children).forEach(function (hijo) {
+                        if (hijo !== bienvenida) {
+                            hijo.remove();
+                        }
+                    });
+
+                    if (bienvenida) {
+                        bienvenida.hidden = false;
+                    }
+
+                    conversacion.scrollTop = 0;
+                    campo.focus();
+                })
+                .catch(function () {
+                    agregar(plantillaAsistente, errorRed);
+                });
+        });
+    }
 
     /*
      * Intro envía y Mayús + Intro parte la línea, que es lo que espera quien

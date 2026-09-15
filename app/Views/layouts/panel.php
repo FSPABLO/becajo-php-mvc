@@ -30,6 +30,9 @@ declare(strict_types=1);
  * @var string|null            $rutaActual
  * @var bool|null              $lateralOculta  Barra lateral plegada (cookie).
  * @var bool|null              $asistenteAbierto  Panel del asistente abierto (cookie).
+ * @var bool|null              $hayAsistente      ¿Lembas está configurado? (clave de API)
+ * @var list<array{pregunta: string, html: string}>|null $lembasTranscripcion
+ *      La conversación con Lembas guardada en sesión, para repintarla.
  * @var list<array{etiqueta: string, ruta?: string|null}>|null $migaPagina
  *      Niveles de miga POR DEBAJO de la entrada del menú, que el menú no puede
  *      saber: «Auditoría 152» no es una sección, es un registro. Los pone el
@@ -150,12 +153,13 @@ foreach ($grupos as $grupo) {
 }
 
 /*
- * El asistente existe solo con una sesión abierta. No es un adorno que se
- * oculte: responde CON LOS PERMISOS de quien pregunta, y sin cuenta no hay
- * permisos que aplicar — mostrarlo a un visitante sería prometer un acceso que
- * no tiene.
+ * El asistente existe solo con una sesión abierta Y con el servicio configurado
+ * (ANTHROPIC_API_KEY en .env). No es un adorno que se oculte: responde CON LOS
+ * PERMISOS de quien pregunta, y sin cuenta no hay permisos que aplicar —
+ * mostrarlo a un visitante sería prometer un acceso que no tiene—; sin clave,
+ * sería un botón que abre un chat que no contesta.
  */
-$hayAsistente = $usuarioActual !== null;
+$pintarAsistente = $usuarioActual !== null && ($hayAsistente ?? false);
 
 /*
  * Sobre qué pantalla se pregunta: el último nivel de la miga, que es el nombre
@@ -177,7 +181,7 @@ $contextoAsistente = $migaPagina !== []
 <!DOCTYPE html>
 <html lang="<?= e($vista->idiomaActual() === 'en' ? 'en' : 'es-CR') ?>"
       <?= $lateralOculta ? 'data-lateral="oculta"' : '' ?>
-      <?= $hayAsistente && $asistenteAbierto ? 'data-asistente="abierto"' : '' ?>>
+      <?= $pintarAsistente && $asistenteAbierto ? 'data-asistente="abierto"' : '' ?>>
 <head>
     <?= $vista->renderizar('partials/head', compact('meta', 'empresa', 'hojas')) ?>
 </head>
@@ -262,17 +266,18 @@ $contextoAsistente = $migaPagina !== []
      * de la columna quedaría sometido a su padding y a sus transiciones.
      */
     ?>
-    <?php if ($hayAsistente): ?>
+    <?php if ($pintarAsistente): ?>
         <?= $vista->renderizar('partials/panel/asistente', [
             'usuarioActual'    => $usuarioActual,
             'contexto'         => $contextoAsistente,
             'rutaActual'       => $rutaActual,
             'asistenteAbierto' => $asistenteAbierto,
+            'transcripcion'    => $lembasTranscripcion ?? [],
         ]) ?>
     <?php endif; ?>
 
     <script src="<?= e($vista->recurso('assets/js/principal.js')) ?>" defer></script>
-    <?php if ($hayAsistente): ?>
+    <?php if ($pintarAsistente): ?>
     <script src="<?= e($vista->recurso('assets/js/asistente.js')) ?>" defer></script>
     <?php endif; ?>
     <?php foreach ($guiones as $guion): ?>

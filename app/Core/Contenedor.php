@@ -60,7 +60,67 @@ final class Contenedor
          * @var array<string, mixed>
          */
         private readonly array $monitor = [],
+        /**
+         * Configuración de Lembas, el asistente, leída del entorno en
+         * public/index.php (ver .env.ejemplo). Llega como arreglo y no se lee
+         * aquí dentro por lo mismo que las demás: que la única que sabe de
+         * dónde sale la configuración sea public/index.php.
+         *
+         * @var array{clave?: string, modelo?: string, esfuerzo?: string, max_tokens?: int, limite_usuario?: int, limite_total?: int}
+         */
+        private readonly array $asistente = [],
     ) {
+    }
+
+    private ?\App\Models\Asistente\Lembas $lembas = null;
+
+    /**
+     * ¿Existe Lembas?
+     *
+     * Hacen falta las dos cosas: una clave de API y el módulo de auditorías,
+     * porque Lembas responde con los permisos de una sesión y sin Oracle no hay
+     * sesión que valga. Sin cualquiera de las dos, el botón de la esquina no se
+     * pinta — el mismo interruptor que hayMonitor() o hayAuditorias().
+     */
+    public function hayAsistente(): bool
+    {
+        return $this->hayAuditorias() && ($this->asistente['clave'] ?? '') !== '';
+    }
+
+    /**
+     * Lembas, construido al pedirlo.
+     *
+     * Perezoso a propósito: construirlo no llama a la API, pero no hay razón
+     * para armar el cliente en cada página que no pregunta nada.
+     */
+    public function asistente(): \App\Models\Asistente\Lembas
+    {
+        if (!$this->hayAsistente()) {
+            throw new \RuntimeException(
+                'Lembas necesita ANTHROPIC_API_KEY en .env y el módulo de auditorías. '
+                . 'Ver .env.ejemplo.'
+            );
+        }
+
+        return $this->lembas ??= new \App\Models\Asistente\Lembas(
+            new \App\Models\Asistente\ClienteClaude(
+                clave:     (string) $this->asistente['clave'],
+                modelo:    (string) ($this->asistente['modelo'] ?? 'claude-opus-5'),
+                esfuerzo:  (string) ($this->asistente['esfuerzo'] ?? 'low'),
+                maxTokens: (int) ($this->asistente['max_tokens'] ?? 8000),
+            ),
+            $this->auditorias(),
+            $this->instrumento,
+        );
+    }
+
+    /** Los dos límites diarios de la aplicación. */
+    public function limitesAsistente(): array
+    {
+        return [
+            'usuario' => max(0, (int) ($this->asistente['limite_usuario'] ?? 20)),
+            'total'   => max(0, (int) ($this->asistente['limite_total'] ?? 150)),
+        ];
     }
 
     /**

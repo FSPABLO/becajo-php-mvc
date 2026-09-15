@@ -129,6 +129,27 @@ final class Sesion
         }
     }
 
+    /**
+     * Guarda la sesión y suelta su candado, sin cerrarla.
+     *
+     * PHP bloquea el archivo de sesión mientras dura la petición, así que
+     * cualquier otra petición del mismo usuario espera en fila. Casi nunca se
+     * nota; con Lembas sí, porque una pregunta puede tardar decenas de segundos
+     * esperando a la API, y durante ese rato el auditor no podría ni cambiar de
+     * pantalla. Se llama JUSTO ANTES de la espera larga.
+     *
+     * Después se puede seguir usando: la próxima lectura o escritura vuelve a
+     * abrirla (y relee lo que otra pestaña haya cambiado mientras tanto).
+     */
+    public function liberar(): void
+    {
+        if (session_status() === \PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $this->iniciada = false;
+    }
+
     /** Cierra la sesión y descarta su contenido. */
     public function destruir(): void
     {

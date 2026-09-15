@@ -799,4 +799,52 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
             ['id_remediacion' => $idRemediacion, 'estado' => $estado],
         );
     }
+
+    // ── Lembas, el asistente ─────────────────────────────────────────────────
+
+    /**
+     * Un SELECT y no un procedimiento: esto no es un indicador que se pinte,
+     * es el contador de un límite de uso — la misma categoría que
+     * controlesEvaluados(). «Hoy» es el día del reloj de la base, que es el
+     * mismo para todos los usuarios y el que usa el límite total.
+     */
+    public function consultasAsistenteHoy(?int $idUsuario = null): int
+    {
+        $sql = 'SELECT COUNT(*) AS total
+                  FROM asistente_consulta
+                 WHERE fecha >= TRUNC(SYSDATE)';
+        $parametros = [];
+
+        if ($idUsuario !== null) {
+            $sql .= ' AND id_usuario = :id_usuario';
+            $parametros['id_usuario'] = $idUsuario;
+        }
+
+        $fila = $this->bd->consultarUna($sql, $parametros);
+
+        return (int) ($fila['total'] ?? 0);
+    }
+
+    public function registrarConsultaAsistente(
+        int $idUsuario,
+        string $pantalla,
+        array $herramientas,
+        int $tokensEntrada,
+        int $tokensSalida,
+        string $resultado,
+    ): void {
+        $this->bd->ejecutar(
+            'INSERT INTO asistente_consulta
+                    (id_usuario, pantalla, herramientas, tokens_entrada, tokens_salida, resultado)
+             VALUES (:id_usuario, :pantalla, :herramientas, :tokens_entrada, :tokens_salida, :resultado)',
+            [
+                'id_usuario'     => $idUsuario,
+                'pantalla'       => mb_substr($pantalla, 0, 300),
+                'herramientas'   => $herramientas === [] ? null : mb_substr(implode(', ', array_unique($herramientas)), 0, 500),
+                'tokens_entrada' => max(0, $tokensEntrada),
+                'tokens_salida'  => max(0, $tokensSalida),
+                'resultado'      => $resultado,
+            ],
+        );
+    }
 }

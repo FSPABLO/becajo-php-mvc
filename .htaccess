@@ -11,3 +11,11 @@
 </IfModule>
 
 Options -Indexes
+
+# Los archivos .env llevan credenciales (la clave de la API de Lembas). La regla
+# de arriba ya los manda a public/, donde no existen, pero solo si mod_rewrite
+# está activo: en un WAMP sin él, /.env se serviría como texto plano. Este
+# bloqueo no depende de ningún módulo opcional.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

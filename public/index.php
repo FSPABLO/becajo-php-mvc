@@ -110,9 +110,24 @@ $conexiones = is_file($archivoConexiones) ? require $archivoConexiones : [];
 $archivoMonitor = RAIZ . '/config/monitor-mockup.php';
 $monitor = is_file($archivoMonitor) ? require $archivoMonitor : [];
 
+/*
+ * Lembas, el asistente. Su configuración vive en el ENTORNO (.env en local, el
+ * panel del hosting en producción) porque lleva una credencial: ver
+ * .env.ejemplo. Sin ANTHROPIC_API_KEY el asistente no existe y el botón de la
+ * esquina no se pinta — mismo interruptor que config/base_datos.php.
+ */
+$asistente = [
+    'clave'          => env('ANTHROPIC_API_KEY', ''),
+    'modelo'         => env('LEMBAS_MODELO', 'claude-opus-5'),
+    'esfuerzo'       => env('LEMBAS_ESFUERZO', 'low'),
+    'max_tokens'     => (int) env('LEMBAS_MAX_TOKENS', '8000'),
+    'limite_usuario' => (int) env('LEMBAS_LIMITE_DIARIO_USUARIO', '20'),
+    'limite_total'   => (int) env('LEMBAS_LIMITE_DIARIO_TOTAL', '150'),
+];
+
 $contenedor = new Contenedor(
     $peticion, $vista, $repositorio, $instrumento, $sesion, $idioma, $auditorias,
-    $conexiones, $monitor
+    $conexiones, $monitor, $asistente
 );
 
 // Las vistas necesitan el token contra CSRF para sus formularios. Se le pasa a

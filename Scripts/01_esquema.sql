@@ -40,6 +40,7 @@
 --   EVIDENCIA_ARCHIVO          (depende de EVALUACION_CONTROL)
 --   RESULTADO_RIESGO           (depende de AUDITORIA)
 --   REMEDIACION                (depende de EVALUACION_CONTROL, AUDITORIA)
+--   ASISTENTE_CONSULTA         (depende de USUARIO)
 -- ============================================================================
 
 -- ── USUARIO ──────────────────────────────────────────────────────────────
@@ -344,6 +345,34 @@ CREATE TABLE remediacion (
     CONSTRAINT ck_remediacion_estado
         CHECK (estado IN ('PENDIENTE', 'EN_PROCESO', 'CUMPLIDO', 'VENCIDO'))
 );
+
+-- ── ASISTENTE_CONSULTA ───────────────────────────────────────────────────
+-- Una fila por pregunta que llegó a la API de Anthropic desde Lembas, el
+-- asistente del módulo. Alimenta los límites diarios de la aplicación y deja
+-- trazabilidad del uso (A.8.15).
+--
+-- NO guarda la pregunta ni la respuesta: en el chat se puede escribir un
+-- hallazgo aunque el panel pida que no, y esta tabla no debe ser una copia de
+-- datos de auditoría fuera de su sitio. Ver Scripts/14_asistente_consulta.sql.
+CREATE TABLE asistente_consulta (
+    id_asistente_consulta  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario             NUMBER         NOT NULL,
+    fecha                  TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    pantalla               VARCHAR2(300),
+    herramientas           VARCHAR2(500),
+    tokens_entrada         NUMBER         DEFAULT 0 NOT NULL,
+    tokens_salida          NUMBER         DEFAULT 0 NOT NULL,
+    resultado              VARCHAR2(20)   NOT NULL,
+    CONSTRAINT fk_asiscons_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+    CONSTRAINT ck_asiscons_resultado
+        CHECK (resultado IN ('RESPONDIDA', 'RECHAZADA', 'ERROR')),
+    CONSTRAINT ck_asiscons_tokens
+        CHECK (tokens_entrada >= 0 AND tokens_salida >= 0)
+);
+
+CREATE INDEX ix_asiscons_usuario_fecha ON asistente_consulta (id_usuario, fecha);
+CREATE INDEX ix_asiscons_fecha ON asistente_consulta (fecha);
 
 -- ── V_AUDITORIA_ENTREVISTADO ─────────────────────────────────────────────
 -- La ÚNICA definición de «quién fue entrevistado y de qué empresa».

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AsistenteController;
 use App\Controllers\AuditoriaController;
 use App\Controllers\AutenticacionController;
 use App\Controllers\CatalogoController;
@@ -117,6 +118,14 @@ return static function (Enrutador $enrutador): void {
     // quedará "/monitoreo/{instancia}".
     $enrutador->get('/monitoreo', [MonitorController::class, 'cartera']);
     $enrutador->get('/monitoreo/{instancia}', [MonitorController::class, 'panel']);
+
+    // ── Lembas, el asistente ─────────────────────────────────────────────────
+    //
+    // Solo POST y solo para su guion: responden JSON con el globo ya dibujado.
+    // Sin JavaScript no hay asistente (el botón no se pinta), así que no hay
+    // un GET que devolver.
+    $enrutador->post('/asistente', [AsistenteController::class, 'consultar']);
+    $enrutador->post('/asistente/olvidar', [AsistenteController::class, 'olvidar']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────
     //

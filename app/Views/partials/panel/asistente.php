@@ -34,21 +34,31 @@ declare(strict_types=1);
  * Clases, atributos, cookie y archivos siguen diciendo «asistente» porque
  * nombran la función; rebautizarlo no debe obligar a tocar ninguno.
  *
- * Esta es la VISTA. La conversación todavía no está conectada a ningún
- * servicio: el guion pinta la pregunta y una respuesta fija que lo dice. Los
- * globos salen de las dos <template> de abajo y no de cadenas en JavaScript,
- * para que el día que el servidor devuelva la respuesta ya dibujada no haya
- * dos copias del mismo globo.
+ * LA CONVERSACIÓN la responde POST /asistente (AsistenteController), que
+ * devuelve el turno YA DIBUJADO: el guion pinta la pregunta, un globo de espera
+ * y lo sustituye por el HTML que llega. Todas las piezas —pregunta, turno,
+ * fichas— viven en partials/panel/asistente/ y las usan por igual la respuesta
+ * JSON, la transcripción repintada y las <template> de abajo: no hay una copia
+ * de ningún globo en JavaScript.
+ *
+ * Qué viaja a Anthropic y qué no lo decide App\Models\Asistente\Lembas, no esta
+ * vista. Lo que sí hace la vista es pedirlo: el aviso de la bienvenida dice que
+ * en el chat no se escriben hallazgos, porque eso es lo único que la frontera
+ * no puede filtrar.
  *
  * @var \App\Core\Vista                    $vista
  * @var \App\Models\Entidades\Usuario      $usuarioActual
  * @var string|null                        $contexto  Nombre de la pantalla actual.
  * @var string|null                        $rutaActual
  * @var bool|null                          $asistenteAbierto
+ * @var list<array{pregunta: string, html: string}>|null $transcripcion
+ *      Turnos anteriores guardados en sesión: la pregunta original y el HTML
+ *      de la respuesta, que ya pasó por e() al dibujarse.
  */
 $contexto         = $contexto ?? null;
 $rutaActual       = $rutaActual ?? '/';
 $asistenteAbierto = $asistenteAbierto ?? false;
+$transcripcion    = is_array($transcripcion ?? null) ? $transcripcion : [];
 
 $esAdministrador = $usuarioActual->esAdministrador();
 
@@ -56,16 +66,20 @@ $esAdministrador = $usuarioActual->esAdministrador();
  * Las sugerencias dependen del ROL por la misma razón que el menú: ofrecerle a
  * un auditor «¿qué remediaciones están vencidas?» es anunciarle una pantalla a
  * la que no puede entrar. Solo rellenan el campo; no envían nada.
+ *
+ * Y son las cosas que Lembas SABE hacer, una por herramienta: una sugerencia
+ * que el asistente no puede cumplir es la peor primera impresión posible.
  */
 $sugerencias = [
+    $vista->t('asistente.sugerencia_auditorias'),
     $vista->t('asistente.sugerencia_resumen'),
-    $vista->t('asistente.sugerencia_hallazgos'),
-    $vista->t('asistente.sugerencia_informe'),
+    $vista->t('asistente.sugerencia_riesgo'),
+    $vista->t('asistente.sugerencia_llenar'),
+    $vista->t('asistente.sugerencia_catalogo'),
 ];
 
 if ($esAdministrador) {
     $sugerencias[] = $vista->t('asistente.sugerencia_vencidas');
-    $sugerencias[] = $vista->t('asistente.sugerencia_catalogo');
 }
 
 $rol = $esAdministrador ? $vista->t('panel.rol_admin') : $vista->t('panel.rol_auditor');
@@ -110,7 +124,8 @@ $nombrePila = strtok(trim($usuarioActual->nombre), ' ') ?: $usuarioActual->nombr
 ?>
 <aside id="panel-asistente"
        data-asistente-panel
-       data-asistente-pendiente="<?= e($vista->t('asistente.sin_conexion')) ?>"
+       data-asistente-error-red="<?= e($vista->t('asistente.error_red')) ?>"
+       data-asistente-olvidar="<?= e($vista->url('asistente/olvidar')) ?>"
        class="rv-oscuro rv-asistente-panel flex flex-col border-l border-borde bg-superficie text-texto"
        aria-labelledby="asistente-titulo">
 
@@ -156,6 +171,22 @@ $nombrePila = strtok(trim($usuarioActual->nombre), ' ') ?: $usuarioActual->nombr
             </p>
         </div>
 
+        <?php
+        /*
+         * Nueva conversación: olvida el historial en la sesión —lo que se le
+         * reenvía al modelo— y vacía el panel. Sirve para cambiar de tema sin
+         * que la charla anterior condicione la respuesta, y para no pagar en
+         * cada pregunta los turnos que ya no importan.
+         */
+        ?>
+        <button type="button"
+                data-asistente-nueva
+                class="rv-lateral-enlace flex-none rounded-rv p-2 text-texto-2"
+                aria-label="<?= e($vista->t('asistente.nueva_conversacion')) ?>"
+                title="<?= e($vista->t('asistente.nueva_conversacion')) ?>">
+            <?= icono('basura', 'h-[18px] w-[18px]') ?>
+        </button>
+
         <?php /* El gesto de plegar de la barra lateral, en espejo: hacia su borde. */ ?>
         <button type="button"
                 data-asistente-cerrar
@@ -190,13 +221,30 @@ $nombrePila = strtok(trim($usuarioActual->nombre), ' ') ?: $usuarioActual->nombr
          aria-live="polite"
          aria-label="<?= e($vista->t('asistente.conversacion', $nombre)) ?>">
 
-        <?php /* Estado vacío: hundido, como todo lo que espera recibir algo. */ ?>
-        <div class="rv-hundido rounded-rv-lg bg-fondo p-5" data-asistente-bienvenida>
+        <?php
+        /*
+         * Estado vacío: hundido, como todo lo que espera recibir algo. Con una
+         * conversación en curso nace oculto; «Nueva conversación» lo devuelve.
+         */
+        ?>
+        <div class="rv-hundido rounded-rv-lg bg-fondo p-5" data-asistente-bienvenida <?= $transcripcion !== [] ? 'hidden' : '' ?>>
             <p class="rv-titulo text-[19px] leading-snug text-texto">
                 <?= e($vista->t('asistente.bienvenida', $nombrePila, $nombre)) ?>
             </p>
             <p class="mt-2 text-[13px] leading-relaxed text-texto-2">
                 <?= e($vista->t($esAdministrador ? 'asistente.alcance_admin' : 'asistente.alcance_auditor')) ?>
+            </p>
+
+            <?php
+            /*
+             * Lo único que la frontera de privacidad no puede filtrar es lo que
+             * alguien escribe a mano. Por eso se dice ANTES de la primera
+             * pregunta, con el ícono del candado, y no en la letra pequeña del pie.
+             */
+            ?>
+            <p class="mt-3 flex items-start gap-2 rounded-rv bg-primario/10 px-3 py-2 text-[12.5px] leading-relaxed text-texto">
+                <?= icono('candado', 'mt-0.5 h-4 w-4 flex-none text-texto-2') ?>
+                <span><?= e($vista->t('asistente.privacidad', $nombre)) ?></span>
             </p>
 
             <p class="mt-5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-texto-2">
@@ -215,21 +263,41 @@ $nombrePila = strtok(trim($usuarioActual->nombre), ' ') ?: $usuarioActual->nombr
                 <?php endforeach; ?>
             </ul>
         </div>
+
+        <?php /* La conversación guardada en sesión, repintada tal cual. */ ?>
+        <?php foreach ($transcripcion as $turnoGuardado): ?>
+            <?php if (is_array($turnoGuardado) && is_string($turnoGuardado['pregunta'] ?? null) && is_string($turnoGuardado['html'] ?? null)): ?>
+                <?= $vista->renderizar('partials/panel/asistente/pregunta', ['texto' => $turnoGuardado['pregunta']]) ?>
+                <?php
+                /*
+                 * El HTML se imprime sin e() porque YA es HTML escapado: lo
+                 * dibujó partials/panel/asistente/turno en el servidor y vive
+                 * en la sesión, que el navegador no puede escribir.
+                 */
+                ?>
+                <?= $turnoGuardado['html'] ?>
+            <?php endif; ?>
+        <?php endforeach; ?>
     </div>
 
     <?php
     /*
-     * Sin action ni method todavía: no hay servicio al que mandarlo, y el guion
-     * intercepta el envío. El día que exista, este formulario lleva su
-     * campoToken() y apunta a su ruta, y el guion pasa a mandarlo por fetch con
-     * la cabecera X-Becajo-Asincrona, igual que la tarjeta de un control.
+     * El guion lo manda por fetch con la cabecera X-Becajo-Asincrona, igual que
+     * la tarjeta de un control, y el token viaja como en cualquier formulario.
+     * Tiene method y action de verdad aunque sin guion no se pueda llegar a él:
+     * así el envío que arma el guion sale del formulario (FormData) y no de una
+     * segunda lista de campos escrita en JavaScript.
      *
-     * La ruta viaja ya: es lo que le dirá al servidor sobre qué pantalla se
-     * pregunta, y el servidor la resolverá con los permisos de la sesión, nunca
-     * con lo que diga este campo.
+     * La ruta es una PISTA de qué pantalla se mira, no una autorización: Lembas
+     * solo menciona el número de una auditoría si es de la sesión.
      */
     ?>
-    <form class="flex-none border-t border-borde px-5 pb-4 pt-3" data-asistente-formulario novalidate>
+    <form method="post"
+          action="<?= e($vista->url('asistente')) ?>"
+          class="flex-none border-t border-borde px-5 pb-4 pt-3"
+          data-asistente-formulario
+          novalidate>
+        <?= $vista->campoToken() ?>
         <input type="hidden" name="ruta" value="<?= e($rutaActual) ?>">
 
         <label for="asistente-mensaje" class="sr-only"><?= e($vista->t('asistente.mensaje', $nombre)) ?></label>
@@ -258,26 +326,21 @@ $nombrePila = strtok(trim($usuarioActual->nombre), ' ') ?: $usuarioActual->nombr
 
     <?php
     /*
-     * Los dos globos. Quién habla se dice en texto (sr-only) además de por el
-     * lado y el tono: sin eso, el registro leído en voz alta sería una lista de
-     * frases sin autor.
+     * Las tres piezas que clona el guion, dibujadas con los MISMOS parciales
+     * que usa el servidor: la pregunta, el globo de espera y un turno vacío
+     * para el único texto que pone el navegador (un fallo de red, cuando no
+     * llegó ninguna respuesta que pintar).
      */
     ?>
     <template data-asistente-plantilla="usuario">
-        <div class="flex justify-end">
-            <?php /* Los dos <span> pegados a propósito: el texto conserva sus
-                     saltos de línea (pre-line), y un salto del marcado entre
-                     ellos se pintaría como una línea vacía encima. */ ?>
-            <p class="max-w-[85%] rounded-rv-lg rounded-br-sm bg-primario/15 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-texto"><span class="sr-only"><?= e($vista->t('asistente.usted')) ?>: </span><span class="whitespace-pre-line break-words" data-asistente-texto></span></p>
-        </div>
+        <?= $vista->renderizar('partials/panel/asistente/pregunta', ['texto' => '']) ?>
+    </template>
+
+    <template data-asistente-plantilla="pensando">
+        <?= $vista->renderizar('partials/panel/asistente/turno', ['pensando' => true]) ?>
     </template>
 
     <template data-asistente-plantilla="asistente">
-        <div class="flex items-start gap-2.5">
-            <span class="grid h-7 w-7 flex-none place-items-center rounded-full bg-elevado text-texto-2" aria-hidden="true">
-                <?= icono('asistente', 'h-4 w-4') ?>
-            </span>
-            <p class="rv-extruido-sm max-w-[85%] rounded-rv-lg rounded-tl-sm bg-elevado px-3.5 py-2.5 text-[13.5px] leading-relaxed text-texto"><span class="sr-only"><?= e($nombre) ?>: </span><span class="whitespace-pre-line break-words" data-asistente-texto></span></p>
-        </div>
+        <?= $vista->renderizar('partials/panel/asistente/turno', ['plantilla' => true]) ?>
     </template>
 </aside>

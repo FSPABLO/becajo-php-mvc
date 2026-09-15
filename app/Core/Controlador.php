@@ -78,21 +78,14 @@ abstract class Controlador
     /**
      * Pasa un texto a minúsculas y sin tildes, para comparar.
      *
-     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
-     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
-     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
-     * devuelve cosas distintas en la máquina de cada quien.
-     *
-     * Vive aquí y no en AuditoriaController porque buscan con él las dos
-     * antesalas con buscador —empresas e instancias vigiladas—, y dos copias de
-     * «qué cuenta como la misma palabra» acaban encontrando cosas distintas.
+     * Envoltorio de normalizarBusqueda() (funciones.php), que es donde vive la
+     * regla: la usan también los modelos —Lembas— y un método protegido de
+     * controlador no les llega. Se conserva con este nombre para no tocar las
+     * dos antesalas con buscador que ya lo llaman.
      */
     protected function normalizar(string $texto): string
     {
-        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
-            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
-        ]);
+        return normalizarBusqueda($texto);
     }
 
     protected function autenticacion(): Autenticacion
@@ -197,6 +190,17 @@ abstract class Controlador
         $datos['asistenteAbierto'] = $datos['asistenteAbierto']
             ?? $this->peticion()->cookie('becajo_asistente') === 'abierto';
 
+        /*
+         * La conversación con Lembas, para repintarla en la pantalla nueva: con
+         * el panel abierto mientras se navega, perderla en cada clic haría que
+         * el modelo recordara una charla que el auditor ya no ve. Solo si hay
+         * asistente y sesión previa — leerla no debe abrir una sesión nueva.
+         */
+        $datos['lembasTranscripcion'] = $datos['lembasTranscripcion']
+            ?? ($this->contenedor->hayAsistente() && $this->sesion()->existePrevia()
+                ? $this->sesion()->obtener('lembas.transcripcion', [])
+                : []);
+
         $this->ver($vista, $datos, 'panel');
     }
 
@@ -232,6 +236,8 @@ abstract class Controlador
             // La barra lateral oculta la entrada "Monitor" en vez de suponer
             // que /monitoreo responde — mismo criterio que hayAuditorias().
             'hayMonitor'    => $this->contenedor->hayMonitor(),
+            // Lembas: sin clave de API el botón de la esquina no se pinta.
+            'hayAsistente'  => $this->contenedor->hayAsistente(),
         ];
     }
 

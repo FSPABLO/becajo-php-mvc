@@ -304,4 +304,28 @@ interface RepositorioAuditorias
     public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void;
 
     public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void;
+
+    // ── Lembas, el asistente ─────────────────────────────────────────────────
+
+    /**
+     * Preguntas de hoy que llegaron a la API: de un usuario, o de todos si el
+     * id es null. Alimentan los límites diarios de la aplicación.
+     */
+    public function consultasAsistenteHoy(?int $idUsuario = null): int;
+
+    /**
+     * Anota una pregunta que llegó a la API. Solo metadatos: la pregunta y la
+     * respuesta NO se guardan (ver Scripts/14_asistente_consulta.sql).
+     *
+     * @param list<string> $herramientas  Nombres de las herramientas que pidió el modelo.
+     * @param string       $resultado     RESPONDIDA | RECHAZADA | ERROR
+     */
+    public function registrarConsultaAsistente(
+        int $idUsuario,
+        string $pantalla,
+        array $herramientas,
+        int $tokensEntrada,
+        int $tokensSalida,
+        string $resultado,
+    ): void;
 }

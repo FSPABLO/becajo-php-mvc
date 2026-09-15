@@ -41,6 +41,11 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evid
 # USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
 
+# Base que YA existe: registro de consultas a Lembas (límites diarios y
+# trazabilidad). Crea ASISTENTE_CONSULTA. Re-ejecutable, no toca ninguna fila
+# y no exige recargar 03. Sin esta tabla, la primera pregunta a Lembas falla.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_asistente_consulta.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
@@ -57,6 +62,12 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/12_dato
 # la entrada estándar, así que «@script 161» no le llega):
 sed 's/^DEFINE id_auditoria = .*/DEFINE id_auditoria = 161/' Scripts/12_datos_demo_auditoria.sql \
   | docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1
+
+# Lembas: la clave de la API y sus límites viven en .env (fuera de git y de la
+# imagen). Compose lo lee al levantar y pasa las variables SOLO a "web"; PHP las
+# lee con getenv(). Tras editar .env hay que recrear el contenedor.
+cp .env.ejemplo .env
+docker compose up -d web
 
 # SQL interactivo
 docker exec -it becajo-oracle sqlplus becajo/becajo@FREEPDB1
@@ -1115,10 +1126,97 @@ fácil al añadir una pantalla:
   saltos a otra sección). La cabecera de cada pantalla es para las acciones de
   esa pantalla.
 
-### Lembas, el asistente del módulo — HOY ES SOLO LA VISTA
+### Lembas, el asistente del módulo
 
-`partials/panel/asistente` + `assets/js/asistente.js` + sección «Asistente» de
-`rivendel.css`.
+| Pieza | Dónde |
+|---|---|
+| Frontera de privacidad: qué viaja a la API | `app/Models/Asistente/Lembas.php` |
+| Cliente HTTP (curl, sin SDK) | `app/Models/Asistente/ClienteClaude.php` |
+| Puerta: sesión, token, límites, registro | `app/Controllers/AsistenteController.php` (`POST /asistente`, `POST /asistente/olvidar`) |
+| Panel, turno y fichas | `partials/panel/asistente` y `partials/panel/asistente/` |
+| Lanzador, panel y envío | `assets/js/asistente.js` + sección «Asistente» de `rivendel.css` |
+| Límites y trazabilidad | tabla `asistente_consulta` (`Scripts/14_asistente_consulta.sql`) |
+| Clave, modelo y topes | `.env` → `public/index.php` → `Contenedor::asistente()` |
+
+**REGLA QUE MANDA SOBRE TODO: ningún dato de auditoría sale hacia Anthropic.**
+Por eso Lembas es un ENRUTADOR para las auditorías, no un redactor:
+
+- **Herramientas privadas** (`listar_mis_auditorias`,
+  `mostrar_resumen_auditoria`, `mostrar_controles_mayor_riesgo`,
+  `abrir_control_para_llenar`, y `mostrar_remediaciones_vencidas` solo para
+  ADMIN_BD): el modelo elige cuál y con qué número, PHP la ejecuta con la
+  comprobación de propiedad de siempre y el resultado se pinta como FICHA. Al
+  modelo le vuelve una frase fija («se mostró en pantalla»), nunca el contenido,
+  y si todo lo pedido fueron privadas no se le vuelve a llamar.
+- **Herramienta pública** (`buscar_controles_catalogo`): el catálogo de 75
+  controles ya es público (`/herramientas/instrumento-bd`), así que su resultado
+  sí vuelve al modelo, que redacta la explicación.
+- **Qué SÍ viaja**: la pregunta con los nombres de las empresas del usuario
+  sustituidos por `[empresa]` (sin tildes ni mayúsculas en los dos lados), el
+  TIPO de pantalla y el número de la auditoría abierta **solo si es suya**, y
+  códigos de control. Lo que la frontera no puede filtrar es un hallazgo escrito
+  a mano en el chat: la bienvenida pide que no se haga y el prompt ordena no
+  repetirlo.
+- **Todo lo que viaja se arma en `Lembas`**. Para comprobar la regla hay que leer
+  UN archivo; si alguna vez un controlador o una vista empieza a construir
+  mensajes para la API, la frontera se rompió.
+- **«Llenar una auditoría» no escribe ninguna respuesta.** Abre una ficha con lo
+  que pide el control (del catálogo) y un botón a
+  `/evaluacion/{id}/controles/{codigo}` — y no a la tarjeta dentro de
+  `/evaluacion/{id}`, que no abre la pestaña del dominio a partir del ancla.
+
+El permiso se comprueba **dos veces**: al ofrecer las herramientas (un auditor
+ni ve la de remediaciones) y al ejecutarlas. Un id que no es del usuario da el
+mismo aviso que uno que no existe, igual que `auditoriaPropia()` responde 404.
+
+Decisiones de la llamada a la API (`ClienteClaude`):
+
+- **Claude Opus 5 con esfuerzo `low`**, configurable en `.env`: elegir una
+  consulta no necesita razonar mucho.
+- **`fallbacks: "default"`** (cabecera `server-side-fallback-2026-07-01`): si
+  los filtros de seguridad rechazan una pregunta —privilegios o vulnerabilidades
+  de una base caen en «cyber»—, la API la reintenta con otro modelo. Lo anterior
+  al último bloque `fallback` solo vale por su texto: ni se ejecuta ni se
+  reenvía.
+- **Reintenta** 408/409/429/5xx/529 y fallos de conexión, respetando
+  `retry-after` con tope de 8 s. **No reintenta un tiempo límite agotado**: pudo
+  haberse cobrado.
+- **Caché**: prompt de sistema y herramientas son FIJOS por rol —nada de fecha,
+  nombre ni pantalla dentro— y llevan su marca; la conversación lleva la caché
+  automática. Lo variable viaja en el mensaje del usuario.
+- **El contenido se reenvía como OBJETOS** (`contenido_original`): con arreglos
+  asociativos un `input: {}` vuelve como `[]` y la API rechaza la petición.
+- **Entre preguntas solo se reenvía texto**: la pregunta tal como se envió y el
+  texto de la respuesta con una marca de lo mostrado («resumen de la auditoría
+  1»), nunca resultados de herramientas ni bloques de razonamiento. Así el
+  historial es solo-añadir y ninguna edición invalida razonamiento de modelos
+  que lo exigen.
+
+La puerta (`AsistenteController`):
+
+- Solo responde a su guion y **siempre JSON con `html`, también en los
+  errores**: el globo de error lo dibuja PHP. No usa `exigirUsuario()` ni
+  `exigirToken()` porque REDIRIGEN, y un `fetch` que sigue la redirección
+  recibiría la página de ingreso.
+- **Límites diarios antes de llamar** (`LEMBAS_LIMITE_DIARIO_USUARIO` y
+  `_TOTAL`), contados en Oracle y no en la sesión. Son la segunda línea: el tope
+  de gasto de verdad se fija en la consola de Anthropic.
+- **`Sesion::liberar()` antes de esperar a la API**: PHP bloquea la sesión
+  durante la petición, y sin soltarla el auditor no podría ni cambiar de
+  pantalla mientras Lembas piensa. Después se relee antes de escribir.
+- **`asistente_consulta` NO guarda la pregunta ni la respuesta**, solo
+  metadatos (usuario, pantalla, herramientas, tokens, resultado): guardar el
+  texto sería una copia de datos de auditoría fuera de su sitio.
+- La conversación vive en sesión en dos listas: el **historial** (lo que se
+  reenvía al modelo) y la **transcripción** (pregunta original + HTML de la
+  respuesta, que `verPanel()` pasa al marco para repintarla al cambiar de
+  pantalla). Se recortan por el principio, de turno en turno completo.
+
+Dos tropiezos al probarlo desde Git Bash, que no son fallos de la aplicación:
+Git Bash convierte `/evaluacion/1` en una ruta de Windows al pasárselo a
+`curl.exe`, y las tildes de un argumento llegan mal codificadas. Mande la ruta y
+la pregunta desde archivos (`--data-urlencode "ruta@ruta.txt"`). El controlador
+rechaza con un mensaje propio lo que no sea UTF-8 válido.
 
 **Se llama Lembas, y el nombre es TEXTO, no código**: vive en la clave
 `asistente.nombre` de los dos archivos de idioma y el resto de textos lo reciben
@@ -1138,10 +1236,11 @@ selectores. En la cabecera el nombre va siempre con su función debajo
   hoja en la que va envuelto el lembas. Sustituyó a un globo de conversación, y
   lo que se perdió es la señal «aquí se conversa»; la recupera el contexto —el
   botón se llama «Abrir Lembas» y abre una conversación—, y el tallo sale abajo
-  a la izquierda, donde un globo lleva la cola. Exclusivo de Lembas. Lo pinta `layouts/panel` **solo con sesión abierta**: responde
-con los permisos de quien pregunta, y sin cuenta no hay permisos que aplicar.
-**No hay servicio detrás todavía**: el guion pinta la pregunta y una respuesta
-fija que dice que no está conectado. No la sustituya por una respuesta inventada.
+  a la izquierda, donde un globo lleva la cola. Exclusivo de Lembas.
+
+Lo pinta `layouts/panel` **solo con sesión abierta Y con clave de API**
+(`Contenedor::hayAsistente()`): responde con los permisos de quien pregunta, y
+sin clave sería un chat que no contesta.
 
 - **El lanzador vive escondido** abajo a la derecha y aparece cuando el cursor
   se ACERCA (140 px para aparecer, 200 para irse: dos radios para que no
@@ -1160,14 +1259,22 @@ fija que dice que no está conectado. No la sustituya por una respuesta inventad
 - Va en `.rv-oscuro`, como la barra lateral: pergamino enmarcado por las dos
   herramientas. Cerrado queda en `visibility: hidden` para salir del orden de
   tabulación.
-- **Las sugerencias dependen del rol** (el administrador tiene dos más) y solo
-  rellenan el campo. Los globos salen de dos `<template>` que dibuja PHP y el
-  texto entra con `textContent`: el día que el servidor responda, el globo no
-  tiene que tener una segunda copia en JavaScript.
-- El formulario ya manda `ruta`, pero **el servidor tendrá que resolver el
-  alcance con la sesión, nunca con ese campo**: es texto del cliente, igual que
-  el id de `/evaluacion/9`. Cuando exista la ruta, el formulario lleva su
-  `campoToken()` y el guion manda con `X-Becajo-Asincrona`.
+- **Las sugerencias dependen del rol** (el administrador tiene una más), son una
+  por herramienta —nunca algo que Lembas no sepa hacer— y solo rellenan el campo.
+- **Ningún globo tiene copia en JavaScript.** Pregunta, turno y fichas son
+  parciales de `partials/panel/asistente/`, y los usan igual la respuesta JSON,
+  la transcripción repintada y las tres `<template>` (pregunta, espera y el
+  turno vacío donde el guion escribe un fallo de red con `textContent`). El
+  guion inserta el HTML del servidor y se desplaza al PRINCIPIO del turno nuevo:
+  una ficha de resumen es más alta que el panel.
+- **El texto del modelo y las fichas se ven distintos a propósito**: el texto va
+  en un globo y lo escribió un modelo que no vio los datos; cada ficha va en su
+  tarjeta y salió de Oracle con los permisos de la sesión.
+- La ficha de resumen **no lleva color de zona** por dominio: esa regla vive en
+  la vista de resultados con los cortes de `fn_zona`, y una tercera copia es la
+  que un día dirá otra cosa. El detalle con color está en «Ver resultados».
+- `ruta` es una PISTA del cliente, no una autorización: `Lembas` solo menciona el
+  número de una auditoría si es de la sesión, igual que el id de `/evaluacion/9`.
 
 ### Convenciones de controlador y vista
 
@@ -1211,4 +1318,5 @@ vez en `public/index.php` según la cookie, con respaldo al español.
    clases. Linux distingue mayúsculas y Windows no.
 3. Rutas siempre con `/`. UTF-8 sin BOM. `declare(strict_types=1)` en todo PHP.
 4. Un commit por cambio con sentido propio, mensaje en imperativo y en español.
-5. Nunca versione `config/base_datos.php` ni credenciales reales.
+5. Nunca versione `config/base_datos.php`, `.env` ni credenciales reales.
+   `.env.ejemplo` sí se versiona, y por eso nunca lleva un valor real.

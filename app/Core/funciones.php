@@ -40,6 +40,29 @@ if (!function_exists('env')) {
     }
 }
 
+if (!function_exists('normalizarBusqueda')) {
+    /**
+     * Pasa un texto a minúsculas y sin tildes, para comparar.
+     *
+     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
+     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
+     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
+     * devuelve cosas distintas en la máquina de cada quien.
+     *
+     * Es función global y no método de Controlador porque la necesitan también
+     * los modelos: Lembas busca controles del catálogo y reconoce nombres de
+     * empresas con ella. Dos copias de «qué cuenta como la misma palabra»
+     * acaban encontrando cosas distintas.
+     */
+    function normalizarBusqueda(string $texto): string
+    {
+        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
+        ]);
+    }
+}
+
 if (!function_exists('icono')) {
     /**
      * Devuelve el SVG de un ícono del catálogo interno.

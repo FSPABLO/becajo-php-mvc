@@ -11,3 +11,8 @@ composer.lock
 phpunit.xml.dist
 .phpunit.cache
 .phpunit.result.cache
+
+# Variables de entorno locales: llevan la clave de la API de Lembas.
+# Sin esta línea, "COPY . /var/www/html" la dejaría grabada en la imagen.
+.env
+.env.local
