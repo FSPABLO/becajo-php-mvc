@@ -70,6 +70,14 @@ return static function (Enrutador $enrutador): void {
     $enrutador->get('/evaluacion', [AuditoriaController::class, 'panel']);
     $enrutador->get('/evaluacion/comparar', [AuditoriaController::class, 'comparar']);
 
+    // El histórico de UNA empresa. El nombre viaja en la URL codificado
+    // (rawurlencode) y el controlador lo resuelve contra las empresas que ese
+    // auditor evaluó de verdad: es texto de quien teclea la dirección, igual
+    // que el id de /evaluacion/9. Va declarada ANTES que los patrones con
+    // {id} para que una empresa llamada, por ejemplo, "resultados" no se la
+    // quede /evaluacion/{id}/resultados.
+    $enrutador->get('/evaluacion/comparar/{organizacion}', [AuditoriaController::class, 'compararOrganizacion']);
+
     $enrutador->get('/evaluacion/nueva', [AuditoriaController::class, 'nuevaFormulario']);
     $enrutador->post('/evaluacion/nueva', [AuditoriaController::class, 'crear']);
 

@@ -750,6 +750,73 @@ fácil al añadir una pantalla:
   **quita el atributo `list`**: con los dos activos se dibujan los dos
   desplegables sobre el mismo campo. La lista sale del propio `<datalist>`, así
   que no hay una segunda copia de los nombres ni una consulta por tecla.
+- **Comparar histórico son DOS pantallas, y `/evaluacion/comparar` es la de
+  elegir.** Antes esa ruta apilaba el histórico completo de cada empresa —dos
+  gráficos y una tabla por tarjeta—, así que para mirar una había que cargarlas
+  todas, con una llamada a `sp_historico_dominio` por organización. Hoy lista
+  una FICHA por empresa y el histórico entero vive en
+  **`/evaluacion/comparar/{empresa}`**, que es la única que pide el desglose, y
+  una sola vez.
+
+  **La ficha es minimalista, y lo que deja fuera lo deja fuera por una razón**:
+  ícono `expediente` centrado, nombre, una línea de contexto y el estado (cifra
+  del último índice + `pill()` de la zona). La variación, la serie y las áreas
+  evaluadas son lectura de histórico, y el histórico está a un clic; aquí solo
+  se ELIGE. El ícono es IDENTIDAD y no estado: va en el acento y es el mismo en
+  las tres zonas — teñirlo de verde o de rojo sería un segundo canal de estado
+  sin etiqueta al lado, que es lo que `pill()` existe para evitar. Tampoco hay
+  «ver histórico» al pie: lo que anuncia que se pulsa es el relieve de
+  `.rv-interactivo`, y el nombre ya es el texto del enlace.
+
+  **La pantalla tampoco tiene encabezado visible**: el distintivo de norma y la
+  frase de entrada se retiraron por decisión de diseño, y empieza directamente
+  en el panel de filtros. El `<h1>` sigue existiendo en `sr-only` —la miga es
+  navegación, no encabezado— igual que en `/evaluacion` y `/monitoreo`.
+
+  El nombre viaja en la URL con `rawurlencode()` y el controlador lo resuelve
+  contra las empresas que ESE auditor evaluó (`organizacionPropia()`): es texto
+  de quien teclea la dirección, igual que el id de `/evaluacion/9`, y nunca se
+  pasa tal cual al repositorio. Lo que no casa vuelve al selector con un
+  destello, no con un 404. La ruta se declara **antes** que los patrones con
+  `{id}`, para que una empresa llamada «resultados» no se la quede
+  `/evaluacion/{id}/resultados`.
+
+  El panel de la izquierda es de **facetas**: dentro de un grupo las casillas
+  suman y entre grupos se cruzan. La cifra de cada casilla se cuenta con los
+  DEMÁS grupos aplicados pero **sin el suyo** —si se contara a sí mismo, marcar
+  «Riesgo bajo» dejaría las otras tres zonas en cero y el panel se vaciaría con
+  el primer clic—, y una opción marcada se sigue ofreciendo aunque cuente cero:
+  un filtro que desaparece del panel es un filtro que no hay forma de quitar.
+  Los VALORES viajan en la URL sin traducir (`zona[]=VERDE`), y solo el rótulo
+  se traduce: una dirección compartida tiene que valer en los dos idiomas.
+  Todo funciona sin JavaScript —formulario GET con su botón, `<details>`
+  nativos, el orden en enlaces—, y cada combinación deja su propia URL.
+
+  **Encima de eso, el filtro es VIVO: se refiltra al escribir.** Y el guion no
+  filtra: pide la misma ruta con la cabecera `X-Becajo-Asincrona` y recibe ESTA
+  MISMA VISTA ya dibujada por PHP —sin el marco del módulo y sin el propio
+  guion—, de la que copia cuatro regiones (`data-comparar-limpiar`, `-grupos`,
+  `-orden`, `-resultados`) más el texto del recuento. Es la decisión de
+  `guardarControl()` otra vez: **el HTML lo arma el servidor y el guion solo
+  sustituye**, porque contar una faceta, ordenar la rejilla y pintar una ficha
+  son reglas del producto y una copia en JavaScript es una copia que un día dirá
+  otra cosa. Filtrar en el navegador además no podría: la ficha minimalista no
+  lleva las áreas evaluadas —y se busca por ellas— y los recuentos del panel
+  quedarían mintiendo.
+
+  Cuatro detalles de esa pieza que no son adorno: el campo de búsqueda queda
+  FUERA de las regiones que se sustituyen (es donde está el cursor); se manda el
+  formulario entero y no solo lo tocado, así que una casilla también aplica sola
+  —media panel vivo y media no sería peor que ninguno—; se restauran el
+  `<details>` que el auditor abriera y el foco de la casilla que acabara de
+  marcar, porque las dos cosas se sustituyen enteras; y la respuesta vieja no
+  puede pisar a la nueva (un contador de petición), ni los destellos se leen en
+  esa rama, porque leerlos los CONSUME y una tecla no puede gastarse un aviso.
+
+  **La ficha de una empresa NO se llama `$empresa` en la vista**: ese nombre lo
+  ocupa la consultora, que el marco del módulo pinta en el encabezado y el pie.
+  Pisarlo deja la barra lateral sin nombre y el pie sin año, con sus avisos
+  impresos encima de la página.
 - **El lienzo se invierte**: `<body class="rv-claro">` y la barra lateral con
   `.rv-oscuro`. Navegación de noche, trabajo sobre pergamino. No es un tema
   (ver «Sistema visual»); es cómo se separan las dos cosas sin gastar un borde.

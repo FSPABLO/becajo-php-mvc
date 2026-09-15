@@ -315,6 +315,40 @@ return [
     'eval.dominio'               => 'Domain',
     'eval.madurez_por_dominio'   => 'Weighted maturity by domain',
     'eval.madurez_por_dominio_pie' => 'Average weighted by each control\'s weight. A dash marks a domain that audit did not assess.',
+    // Compare history — the antechamber: picking the company.
+    //
+    // The filter VALUES («VERDE», «TENDENCIA») travel in the URL and are not
+    // translated: a shared link has to keep working when whoever opens it
+    // works in the other language. What gets translated is the label.
+    'eval.filtros'               => 'Filters',
+    'eval.aplicar_filtros'       => 'Apply filters',
+    'eval.limpiar_filtros'       => 'Clear all',
+    'eval.filtros_activos'       => 'Applied filters',
+    // The verb lives in the accessible label: «Low risk ×» does not announce
+    // what pressing it does.
+    'eval.quitar_filtro'         => 'Remove the «%s» filter',
+    'eval.filtro_zona'           => 'Risk of the latest audit',
+    'eval.filtro_sin_indice'     => 'No index',
+    'eval.filtro_estado'         => 'Portfolio status',
+    'eval.filtro_con_progreso'   => 'With work in progress',
+    'eval.filtro_finalizadas'    => 'All finished',
+    'eval.filtro_historico'      => 'History',
+    'eval.filtro_con_tendencia'  => 'Two audits or more',
+    'eval.filtro_una_sola'       => 'A single audit',
+    // «Companies: 3 of 7» and not «3 companies»: the figure after the colon
+    // reads the same in the singular and in the plural.
+    'eval.empresas_rango'        => 'Companies: %s of %s',
+    'eval.orden_empresa_reciente'   => 'Most recently audited',
+    'eval.orden_empresa_auditorias' => 'Most audits',
+    'eval.orden_empresa_indice'     => 'Best index',
+    'eval.orden_empresa_nombre'     => 'Name (A-Z)',
+    'eval.sin_empresas_filtro'      => 'No company matches the filter.',
+    'eval.sin_empresas_filtro_texto' => 'Remove a condition to widen the result.',
+    'eval.ultimo_indice'         => 'Latest index',
+    'eval.variacion_anterior'    => '%s since the previous one',
+    'eval.primera_lectura'       => 'First reading with an index',
+    'eval.en_progreso_n'         => '%s in progress',
+    'eval.periodo_auditado'      => 'Audited period',
 
     // Header form (audit create/edit)
     'eval.admin_entrevistado_label' => 'Database administrator interviewed',

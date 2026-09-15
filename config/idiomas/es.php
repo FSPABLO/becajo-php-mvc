@@ -330,6 +330,41 @@ return [
     'eval.madurez_por_dominio'   => 'Madurez ponderada por dominio',
     'eval.madurez_por_dominio_pie' => 'Promedio ponderado por el peso de cada control. Un guion marca el dominio que esa auditoría no evaluó.',
 
+    // Comparar histórico — la antesala: elegir la empresa.
+    //
+    // Los VALORES de los filtros («VERDE», «TENDENCIA») viajan en la URL y no
+    // se traducen: una dirección compartida tiene que seguir valiendo cuando
+    // quien la abre trabaja en el otro idioma. Lo que se traduce es el rótulo.
+    'eval.filtros'               => 'Filtros',
+    'eval.aplicar_filtros'       => 'Aplicar filtros',
+    'eval.limpiar_filtros'       => 'Limpiar todo',
+    'eval.filtros_activos'       => 'Filtros aplicados',
+    // El verbo va en el rótulo de accesibilidad: «Riesgo bajo ×» no anuncia
+    // qué pasa al pulsarlo.
+    'eval.quitar_filtro'         => 'Quitar el filtro «%s»',
+    'eval.filtro_zona'           => 'Riesgo de la última auditoría',
+    'eval.filtro_sin_indice'     => 'Sin índice',
+    'eval.filtro_estado'         => 'Estado de la cartera',
+    'eval.filtro_con_progreso'   => 'Con trabajo en progreso',
+    'eval.filtro_finalizadas'    => 'Todo finalizado',
+    'eval.filtro_historico'      => 'Histórico',
+    'eval.filtro_con_tendencia'  => 'Dos auditorías o más',
+    'eval.filtro_una_sola'       => 'Una sola auditoría',
+    // «Empresas: 3 de 7» y no «3 empresas»: la cifra detrás de los dos puntos
+    // vale igual en singular y en plural.
+    'eval.empresas_rango'        => 'Empresas: %s de %s',
+    'eval.orden_empresa_reciente'   => 'Auditada hace menos',
+    'eval.orden_empresa_auditorias' => 'Más auditorías',
+    'eval.orden_empresa_indice'     => 'Mejor índice',
+    'eval.orden_empresa_nombre'     => 'Nombre (A-Z)',
+    'eval.sin_empresas_filtro'      => 'Ninguna empresa coincide con el filtro.',
+    'eval.sin_empresas_filtro_texto' => 'Quite alguna condición para ampliar el resultado.',
+    'eval.ultimo_indice'         => 'Último índice',
+    'eval.variacion_anterior'    => '%s desde la anterior',
+    'eval.primera_lectura'       => 'Primera lectura con índice',
+    'eval.en_progreso_n'         => '%s en progreso',
+    'eval.periodo_auditado'      => 'Periodo auditado',
+
     // Formulario de encabezado (alta/edición de auditoría)
     'eval.admin_entrevistado_label' => 'Administrador de base de datos entrevistado',
     'eval.seleccione'               => '— Seleccione —',

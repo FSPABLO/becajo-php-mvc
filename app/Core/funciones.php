@@ -71,6 +71,18 @@ if (!function_exists('icono')) {
             'llave'       => '<circle cx="7.5" cy="15.5" r="3.5"/><path d="m10 13 8-8"/><path d="m15 8 2 2"/><path d="m18 5 2 2"/>',
             'disco'       => '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
             'documento'   => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
+            /*
+             * Expediente: la carpeta de una empresa auditada, con su cajón
+             * dentro. Es el ícono central de las fichas de /evaluacion/comparar
+             * y no se gasta en ninguna otra pantalla — una ficha es la carpeta
+             * de un sujeto, y el resto del módulo habla de auditorías sueltas.
+             *
+             * Dos trazos y no uno: la carpeta identifica y el cajón dice que
+             * dentro hay algo guardado. El cajón nace en la línea de abajo de la
+             * carpeta —no se cierra por su cuenta— para no doblar el trazo justo
+             * ahí, que a 20 px se lee como un borrón.
+             */
+            'expediente'  => '<path d="M3 7a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.6.8l1.2 1.6a2 2 0 0 0 1.6.8H19a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M9.5 20v-4.2a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3V20"/><path d="M11.2 20v-1.7h1.6V20"/>',
             'tablero'     => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
             'libro'       => '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v5H6.5A2.5 2.5 0 0 1 4 19.5Z"/>',
             'enlace'      => '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
