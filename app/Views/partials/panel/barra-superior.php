@@ -103,25 +103,37 @@ $enlaceIdioma = static fn (string $codigo): string =>
          * mecanismo con el que los tokens dan acentos; no es un verde nuevo.
          */
         ?>
-        <?php if ($migaElemento !== null): ?>
+        <?php
+        /*
+         * La miga se pinta si hay ALGO que decir, y eso puede venir del menú o
+         * solo del controlador. Antes exigía un elemento de menú, así que una
+         * pantalla que no está en él —/perfil, que se abre desde la ficha de
+         * sesión— se quedaba sin miga entera: sus niveles llegaban y se
+         * descartaban en silencio, que es justo el caso en el que hace más
+         * falta saber dónde se está.
+         */
+        ?>
+        <?php if ($migaElemento !== null || $migaPagina !== []): ?>
             <nav class="min-w-0 flex-1" aria-label="<?= e($vista->t('panel.ubicacion')) ?>">
                 <ol class="inline-flex max-w-full items-center gap-2 rounded-rv bg-primario/10 px-3 py-1.5 text-[13px]">
                     <?php if ($migaGrupo !== null): ?>
                         <li class="hidden text-texto-2 sm:block"><?= e($migaGrupo) ?></li>
                         <li class="hidden text-texto-2/60 sm:block" aria-hidden="true">/</li>
                     <?php endif; ?>
-                    <li class="min-w-0 truncate font-semibold">
-                        <?php if ($migaEsEnlace): ?>
-                            <a href="<?= e($vista->url($migaRuta)) ?>"
-                               class="text-primario transition hover:underline">
-                                <?= e($migaElemento) ?>
-                            </a>
-                        <?php else: ?>
-                            <span class="text-texto" <?= $migaPagina === [] ? 'aria-current="page"' : '' ?>>
-                                <?= e($migaElemento) ?>
-                            </span>
-                        <?php endif; ?>
-                    </li>
+                    <?php if ($migaElemento !== null): ?>
+                        <li class="min-w-0 truncate font-semibold">
+                            <?php if ($migaEsEnlace): ?>
+                                <a href="<?= e($vista->url($migaRuta)) ?>"
+                                   class="text-primario transition hover:underline">
+                                    <?= e($migaElemento) ?>
+                                </a>
+                            <?php else: ?>
+                                <span class="text-texto" <?= $migaPagina === [] ? 'aria-current="page"' : '' ?>>
+                                    <?= e($migaElemento) ?>
+                                </span>
+                            <?php endif; ?>
+                        </li>
+                    <?php endif; ?>
 
                     <?php
                     /*
@@ -136,7 +148,11 @@ $enlaceIdioma = static fn (string $codigo): string =>
                      */
                     ?>
                     <?php foreach ($migaPagina as $indice => $nivel): ?>
-                        <li class="text-texto-2/60" aria-hidden="true">/</li>
+                        <?php /* Sin nada delante no hay nada que separar: en
+                                 /perfil el primer nivel abre la miga. */ ?>
+                        <?php if ($indice > 0 || $migaElemento !== null): ?>
+                            <li class="text-texto-2/60" aria-hidden="true">/</li>
+                        <?php endif; ?>
                         <li class="min-w-0 truncate font-semibold">
                             <?php if (($nivel['ruta'] ?? null) !== null): ?>
                                 <a href="<?= e($vista->url($nivel['ruta'])) ?>"

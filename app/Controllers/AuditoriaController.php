@@ -39,13 +39,6 @@ final class AuditoriaController extends Controlador
     /** Filas por página en la tabla del panel. */
     private const POR_PAGINA = 4;
 
-    /**
-     * El intento fallido de la petición anterior, ya leído de la sesión.
-     *
-     * @var array{de: string, errores: mixed, valores: mixed}|null
-     */
-    private ?array $intento = null;
-
     /** Calidad de la evidencia, según ck_evalctrl_calidad_evidencia. */
     private const CALIDADES = [
         EvaluacionControl::CALIDAD_BIEN_IMPLEMENTADO,
@@ -1376,24 +1369,6 @@ final class AuditoriaController extends Controlador
             : ArchivoEvidencia::MAXIMO_BYTES;
     }
 
-    /** El tipo MIME según el contenido del archivo, no según su nombre. */
-    private function tipoRealDe(string $ruta): ?string
-    {
-        $finfo = finfo_open(\FILEINFO_MIME_TYPE);
-
-        if ($finfo === false) {
-            return null;
-        }
-
-        try {
-            $tipo = finfo_file($finfo, $ruta);
-        } finally {
-            finfo_close($finfo);
-        }
-
-        return is_string($tipo) && $tipo !== '' ? $tipo : null;
-    }
-
     /**
      * Aplica al adjunto lo que pidió el formulario: sustituirlo, quitarlo o
      * dejarlo como estaba.
@@ -1424,7 +1399,7 @@ final class AuditoriaController extends Controlador
             $this->auditorias()->guardarArchivoEvidencia(
                 $idAuditoria,
                 $codigoControl,
-                $this->nombreSeguroDe($archivo['nombre'], (string) $this->tipoRealDe($archivo['ruta'])),
+                $this->nombreSeguroDe($archivo['nombre'], (string) $this->tipoRealDe($archivo['ruta']), ArchivoEvidencia::TIPOS, 'evidencia'),
                 (string) $this->tipoRealDe($archivo['ruta']),
                 $contenido,
             );
@@ -1435,33 +1410,6 @@ final class AuditoriaController extends Controlador
         if ($quitar) {
             $this->auditorias()->eliminarArchivoEvidencia($idAuditoria, $codigoControl);
         }
-    }
-
-    /**
-     * Deja el nombre del archivo en algo que se pueda guardar y volver a servir.
-     *
-     * El nombre lo escribe el cliente y viaja después en una cabecera
-     * Content-Disposition, así que se le quita la ruta (basename), los saltos de
-     * línea —que partirían la cabecera en dos— y se recorta a los 255 de la
-     * columna. La extensión se REESCRIBE a la del tipo real: si el contenido es
-     * un PNG, el archivo se llama .png aunque llegara como .pdf.
-     */
-    private function nombreSeguroDe(string $nombre, string $tipoMime): string
-    {
-        // Dos separadores: el cliente puede ser Windows y mandar la ruta entera.
-        $base = basename(str_replace('\\', '/', $nombre));
-        $base = preg_replace('/[\x00-\x1F\x7F"]+/u', '', $base) ?? '';
-        $base = pathinfo($base, PATHINFO_FILENAME);
-        $base = trim($base);
-
-        if ($base === '') {
-            $base = 'evidencia';
-        }
-
-        $extension = ArchivoEvidencia::TIPOS[$tipoMime] ?? 'bin';
-        $base = mb_substr($base, 0, 250 - mb_strlen($extension));
-
-        return $base . '.' . $extension;
     }
 
     private function fechaValida(string $fecha): bool
@@ -1529,14 +1477,6 @@ final class AuditoriaController extends Controlador
         if ($auditoria->estaFinalizada()) {
             $this->sesion()->destello('error', 'La auditoría está finalizada. Reábrala para modificarla.');
             $this->redirigir('/evaluacion/' . $auditoria->id);
-        }
-    }
-
-    private function exigirToken(string $destino): void
-    {
-        if (!$this->autenticacion()->tokenValido($this->peticion()->entrada('_token'))) {
-            $this->sesion()->destello('error', 'La sesión expiró. Intente de nuevo.');
-            $this->redirigir($destino);
         }
     }
 
@@ -1628,56 +1568,4 @@ final class AuditoriaController extends Controlador
      * pantalla que el auditor decidió no volver a abrir.
      */
 
-    /** @param array<string, string> $errores @param array<string, mixed> $valores */
-    private function guardarIntento(array $errores, array $valores, string $formulario): void
-    {
-        $this->sesion()->poner('form.errores', $errores);
-        $this->sesion()->poner('form.valores', $valores);
-        $this->sesion()->poner('form.de', $formulario);
-    }
-
-    /** @return array<string, string> */
-    private function erroresGuardados(string $formulario): array
-    {
-        $errores = $this->intentoGuardado($formulario)['errores'];
-
-        return is_array($errores) ? $errores : [];
-    }
-
-    /** @return array<string, mixed> */
-    private function valoresGuardados(string $formulario): array
-    {
-        $valores = $this->intentoGuardado($formulario)['valores'];
-
-        return is_array($valores) ? $valores : [];
-    }
-
-    /**
-     * Lee el intento UNA vez por petición y lo borra de la sesión.
-     *
-     * En memoria porque el encabezado pide errores y valores por separado, y
-     * el primero que llegara se llevaría el destello dejando al segundo vacío.
-     *
-     * @return array{errores: mixed, valores: mixed}
-     */
-    private function intentoGuardado(string $formulario): array
-    {
-        if ($this->intento === null) {
-            $de = $this->sesion()->obtener('form.de');
-
-            $this->intento = [
-                'de'      => is_string($de) ? $de : '',
-                'errores' => $this->sesion()->obtener('form.errores', []),
-                'valores' => $this->sesion()->obtener('form.valores', []),
-            ];
-
-            $this->sesion()->olvidar('form.errores');
-            $this->sesion()->olvidar('form.valores');
-            $this->sesion()->olvidar('form.de');
-        }
-
-        return $this->intento['de'] === $formulario
-            ? ['errores' => $this->intento['errores'], 'valores' => $this->intento['valores']]
-            : ['errores' => [], 'valores' => []];
-    }
 }

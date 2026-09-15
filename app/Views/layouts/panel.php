@@ -185,6 +185,8 @@ foreach ($grupos as $grupo) {
         'grupos'        => $grupos,
         'rutaActiva'    => $rutaActiva,
         'usuarioActual' => $usuarioActual,
+        'fotoUsuario'   => $fotoUsuarioActual ?? null,
+        'rutaActual'    => $rutaActual,
     ]) ?>
 
     <?php

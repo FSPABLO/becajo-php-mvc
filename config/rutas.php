@@ -10,6 +10,7 @@ use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
 use App\Controllers\MonitorController;
+use App\Controllers\PerfilController;
 use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
@@ -46,6 +47,20 @@ return static function (Enrutador $enrutador): void {
     // Cerrar sesión es POST y no GET a propósito: una acción que cambia estado
     // no debe poder dispararse con un simple enlace o una etiqueta <img>.
     $enrutador->post('/salir', [AutenticacionController::class, 'salir']);
+
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+    //
+    // Sin id en la ruta a propósito: SIEMPRE es el usuario de la sesión. Una
+    // /perfil/{id} sería una URL adivinable que enseña el nombre y la foto de
+    // cualquiera, y habría que defenderla; mientras no exista administración de
+    // cuentas, se resuelve quitando el parámetro en vez de comprobándolo.
+    $enrutador->get('/perfil', [PerfilController::class, 'mostrar']);
+    $enrutador->post('/perfil', [PerfilController::class, 'guardarDescripcion']);
+    $enrutador->post('/perfil/foto', [PerfilController::class, 'guardarFoto']);
+
+    // La foto vive en Oracle, no en public/: se sirve por ruta propia y detrás
+    // de la sesión, igual que el adjunto de la evidencia.
+    $enrutador->get('/perfil/foto', [PerfilController::class, 'foto']);
 
     // ── Módulo de evaluación de riesgo (Bloque 4) ────────────────────────────
     //

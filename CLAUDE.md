@@ -37,6 +37,10 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/10_admi
 # subida de PHP, que de fábrica cortan en 2 MB.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evidencia_archivo.sql
 
+# Base que YA existe: perfil del usuario. Agrega usuario.descripcion y crea
+# USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
@@ -654,9 +658,11 @@ en cada petición para que desactivar una cuenta surta efecto de inmediato.
 - `Autenticacion::registrar()` fuerza el rol AUDITOR; el rol nunca viene del
   formulario.
 - **CSRF**: todo formulario POST imprime `<?= $vista->campoToken() ?>` y el
-  controlador llama a su `exigirToken($destino)` antes de tocar nada. Ese helper
-  está duplicado en `AuditoriaController` y `CatalogoController` — si añade un
-  tercer controlador con escritura, repítalo o súbalo a `Controlador`.
+  controlador llama a `exigirToken($destino)` antes de tocar nada. **Vive en
+  `Controlador`**, una sola vez: estaba copiado en `AuditoriaController` y
+  `CatalogoController`, y al llegar el tercero que escribe (`PerfilController`)
+  se subió en vez de hacer la tercera copia. Un control de seguridad repetido
+  es un control que un día se arregla en dos sitios de tres.
 - `Sesion` es perezosa: no envía cookie mientras nadie lea ni escriba. Por eso
   `Controlador::mensajesPendientes()` consulta `existePrevia()` antes de leer
   destellos, y el idioma vive en su propia cookie y no en la sesión.
@@ -954,6 +960,42 @@ fácil al añadir una pantalla:
   secciones de los dominios inactivos, que nacen con `hidden` puesto: sin
   JavaScript se ven los siete dominios seguidos, que es más largo pero no es
   un error. Lo único que aparece por guion es la pareja anterior/siguiente.
+- **La ficha de sesión de la barra lateral ES el acceso a `/perfil`.** Era un
+  `<div>` que solo informaba y no había por dónde entrar a la propia ficha.
+  Conserva exactamente la misma pinta —retrato, nombre y rol— y solo añade la
+  flecha de la derecha, que es lo que anuncia que se pulsa: sin ella, un bloque
+  que reacciona al pasar por encima parece un fallo de estilo. Lleva
+  `rv-lateral-enlace` como las entradas del menú y `aria-current` cuando el
+  perfil es la pantalla actual, porque el relieve nunca es el único canal.
+- **`/perfil` es SIEMPRE el usuario de la sesión.** No hay `/perfil/{id}` y no
+  es un olvido: la única razón para mirar la ficha de otro sería administrar
+  cuentas, que hoy no existe. Mientras no exista, una ruta con id sería una URL
+  adivinable que enseña el nombre y la foto de cualquiera — el mismo problema
+  que resuelve `auditoriaPropia()`, pero resuelto quitando el parámetro en vez
+  de comprobándolo.
+- **La foto va en `usuario_foto`, tabla aparte; la descripción, en `usuario`.**
+  No es asimetría gratuita: `usuario` se consulta en CADA petición
+  —`Autenticacion` reconsulta la cuenta para que desactivarla surta efecto de
+  inmediato— y el driver materializa los LOB de la lista de columnas, así que un
+  BLOB ahí sería la foto viajando en cada clic. La descripción es un
+  `VARCHAR2(500)` y no tiene ese problema. Es el mismo criterio que separó
+  `evidencia_archivo` de `evaluacion_control`.
+- **El retrato es `components/avatar-usuario`**, compartido por la barra lateral
+  y la ficha. Las iniciales NO son un respaldo de emergencia: son el estado
+  normal, porque la foto es opcional y casi ninguna cuenta la tiene. La URL
+  lleva el sello de la carga (`?v=`) porque, aunque se sirva con `no-cache`, un
+  navegador que ya la tuviera enseñaría la anterior justo después de cambiarla
+  — el único momento en que alguien mira su propio avatar con atención.
+- **El calendario de `/perfil` no comunica con color solo**: un día con trabajo
+  lleva el fondo teñido, el número en negrita y el recuento debajo, así que en
+  gris o con daltonismo sigue diciendo lo mismo. Los meses vecinos son enlaces
+  —cada mes con su URL— y el detalle de un día es el emergente nativo, sin
+  JavaScript. El agrupado por día se hace en PHP sobre la lista que ya está en
+  memoria: pedirle a Oracle lo que se acaba de traer sería un viaje de más, y
+  la tabla de al lado necesita esa misma lista entera.
+- **La miga de pan se pinta si hay algo que decir, venga del menú o del
+  controlador.** Antes exigía un elemento de menú, así que `/perfil` —que no
+  está en él— se quedaba sin miga y sus niveles se descartaban en silencio.
 - No repita en la vista lo que ya está en la barra lateral (salir, sesión,
   saltos a otra sección). La cabecera de cada pantalla es para las acciones de
   esa pantalla.
@@ -964,10 +1006,15 @@ fácil al añadir una pantalla:
   validación se guarda el intento con `guardarIntento($errores, $valores,
   $formulario)` y se redirige al GET, que lo recupera con
   `erroresGuardados($formulario)` / `valoresGuardados($formulario)`.
-  **El tercer argumento no es decorativo**: los tres formularios de
-  `AuditoriaController` —alta, encabezado y respuesta de un control— comparten
-  un único par de destellos en la sesión, y sin la marca el intento fallido de
-  uno se pinta en otro. Con valores de texto libre en juego (el entrevistado
+  **Vive en `Controlador`**, junto a `exigirToken` y por lo mismo: estaba
+  copiado, y la copia de `CatalogoController` se había quedado SIN la marca del
+  formulario —o sea, con el error que la marca existe para evitar—. Ese
+  controlador conserva tres envoltorios privados que solo le ponen su marca,
+  para no tocar sus llamadas.
+
+  **El tercer argumento no es decorativo**: los formularios comparten un único
+  par de destellos en la sesión, y sin la marca el intento fallido de uno se
+  pinta en otro. Con valores de texto libre en juego (el entrevistado
   escrito a mano) eso llegaba a rellenar el encabezado de una auditoría con los
   datos de otra, a un clic de guardarse. Una marca que no casa se descarta y el
   destello se consume igual.

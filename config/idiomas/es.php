@@ -481,4 +481,56 @@ return [
     'mon.vacio_titulo'       => 'Todavía no hay instancias vigiladas',
     'mon.vacio_texto'        => 'Cuando el agente de recolección deje su primera muestra, esta pantalla '
                               . 'mostrará el índice de salud de cada instancia, sus componentes y sus alertas.',
+
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+    'perfil.titulo'             => 'Mi perfil',
+    'perfil.ir'                 => 'Ver mi perfil',
+    'perfil.id'                 => 'Identificador',
+    'perfil.descripcion'        => 'Sobre mí',
+    'perfil.descripcion_ayuda'  => 'Una nota breve sobre su rol o su especialidad. La ve solo usted.',
+    'perfil.descripcion_marcador' => 'Ej.: Auditora de bases de datos, especializada en continuidad y respaldo.',
+    'perfil.guardar_descripcion' => 'Guardar descripción',
+    'perfil.subir_foto'         => 'Subir fotografía',
+    'perfil.cambiar_foto'       => 'Cambiar fotografía',
+    'perfil.subir_ahora'        => 'Subir ahora',
+    'perfil.quitar_foto'        => 'Quitar la fotografía',
+    'perfil.foto_ayuda'         => 'PNG, JPG, WEBP o GIF, hasta %s MB.',
+    'perfil.calendario'         => 'Auditorías del mes',
+    'perfil.mis_auditorias'     => 'Auditorías realizadas',
+    'perfil.total_auditorias'   => 'Auditorías',
+    'perfil.finalizadas'        => 'Finalizadas',
+    'perfil.en_progreso'        => 'En progreso',
+    // Sin concordancia de plural que romper: «1 auditorías en 1 días» era lo
+    // que salía al poner la cifra delante del sustantivo.
+    'perfil.mes_resumen'        => 'Auditorías del mes: %s · Días con trabajo: %s',
+    'perfil.mes_sin_auditorias' => 'Sin auditorías este mes.',
+    'perfil.y_mas'              => 'y %s más',
+    'perfil.pagina_de'          => 'Página %s de %s',
+
+    // ── Calendario ───────────────────────────────────────────────────────────
+    // Doce claves y siete, y no strftime(): esa funcion esta obsoleta, e
+    // IntlDateFormatter pide la extension intl, que esta imagen no compila.
+    // Aburrido, pero funciona en cualquier PHP y se traduce como todo lo demas.
+    'cal.mes_anterior'  => 'Mes anterior',
+    'cal.mes_siguiente' => 'Mes siguiente',
+    'cal.mes_1'  => 'Enero',
+    'cal.mes_2'  => 'Febrero',
+    'cal.mes_3'  => 'Marzo',
+    'cal.mes_4'  => 'Abril',
+    'cal.mes_5'  => 'Mayo',
+    'cal.mes_6'  => 'Junio',
+    'cal.mes_7'  => 'Julio',
+    'cal.mes_8'  => 'Agosto',
+    'cal.mes_9'  => 'Septiembre',
+    'cal.mes_10' => 'Octubre',
+    'cal.mes_11' => 'Noviembre',
+    'cal.mes_12' => 'Diciembre',
+    // La semana empieza en lunes, como en la region.
+    'cal.dia_1' => 'Lu',
+    'cal.dia_2' => 'Ma',
+    'cal.dia_3' => 'Mi',
+    'cal.dia_4' => 'Ju',
+    'cal.dia_5' => 'Vi',
+    'cal.dia_6' => 'Sa',
+    'cal.dia_7' => 'Do',
 ];

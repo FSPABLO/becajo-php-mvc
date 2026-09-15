@@ -9,6 +9,7 @@ use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\FotoPerfil;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
@@ -71,7 +72,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
     public function autenticar(string $correo, string $clave): ?Usuario
     {
         $fila = $this->bd->consultarUna(
-            'SELECT id_usuario, nombre, correo, rol, organizacion, activo, contrasena_hash
+            'SELECT id_usuario, nombre, correo, rol, organizacion, activo, descripcion, contrasena_hash
                FROM usuario
               WHERE LOWER(correo) = LOWER(:correo)',
             ['correo' => $correo],
@@ -101,7 +102,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
     public function usuario(int $id): ?Usuario
     {
         $fila = $this->bd->consultarUna(
-            'SELECT id_usuario, nombre, correo, rol, organizacion, activo
+            'SELECT id_usuario, nombre, correo, rol, organizacion, activo, descripcion
                FROM usuario
               WHERE id_usuario = :id',
             ['id' => $id],
@@ -114,7 +115,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
     public function usuariosPorRol(string $rol): array
     {
         $filas = $this->bd->consultar(
-            'SELECT id_usuario, nombre, correo, rol, organizacion, activo
+            'SELECT id_usuario, nombre, correo, rol, organizacion, activo, descripcion
                FROM usuario
               WHERE rol = :rol AND activo = 1
               ORDER BY nombre',
@@ -155,6 +156,114 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                 'rol'          => $rol,
                 'organizacion' => $organizacion,
             ],
+        );
+    }
+
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+
+    public function actualizarDescripcionUsuario(int $idUsuario, ?string $descripcion): void
+    {
+        $this->bd->ejecutar(
+            'UPDATE usuario SET descripcion = :descripcion WHERE id_usuario = :id',
+            [
+                'id' => $idUsuario,
+                // Vacía es NULL: «sin descripción» y «descripción en blanco» no
+                // son dos estados distintos, y la columna admite nulos.
+                'descripcion' => ($descripcion === null || trim($descripcion) === '')
+                    ? null
+                    : mb_substr(trim($descripcion), 0, 500),
+            ],
+        );
+    }
+
+    /**
+     * Las columnas de la FICHA, sin `contenido`.
+     *
+     * Escritas una vez para que ninguna lectura se cuele el BLOB: con SELECT *
+     * el driver lo materializa entero (OCI_RETURN_LOBS), y esta ficha se pinta
+     * en la barra lateral de todas las pantallas del módulo.
+     */
+    private const COLUMNAS_FICHA_FOTO =
+        'id_usuario_foto, id_usuario, nombre, tipo_mime, tamano_bytes,
+         TO_CHAR(fecha_carga, \'YYYY-MM-DD HH24:MI\') AS fecha_carga';
+
+    public function fotoUsuario(int $idUsuario): ?FotoPerfil
+    {
+        $fila = $this->bd->consultarUna(
+            'SELECT ' . self::COLUMNAS_FICHA_FOTO . '
+               FROM usuario_foto
+              WHERE id_usuario = :id',
+            ['id' => $idUsuario],
+        );
+
+        return $fila === null ? null : FotoPerfil::desdeFila($fila);
+    }
+
+    /** Aquí sí se pide `contenido`, y solo aquí. */
+    public function contenidoFotoUsuario(int $idUsuario): ?string
+    {
+        $fila = $this->bd->consultarUna(
+            'SELECT contenido FROM usuario_foto WHERE id_usuario = :id',
+            ['id' => $idUsuario],
+        );
+
+        $contenido = $fila['contenido'] ?? null;
+
+        return is_string($contenido) ? $contenido : null;
+    }
+
+    /**
+     * Sustituye la foto: fuera la anterior, dentro la nueva.
+     *
+     * DELETE + INSERT y no MERGE, igual que el adjunto de la evidencia: el
+     * destino lo identifica uq_usufoto_usuario y un MERGE necesitaría enlazar
+     * el BLOB dos veces —en el UPDATE y en el INSERT— con un solo descriptor.
+     * Los dos pasos van en UNA transacción: si el INSERT falla, la foto vieja
+     * sigue ahí en vez de haberse perdido a cambio de nada.
+     */
+    public function guardarFotoUsuario(
+        int $idUsuario,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void {
+        $this->bd->iniciarTransaccion();
+
+        try {
+            $this->bd->ejecutar(
+                'DELETE FROM usuario_foto WHERE id_usuario = :id',
+                ['id' => $idUsuario],
+                [],
+                false,
+            );
+
+            $this->bd->ejecutar(
+                'INSERT INTO usuario_foto (id_usuario, nombre, tipo_mime, tamano_bytes, contenido)
+                 VALUES (:id, :nombre, :tipo_mime, :tamano_bytes, :contenido)',
+                [
+                    'id'           => $idUsuario,
+                    'nombre'       => $nombre,
+                    'tipo_mime'    => $tipoMime,
+                    'tamano_bytes' => strlen($contenido),
+                ],
+                [],
+                false,
+                ['contenido' => $contenido],
+            );
+
+            $this->bd->confirmarTransaccion();
+        } catch (\Throwable $error) {
+            $this->bd->revertirTransaccion();
+
+            throw $error;
+        }
+    }
+
+    public function eliminarFotoUsuario(int $idUsuario): void
+    {
+        $this->bd->ejecutar(
+            'DELETE FROM usuario_foto WHERE id_usuario = :id',
+            ['id' => $idUsuario],
         );
     }
 
