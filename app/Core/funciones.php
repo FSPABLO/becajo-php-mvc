@@ -109,6 +109,23 @@ if (!function_exists('icono')) {
              * no se lea como una lata con una tira.
              */
             'base-datos'  => '<ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5"/><path d="M4 9.7c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/><path d="M4 14.3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/>',
+            /*
+             * Asistente: la hoja de mallorn en la que va envuelto el lembas,
+             * que es el nombre del asistente. Tres trazos: la hoja, su nervio
+             * central y el tallo.
+             *
+             * Sustituyó a un globo de conversación con una estrella, y lo que
+             * se perdió es justo eso: el globo decía «aquí se conversa» y la
+             * hoja no. Lo recupera el contexto y no el trazo: el botón se llama
+             * «Abrir Lembas», vive solo en la esquina y el panel que abre es
+             * una conversación. Por eso el tallo sale abajo a la izquierda, en
+             * el sitio donde un globo lleva la cola.
+             *
+             * Hoja y no el pan envuelto: un paquete atado a 20 px es un borrón,
+             * y la hoja es la parte del lembas que se reconoce de un vistazo.
+             * No se gasta en ninguna otra pantalla, igual que 'expediente'.
+             */
+            'asistente'   => '<path d="M7 17C6 10 11 4 20 4c0 9-6 14-13 13Z"/><path d="M7 17 15.5 8.5"/><path d="M7 17l-3.5 3.5"/>',
 
             /*
              * Un ícono fijo por cada uno de los 7 dominios del instrumento

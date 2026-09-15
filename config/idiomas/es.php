@@ -40,6 +40,33 @@ return [
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'Administrador de BD',
 
+    // Asistente del módulo: lanzador de la esquina y panel de la derecha.
+    // El NOMBRE vive en una sola clave y el resto lo recibe como %s: rebautizarlo
+    // es cambiar esta línea (y su gemela en en.php), no buscarlo por el archivo.
+    'asistente.nombre'              => 'Lembas',
+    'asistente.funcion'             => 'Asistente de auditoría',
+    'asistente.abrir'               => 'Abrir %s',
+    'asistente.cerrar'              => 'Cerrar %s',
+    'asistente.responde_como'       => 'Con los permisos de su cuenta · %s',
+    'asistente.contexto'            => 'Pantalla actual',
+    'asistente.conversacion'        => 'Conversación con %s',
+    'asistente.bienvenida'          => 'Hola, %s. Soy %s, ¿qué necesita consultar?',
+    'asistente.alcance_auditor'     => 'Puede preguntar por el contenido de esta pantalla o pedir un informe. Las respuestas se limitan a las auditorías que usted condujo.',
+    'asistente.alcance_admin'       => 'Puede preguntar por el contenido de esta pantalla o pedir un informe. Como administrador, las respuestas incluyen también el catálogo maestro y las remediaciones vencidas.',
+    'asistente.para_empezar'        => 'Para empezar',
+    'asistente.sugerencia_resumen'  => 'Resume lo que estoy viendo en esta pantalla',
+    'asistente.sugerencia_hallazgos' => '¿Qué controles tienen hallazgos de riesgo alto?',
+    'asistente.sugerencia_informe'  => 'Prepara un informe de cumplimiento por dominio',
+    'asistente.sugerencia_vencidas' => '¿Qué remediaciones están vencidas y a quién corresponden?',
+    'asistente.sugerencia_catalogo' => '¿Qué controles del catálogo cubren el dominio de accesos?',
+    'asistente.mensaje'             => 'Mensaje para %s',
+    'asistente.marcador'            => 'Pregúntele a %s…',
+    'asistente.enviar'              => 'Enviar',
+    'asistente.ayuda_teclado'       => 'Intro envía; Mayús + Intro, nueva línea.',
+    'asistente.aviso_ia'            => '%s es una IA: contraste sus respuestas con la evidencia.',
+    'asistente.usted'               => 'Usted',
+    'asistente.sin_conexion'        => 'Todavía no estoy conectado a ningún servicio. Esta es mi vista: las respuestas llegarán cuando se enlace.',
+
     // Testimonios de la portada
     'testimonios.calificacion' => 'Calificación: %s de 5 estrellas',
     'testimonios.lista'        => 'Testimonios de clientes',

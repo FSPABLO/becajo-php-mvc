@@ -36,6 +36,32 @@ return [
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'DB administrator',
 
+    // Module assistant: corner launcher and right-hand panel.
+    // The NAME lives in a single key and the rest receive it as %s.
+    'asistente.nombre'              => 'Lembas',
+    'asistente.funcion'             => 'Audit assistant',
+    'asistente.abrir'               => 'Open %s',
+    'asistente.cerrar'              => 'Close %s',
+    'asistente.responde_como'       => 'With your account permissions · %s',
+    'asistente.contexto'            => 'Current screen',
+    'asistente.conversacion'        => 'Conversation with %s',
+    'asistente.bienvenida'          => 'Hi, %s. I am %s, what would you like to look up?',
+    'asistente.alcance_auditor'     => 'Ask about what is on this screen or request a report. Answers are limited to the audits you conducted.',
+    'asistente.alcance_admin'       => 'Ask about what is on this screen or request a report. As an administrator, answers also cover the master catalog and overdue remediations.',
+    'asistente.para_empezar'        => 'To get started',
+    'asistente.sugerencia_resumen'  => 'Summarize what I am looking at on this screen',
+    'asistente.sugerencia_hallazgos' => 'Which controls have high-risk findings?',
+    'asistente.sugerencia_informe'  => 'Prepare a compliance report by domain',
+    'asistente.sugerencia_vencidas' => 'Which remediations are overdue, and who owns them?',
+    'asistente.sugerencia_catalogo' => 'Which catalog controls cover the access domain?',
+    'asistente.mensaje'             => 'Message for %s',
+    'asistente.marcador'            => 'Ask %s…',
+    'asistente.enviar'              => 'Send',
+    'asistente.ayuda_teclado'       => 'Enter sends; Shift + Enter, new line.',
+    'asistente.aviso_ia'            => '%s is an AI: check its answers against the evidence.',
+    'asistente.usted'               => 'You',
+    'asistente.sin_conexion'        => 'I am not connected to any service yet. This is just my view: answers will arrive once it is wired up.',
+
     // Testimonios de la portada
     'testimonios.calificacion' => 'Rating: %s out of 5 stars',
     'testimonios.lista'        => 'Client testimonials',

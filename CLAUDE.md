@@ -478,7 +478,8 @@ utilidades de Tailwind siguen el cambio solas.
 - Fuera de esas clases, la paleta clara solo aparece en `@media print` (para
   que el reporte no gaste tinta de fondo).
 - **Cuatro voces excluyentes**: `.rv-marca` (Cinzel, solo logotipo y encabezado
-  de informe), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
+  de informe — y, como desviación declarada, el nombre de Lembas en la cabecera
+  de su panel; ver «Lembas»), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
   `font-sans` (Inter, interfaz y datos), `.rv-id` (JetBrains Mono, códigos de
   control — va en oro porque el oro **solo** significa referencia normativa).
 - **Los dos destellos de `partials/mensajes` NO se presentan igual.** El
@@ -1113,6 +1114,60 @@ fácil al añadir una pantalla:
 - No repita en la vista lo que ya está en la barra lateral (salir, sesión,
   saltos a otra sección). La cabecera de cada pantalla es para las acciones de
   esa pantalla.
+
+### Lembas, el asistente del módulo — HOY ES SOLO LA VISTA
+
+`partials/panel/asistente` + `assets/js/asistente.js` + sección «Asistente» de
+`rivendel.css`.
+
+**Se llama Lembas, y el nombre es TEXTO, no código**: vive en la clave
+`asistente.nombre` de los dos archivos de idioma y el resto de textos lo reciben
+como `%s` (`asistente.abrir`, `asistente.bienvenida`…). Clases, atributos
+`data-*`, la cookie y los archivos siguen diciendo «asistente» a propósito,
+porque nombran la función: rebautizarlo es cambiar esa clave, no renombrar
+selectores. En la cabecera el nombre va siempre con su función debajo
+(«LEMBAS» / «Asistente de auditoría»), porque «Lembas» a secas no dice qué es.
+
+- **El nombre va en Cinzel (`.rv-marca`) en la cabecera del panel, y SOLO
+  ahí.** DESVIACIÓN DECLARADA de las cuatro voces, anotada también junto a
+  `.rv-marca` en `rivendel.css`: se trata como marca de producto, al nivel de
+  «Rivendel» en la barra lateral y con su mismo cuerpo (15 px). En la
+  bienvenida, los globos y los rótulos accesibles «Lembas» es texto corrido y
+  va en Inter. No la extienda a otros sitios.
+- **El ícono `asistente` es una hoja de mallorn** (hoja, nervio y tallo): la
+  hoja en la que va envuelto el lembas. Sustituyó a un globo de conversación, y
+  lo que se perdió es la señal «aquí se conversa»; la recupera el contexto —el
+  botón se llama «Abrir Lembas» y abre una conversación—, y el tallo sale abajo
+  a la izquierda, donde un globo lleva la cola. Exclusivo de Lembas. Lo pinta `layouts/panel` **solo con sesión abierta**: responde
+con los permisos de quien pregunta, y sin cuenta no hay permisos que aplicar.
+**No hay servicio detrás todavía**: el guion pinta la pregunta y una respuesta
+fija que dice que no está conectado. No la sustituya por una respuesta inventada.
+
+- **El lanzador vive escondido** abajo a la derecha y aparece cuando el cursor
+  se ACERCA (140 px para aparecer, 200 para irse: dos radios para que no
+  parpadee), dibujando su anillo con `stroke-dashoffset` en 1,8 s. La cercanía
+  se MIDE en el guion; no es `:hover` sobre una zona invisible, que se tragaría
+  los clics de lo que haya debajo. Con teclado aparece al recibir el foco
+  (`opacity: 0`, nunca `hidden`), y en táctil (`hover: none`) está siempre a la
+  vista. Sin JavaScript no existe: nace con `hidden` y lo descubre el guion.
+- **El panel parte la ventana con el mismo reparto que la barra lateral, en
+  espejo**: desde `lg`, `data-asistente="abierto"` en `<html>` lo escribe el
+  SERVIDOR desde la cookie `becajo_asistente` (`Controlador::verPanel()`) y la
+  columna se aparta con `padding-right`, así que todo lo centrado con
+  `mx-auto max-w-*` se recentra solo. Por debajo, `data-asistente-cajon` lo pone
+  solo el guion, cubre la pantalla y no se recuerda. Ancho del panel y hueco de
+  la columna salen del MISMO token, `--rv-asistente-ancho`.
+- Va en `.rv-oscuro`, como la barra lateral: pergamino enmarcado por las dos
+  herramientas. Cerrado queda en `visibility: hidden` para salir del orden de
+  tabulación.
+- **Las sugerencias dependen del rol** (el administrador tiene dos más) y solo
+  rellenan el campo. Los globos salen de dos `<template>` que dibuja PHP y el
+  texto entra con `textContent`: el día que el servidor responda, el globo no
+  tiene que tener una segunda copia en JavaScript.
+- El formulario ya manda `ruta`, pero **el servidor tendrá que resolver el
+  alcance con la sesión, nunca con ese campo**: es texto del cliente, igual que
+  el id de `/evaluacion/9`. Cuando exista la ruta, el formulario lleva su
+  `campoToken()` y el guion manda con `X-Becajo-Asincrona`.
 
 ### Convenciones de controlador y vista
 

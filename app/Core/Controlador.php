@@ -187,6 +187,16 @@ abstract class Controlador
         $datos['lateralOculta'] = $datos['lateralOculta']
             ?? $this->peticion()->cookie('becajo_lateral') === 'oculta';
 
+        /*
+         * Lo mismo con el panel del asistente, por la misma razón y del lado
+         * contrario: quien lo dejó abierto mientras recorría una auditoría
+         * espera encontrarlo abierto en la pantalla siguiente, y abrirlo desde
+         * el guion sería pintar la página a todo el ancho y encogerla a la
+         * vista. Solo vale en pantalla ancha; ver layouts/panel.
+         */
+        $datos['asistenteAbierto'] = $datos['asistenteAbierto']
+            ?? $this->peticion()->cookie('becajo_asistente') === 'abierto';
+
         $this->ver($vista, $datos, 'panel');
     }
 
