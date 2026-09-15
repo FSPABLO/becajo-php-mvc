@@ -40,6 +40,33 @@ return [
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'Administrador de BD',
 
+    // Asistente del módulo: lanzador de la esquina y panel de la derecha.
+    // El NOMBRE vive en una sola clave y el resto lo recibe como %s: rebautizarlo
+    // es cambiar esta línea (y su gemela en en.php), no buscarlo por el archivo.
+    'asistente.nombre'              => 'Lembas',
+    'asistente.funcion'             => 'Asistente de auditoría',
+    'asistente.abrir'               => 'Abrir %s',
+    'asistente.cerrar'              => 'Cerrar %s',
+    'asistente.responde_como'       => 'Con los permisos de su cuenta · %s',
+    'asistente.contexto'            => 'Pantalla actual',
+    'asistente.conversacion'        => 'Conversación con %s',
+    'asistente.bienvenida'          => 'Hola, %s. Soy %s, ¿qué necesita consultar?',
+    'asistente.alcance_auditor'     => 'Puede preguntar por el contenido de esta pantalla o pedir un informe. Las respuestas se limitan a las auditorías que usted condujo.',
+    'asistente.alcance_admin'       => 'Puede preguntar por el contenido de esta pantalla o pedir un informe. Como administrador, las respuestas incluyen también el catálogo maestro y las remediaciones vencidas.',
+    'asistente.para_empezar'        => 'Para empezar',
+    'asistente.sugerencia_resumen'  => 'Resume lo que estoy viendo en esta pantalla',
+    'asistente.sugerencia_hallazgos' => '¿Qué controles tienen hallazgos de riesgo alto?',
+    'asistente.sugerencia_informe'  => 'Prepara un informe de cumplimiento por dominio',
+    'asistente.sugerencia_vencidas' => '¿Qué remediaciones están vencidas y a quién corresponden?',
+    'asistente.sugerencia_catalogo' => '¿Qué controles del catálogo cubren el dominio de accesos?',
+    'asistente.mensaje'             => 'Mensaje para %s',
+    'asistente.marcador'            => 'Pregúntele a %s…',
+    'asistente.enviar'              => 'Enviar',
+    'asistente.ayuda_teclado'       => 'Intro envía; Mayús + Intro, nueva línea.',
+    'asistente.aviso_ia'            => '%s es una IA: contraste sus respuestas con la evidencia.',
+    'asistente.usted'               => 'Usted',
+    'asistente.sin_conexion'        => 'Todavía no estoy conectado a ningún servicio. Esta es mi vista: las respuestas llegarán cuando se enlace.',
+
     // Testimonios de la portada
     'testimonios.calificacion' => 'Calificación: %s de 5 estrellas',
     'testimonios.lista'        => 'Testimonios de clientes',
@@ -330,6 +357,41 @@ return [
     'eval.madurez_por_dominio'   => 'Madurez ponderada por dominio',
     'eval.madurez_por_dominio_pie' => 'Promedio ponderado por el peso de cada control. Un guion marca el dominio que esa auditoría no evaluó.',
 
+    // Comparar histórico — la antesala: elegir la empresa.
+    //
+    // Los VALORES de los filtros («VERDE», «TENDENCIA») viajan en la URL y no
+    // se traducen: una dirección compartida tiene que seguir valiendo cuando
+    // quien la abre trabaja en el otro idioma. Lo que se traduce es el rótulo.
+    'eval.filtros'               => 'Filtros',
+    'eval.aplicar_filtros'       => 'Aplicar filtros',
+    'eval.limpiar_filtros'       => 'Limpiar todo',
+    'eval.filtros_activos'       => 'Filtros aplicados',
+    // El verbo va en el rótulo de accesibilidad: «Riesgo bajo ×» no anuncia
+    // qué pasa al pulsarlo.
+    'eval.quitar_filtro'         => 'Quitar el filtro «%s»',
+    'eval.filtro_zona'           => 'Riesgo de la última auditoría',
+    'eval.filtro_sin_indice'     => 'Sin índice',
+    'eval.filtro_estado'         => 'Estado de la cartera',
+    'eval.filtro_con_progreso'   => 'Con trabajo en progreso',
+    'eval.filtro_finalizadas'    => 'Todo finalizado',
+    'eval.filtro_historico'      => 'Histórico',
+    'eval.filtro_con_tendencia'  => 'Dos auditorías o más',
+    'eval.filtro_una_sola'       => 'Una sola auditoría',
+    // «Empresas: 3 de 7» y no «3 empresas»: la cifra detrás de los dos puntos
+    // vale igual en singular y en plural.
+    'eval.empresas_rango'        => 'Empresas: %s de %s',
+    'eval.orden_empresa_reciente'   => 'Auditada hace menos',
+    'eval.orden_empresa_auditorias' => 'Más auditorías',
+    'eval.orden_empresa_indice'     => 'Mejor índice',
+    'eval.orden_empresa_nombre'     => 'Nombre (A-Z)',
+    'eval.sin_empresas_filtro'      => 'Ninguna empresa coincide con el filtro.',
+    'eval.sin_empresas_filtro_texto' => 'Quite alguna condición para ampliar el resultado.',
+    'eval.ultimo_indice'         => 'Último índice',
+    'eval.variacion_anterior'    => '%s desde la anterior',
+    'eval.primera_lectura'       => 'Primera lectura con índice',
+    'eval.en_progreso_n'         => '%s en progreso',
+    'eval.periodo_auditado'      => 'Periodo auditado',
+
     // Formulario de encabezado (alta/edición de auditoría)
     'eval.admin_entrevistado_label' => 'Administrador de base de datos entrevistado',
     'eval.seleccione'               => '— Seleccione —',
@@ -374,7 +436,23 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Monitor de salud de bases de datos',
 
-    'mon.instancia_no_encontrada' => 'No hay ninguna instancia con la clave «%s». Se muestra la primera de la cartera.',
+    'mon.instancia_no_encontrada' => 'No hay ninguna base de datos vigilada con esa clave.',
+
+    // Antesala: una ficha por base de datos vigilada
+    'mon.buscar_etiqueta'    => 'Buscar por clave, motor o entorno',
+    'mon.buscar_marcador'    => 'Ej.: prodcore, 19c, legado…',
+    'mon.filtro_banda'       => 'Estado de salud',
+    'mon.filtro_conexion'    => 'Conexión',
+    'mon.filtro_entorno'     => 'Entorno',
+    'mon.filtro_motor'       => 'Motor',
+    'mon.filtro_sin_indice'  => 'Sin índice',
+    'mon.instancias_rango'   => 'Bases de datos: %s de %s',
+    'mon.orden_atencion'     => 'Más urgente',
+    'mon.orden_indice'       => 'Mejor índice',
+    'mon.orden_reciente'     => 'Muestra más reciente',
+    'mon.orden_clave'        => 'Clave (A-Z)',
+    'mon.sin_instancias_filtro' => 'Ninguna base de datos coincide con el filtro.',
+    'mon.ultima_muestra'     => 'Última muestra %s',
 
     'mon.duracion'           => 'Duración de la toma',
     'mon.hace_min'           => 'hace %s min',
@@ -481,4 +559,56 @@ return [
     'mon.vacio_titulo'       => 'Todavía no hay instancias vigiladas',
     'mon.vacio_texto'        => 'Cuando el agente de recolección deje su primera muestra, esta pantalla '
                               . 'mostrará el índice de salud de cada instancia, sus componentes y sus alertas.',
+
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+    'perfil.titulo'             => 'Mi perfil',
+    'perfil.ir'                 => 'Ver mi perfil',
+    'perfil.id'                 => 'Identificador',
+    'perfil.descripcion'        => 'Sobre mí',
+    'perfil.descripcion_ayuda'  => 'Una nota breve sobre su rol o su especialidad. La ve solo usted.',
+    'perfil.descripcion_marcador' => 'Ej.: Auditora de bases de datos, especializada en continuidad y respaldo.',
+    'perfil.guardar_descripcion' => 'Guardar descripción',
+    'perfil.subir_foto'         => 'Subir fotografía',
+    'perfil.cambiar_foto'       => 'Cambiar fotografía',
+    'perfil.subir_ahora'        => 'Subir ahora',
+    'perfil.quitar_foto'        => 'Quitar la fotografía',
+    'perfil.foto_ayuda'         => 'PNG, JPG, WEBP o GIF, hasta %s MB.',
+    'perfil.calendario'         => 'Auditorías del mes',
+    'perfil.mis_auditorias'     => 'Auditorías realizadas',
+    'perfil.total_auditorias'   => 'Auditorías',
+    'perfil.finalizadas'        => 'Finalizadas',
+    'perfil.en_progreso'        => 'En progreso',
+    // Sin concordancia de plural que romper: «1 auditorías en 1 días» era lo
+    // que salía al poner la cifra delante del sustantivo.
+    'perfil.mes_resumen'        => 'Auditorías del mes: %s · Días con trabajo: %s',
+    'perfil.mes_sin_auditorias' => 'Sin auditorías este mes.',
+    'perfil.y_mas'              => 'y %s más',
+    'perfil.pagina_de'          => 'Página %s de %s',
+
+    // ── Calendario ───────────────────────────────────────────────────────────
+    // Doce claves y siete, y no strftime(): esa funcion esta obsoleta, e
+    // IntlDateFormatter pide la extension intl, que esta imagen no compila.
+    // Aburrido, pero funciona en cualquier PHP y se traduce como todo lo demas.
+    'cal.mes_anterior'  => 'Mes anterior',
+    'cal.mes_siguiente' => 'Mes siguiente',
+    'cal.mes_1'  => 'Enero',
+    'cal.mes_2'  => 'Febrero',
+    'cal.mes_3'  => 'Marzo',
+    'cal.mes_4'  => 'Abril',
+    'cal.mes_5'  => 'Mayo',
+    'cal.mes_6'  => 'Junio',
+    'cal.mes_7'  => 'Julio',
+    'cal.mes_8'  => 'Agosto',
+    'cal.mes_9'  => 'Septiembre',
+    'cal.mes_10' => 'Octubre',
+    'cal.mes_11' => 'Noviembre',
+    'cal.mes_12' => 'Diciembre',
+    // La semana empieza en lunes, como en la region.
+    'cal.dia_1' => 'Lu',
+    'cal.dia_2' => 'Ma',
+    'cal.dia_3' => 'Mi',
+    'cal.dia_4' => 'Ju',
+    'cal.dia_5' => 'Vi',
+    'cal.dia_6' => 'Sa',
+    'cal.dia_7' => 'Do',
 ];

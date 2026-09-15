@@ -83,8 +83,8 @@ final class CatalogoController extends Controlador
             ...$this->contexto(),
             'meta'     => $this->meta($dominio === null ? 'Nuevo dominio' : 'Dominio ' . $dominio->clave),
             'dominio'  => $dominio,
-            'errores'  => $this->erroresGuardados(),
-            'valores'  => $this->valoresGuardados(),
+            'errores'  => $this->erroresCatalogo(),
+            'valores'  => $this->valoresCatalogo(),
             'siguienteOrden' => $this->catalogo()->siguienteOrdenDominio(),
         ]);
     }
@@ -116,7 +116,7 @@ final class CatalogoController extends Controlador
         $errores = $this->validarDominio($datos, $existente === null);
 
         if ($errores !== []) {
-            $this->guardarIntento($errores, $datos);
+            $this->guardarIntentoCatalogo($errores, $datos);
             $this->redirigir($destino);
         }
 
@@ -185,8 +185,8 @@ final class CatalogoController extends Controlador
             'meta'     => $this->meta($proceso === null ? 'Nuevo proceso' : 'Proceso ' . $proceso->numero),
             'proceso'  => $proceso,
             'dominios' => $this->catalogo()->dominios(),
-            'errores'  => $this->erroresGuardados(),
-            'valores'  => $this->valoresGuardados(),
+            'errores'  => $this->erroresCatalogo(),
+            'valores'  => $this->valoresCatalogo(),
             'siguienteOrden' => $this->catalogo()->siguienteOrdenProceso(),
         ]);
     }
@@ -219,7 +219,7 @@ final class CatalogoController extends Controlador
         $errores = $this->validarProceso($datos, $existente === null);
 
         if ($errores !== []) {
-            $this->guardarIntento($errores, $datos);
+            $this->guardarIntentoCatalogo($errores, $datos);
             $this->redirigir($destino);
         }
 
@@ -292,8 +292,8 @@ final class CatalogoController extends Controlador
             'control'     => $control,
             'procesos'    => $this->catalogo()->procesos(),
             'dominios'    => $this->indexarDominios(),
-            'errores'     => $this->erroresGuardados(),
-            'valores'     => $this->valoresGuardados(),
+            'errores'     => $this->erroresCatalogo(),
+            'valores'     => $this->valoresCatalogo(),
             'evaluaciones' => $control === null ? 0 : $this->catalogo()->evaluacionesDeControl($control->id),
         ]);
     }
@@ -325,7 +325,7 @@ final class CatalogoController extends Controlador
         $errores = $this->validarControl($datos, $existente === null);
 
         if ($errores !== []) {
-            $this->guardarIntento($errores, $datos);
+            $this->guardarIntentoCatalogo($errores, $datos);
             $this->redirigir($destino);
         }
 
@@ -554,36 +554,34 @@ final class CatalogoController extends Controlador
         return $indice;
     }
 
-    private function exigirToken(string $destino): void
-    {
-        if (!$this->autenticacion()->tokenValido($this->peticion()->entrada('_token'))) {
-            $this->sesion()->destello('error', 'La sesión expiró. Intente de nuevo.');
-            $this->redirigir($destino);
-        }
-    }
+    /*
+     * El intento fallido lo guarda y lo lee Controlador; aquí solo se le pone
+     * la marca del formulario. Los tres envoltorios existen para no tocar las
+     * llamadas de este archivo, que no la pasaban.
+     *
+     * Este controlador tiene UN formulario por pantalla y ninguna pareja que
+     * pueda pisarse entre sí, así que la marca es constante. Antes no la había
+     * en absoluto, y eso sí era un problema: un intento fallido del módulo de
+     * auditorías se pintaba en el catálogo, porque quien leía no comprobaba de
+     * dónde venía.
+     */
+    private const FORMULARIO = 'catalogo';
 
     /** @param array<string, string> $errores @param array<string, mixed> $valores */
-    private function guardarIntento(array $errores, array $valores): void
+    private function guardarIntentoCatalogo(array $errores, array $valores): void
     {
-        $this->sesion()->poner('form.errores', $errores);
-        $this->sesion()->poner('form.valores', $valores);
+        $this->guardarIntento($errores, $valores, self::FORMULARIO);
     }
 
     /** @return array<string, string> */
-    private function erroresGuardados(): array
+    private function erroresCatalogo(): array
     {
-        $errores = $this->sesion()->obtener('form.errores', []);
-        $this->sesion()->olvidar('form.errores');
-
-        return is_array($errores) ? $errores : [];
+        return $this->erroresGuardados(self::FORMULARIO);
     }
 
     /** @return array<string, mixed> */
-    private function valoresGuardados(): array
+    private function valoresCatalogo(): array
     {
-        $valores = $this->sesion()->obtener('form.valores', []);
-        $this->sesion()->olvidar('form.valores');
-
-        return is_array($valores) ? $valores : [];
+        return $this->valoresGuardados(self::FORMULARIO);
     }
 }

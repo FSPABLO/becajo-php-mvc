@@ -7,6 +7,7 @@ namespace App\Models\Contratos;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\FotoPerfil;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
@@ -48,6 +49,35 @@ interface RepositorioAuditorias
      * el INSERT cabe otra petición con el mismo correo.
      */
     public function correoRegistrado(string $correo): bool;
+
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+
+    /**
+     * Guarda la descripción que el usuario escribe sobre sí mismo. Vacía se
+     * guarda como NULL: «sin descripción» y «descripción en blanco» no son dos
+     * estados distintos.
+     */
+    public function actualizarDescripcionUsuario(int $idUsuario, ?string $descripcion): void;
+
+    /** La FICHA de la foto de perfil, sin el binario. La pinta cada pantalla. */
+    public function fotoUsuario(int $idUsuario): ?FotoPerfil;
+
+    /**
+     * Los BYTES de la foto. Es la única lectura que toca el BLOB, y existe
+     * separada de la ficha justamente para que nadie lo arrastre sin querer.
+     */
+    public function contenidoFotoUsuario(int $idUsuario): ?string;
+
+    /** Guarda la foto de perfil, sustituyendo la que hubiera. */
+    public function guardarFotoUsuario(
+        int $idUsuario,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void;
+
+    /** Quita la foto de perfil. La cuenta vuelve a mostrarse con sus iniciales. */
+    public function eliminarFotoUsuario(int $idUsuario): void;
 
     /**
      * Crea una cuenta y devuelve su identificador.

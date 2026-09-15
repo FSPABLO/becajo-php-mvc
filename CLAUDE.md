@@ -37,6 +37,10 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/10_admi
 # subida de PHP, que de fábrica cortan en 2 MB.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evidencia_archivo.sql
 
+# Base que YA existe: perfil del usuario. Agrega usuario.descripcion y crea
+# USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
@@ -170,12 +174,47 @@ invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el fre
   cobertura bajo el piso, instancia caída). **Si toca esos números, recompruebe
   que siguen cuadrando** — es fácil dejar una maqueta que enseña aritmética falsa.
 
+### La antesala: `/monitoreo`
+
+**El monitor son DOS pantallas, como el histórico de auditorías.** `/monitoreo`
+(`MonitorController::cartera()`, vista `monitoreo/cartera`) lista una FICHA por
+base de datos vigilada, y la consola de una sola vive en `/monitoreo/{clave}`.
+Antes `/monitoreo` abría la consola de la primera instancia y el único índice
+de la cartera era el desplegable de su cabecera: con cuatro bases alcanzaba, con
+veinte elegir a ciegas no es elegir.
+
+- **Misma distribución que `/evaluacion/comparar`, por construcción**: las dos
+  usan `components/rejilla-facetas`, `App\Core\Facetas` y `assets/js/facetas.js`
+  (ver «Comparar histórico» más abajo). Grupos: estado de salud (las cinco
+  bandas + «Sin índice», de mejor a peor), conexión (las tres palabras del
+  selector), entorno y motor — estos dos son datos y se ofrecen por frecuencia;
+  el motor nace plegado. El buscador mira clave, motor y entorno.
+- **La ficha**: ícono `base-datos` —tapa y tres anillos, exclusivo de esta
+  antesala igual que `expediente` lo es del histórico; no es `disco`, que tiene
+  dos y ya significa almacenamiento y catálogo—, clave, motor · entorno,
+  «Última muestra hace N min» y el estado: cifra del ISBD + `pill()` de su
+  banda, o guion + `pill('na')` con el motivo (muestra incompleta / sin
+  conexión). **La antigüedad vuelve a estar a la vista aquí** (§9), aunque la
+  consola la retirara.
+- **El orden por defecto es «Más urgente»** (`MonitorController::gravedad()`):
+  caída, luego sin índice, luego de CRÍTICO a ÓPTIMO. Es el mismo orden del
+  desplegable de la consola, que antes lo calculaba la vista — subió al
+  controlador para que rejilla y desplegable no pudieran poner primero bases
+  distintas.
+- **Una clave que no existe vuelve a `/monitoreo` con un destello** que no
+  repite la clave (es texto de la URL). Antes se pintaba la consola de la
+  primera instancia con un aviso encima, que es enseñar una base que nadie pidió.
+- Va en `max-w-6xl`, como el histórico: la excepción de ancho completo es de la
+  consola, que tiene una matriz que recortar; una rejilla de tres fichas no.
+
 ### La pantalla: consola de operación
 
-`/monitoreo` se ordena como un panel de guardia y no como un listado: primero el
-instrumento, después la evidencia.
+`/monitoreo/{clave}` se ordena como un panel de guardia y no como un listado:
+primero el instrumento, después la evidencia. Lleva `migaPagina` con la clave
+(«Monitoreo / Monitor / PRODCORE1»), así que «Monitor» enlaza de vuelta a la
+antesala.
 
-0. **A todo el ancho, y sin rótulo.** `/monitoreo` es la única pantalla del
+0. **A todo el ancho, y sin rótulo.** La consola es la única pantalla del
    módulo sin el `max-w-6xl` que centra a las demás: su tabla es una matriz de
    seis columnas de métrica y con la caja centrada pedía barra horizontal
    habiendo sitio de sobra a los lados. Lo que NO se estira es la prosa —los
@@ -183,7 +222,8 @@ instrumento, después la evidencia.
    deja de leerse por mucho ancho que haya. El `<h1>` sigue existiendo en
    `sr-only` aunque no haya título visible: sin él, quien no ve la pantalla se
    queda sin saber en qué página está.
-1. **Selector de base de datos** (`monitor-selector`). Es un `<details>` con
+1. **Selector de base de datos** (`monitor-selector`). Es el ATAJO para saltar
+   de una base a otra sin volver a la antesala, no el índice de la cartera. Es un `<details>` con
    enlaces, no un `<select>`: elegir una instancia NAVEGA a `/monitoreo/{clave}`,
    así que las opciones son enlaces de verdad —se abren en otra pestaña, se
    comparten, funcionan sin JavaScript— y el navegador no permite marcado dentro
@@ -438,7 +478,8 @@ utilidades de Tailwind siguen el cambio solas.
 - Fuera de esas clases, la paleta clara solo aparece en `@media print` (para
   que el reporte no gaste tinta de fondo).
 - **Cuatro voces excluyentes**: `.rv-marca` (Cinzel, solo logotipo y encabezado
-  de informe), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
+  de informe — y, como desviación declarada, el nombre de Lembas en la cabecera
+  de su panel; ver «Lembas»), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
   `font-sans` (Inter, interfaz y datos), `.rv-id` (JetBrains Mono, códigos de
   control — va en oro porque el oro **solo** significa referencia normativa).
 - **Los dos destellos de `partials/mensajes` NO se presentan igual.** El
@@ -654,9 +695,11 @@ en cada petición para que desactivar una cuenta surta efecto de inmediato.
 - `Autenticacion::registrar()` fuerza el rol AUDITOR; el rol nunca viene del
   formulario.
 - **CSRF**: todo formulario POST imprime `<?= $vista->campoToken() ?>` y el
-  controlador llama a su `exigirToken($destino)` antes de tocar nada. Ese helper
-  está duplicado en `AuditoriaController` y `CatalogoController` — si añade un
-  tercer controlador con escritura, repítalo o súbalo a `Controlador`.
+  controlador llama a `exigirToken($destino)` antes de tocar nada. **Vive en
+  `Controlador`**, una sola vez: estaba copiado en `AuditoriaController` y
+  `CatalogoController`, y al llegar el tercero que escribe (`PerfilController`)
+  se subió en vez de hacer la tercera copia. Un control de seguridad repetido
+  es un control que un día se arregla en dos sitios de tres.
 - `Sesion` es perezosa: no envía cookie mientras nadie lea ni escriba. Por eso
   `Controlador::mensajesPendientes()` consulta `existePrevia()` antes de leer
   destellos, y el idioma vive en su propia cookie y no en la sesión.
@@ -696,7 +739,7 @@ fácil al añadir una pantalla:
   puede saberlo —«Auditoría 152» no es una sección, es un registro— y sin eso
   las cuatro pantallas de una auditoría (ficha, resultados, remediaciones y cada
   uno de los 75 controles) decían todas «Mis auditorías». Hoy lo usan esas
-  cuatro; `/catalogo` y `/monitoreo` pueden hacerlo pasando la misma clave.
+  cuatro y `/monitoreo/{clave}`; `/catalogo` puede hacerlo pasando la misma clave.
   **El rótulo se traduce en el controlador** con `Controlador::t()` —el gemelo
   de `Vista::t()`— porque solo él tiene el dato con el que armarlo; sin eso, en
   inglés saldría «Audits / My audits / Auditoría 152».
@@ -744,6 +787,84 @@ fácil al añadir una pantalla:
   **quita el atributo `list`**: con los dos activos se dibujan los dos
   desplegables sobre el mismo campo. La lista sale del propio `<datalist>`, así
   que no hay una segunda copia de los nombres ni una consulta por tecla.
+- **Comparar histórico son DOS pantallas, y `/evaluacion/comparar` es la de
+  elegir.** Antes esa ruta apilaba el histórico completo de cada empresa —dos
+  gráficos y una tabla por tarjeta—, así que para mirar una había que cargarlas
+  todas, con una llamada a `sp_historico_dominio` por organización. Hoy lista
+  una FICHA por empresa y el histórico entero vive en
+  **`/evaluacion/comparar/{empresa}`**, que es la única que pide el desglose, y
+  una sola vez.
+
+  **La ficha es minimalista, y lo que deja fuera lo deja fuera por una razón**:
+  ícono `expediente` centrado, nombre, una línea de contexto y el estado (cifra
+  del último índice + `pill()` de la zona). La variación, la serie y las áreas
+  evaluadas son lectura de histórico, y el histórico está a un clic; aquí solo
+  se ELIGE. El ícono es IDENTIDAD y no estado: va en el acento y es el mismo en
+  las tres zonas — teñirlo de verde o de rojo sería un segundo canal de estado
+  sin etiqueta al lado, que es lo que `pill()` existe para evitar. Tampoco hay
+  «ver histórico» al pie: lo que anuncia que se pulsa es el relieve de
+  `.rv-interactivo`, y el nombre ya es el texto del enlace.
+
+  **La pantalla tampoco tiene encabezado visible**: el distintivo de norma y la
+  frase de entrada se retiraron por decisión de diseño, y empieza directamente
+  en el panel de filtros. El `<h1>` sigue existiendo en `sr-only` —la miga es
+  navegación, no encabezado— igual que en `/evaluacion` y `/monitoreo`.
+
+  El nombre viaja en la URL con `rawurlencode()` y el controlador lo resuelve
+  contra las empresas que ESE auditor evaluó (`organizacionPropia()`): es texto
+  de quien teclea la dirección, igual que el id de `/evaluacion/9`, y nunca se
+  pasa tal cual al repositorio. Lo que no casa vuelve al selector con un
+  destello, no con un 404. La ruta se declara **antes** que los patrones con
+  `{id}`, para que una empresa llamada «resultados» no se la quede
+  `/evaluacion/{id}/resultados`.
+
+  El panel de la izquierda es de **facetas**: dentro de un grupo las casillas
+  suman y entre grupos se cruzan. La cifra de cada casilla se cuenta con los
+  DEMÁS grupos aplicados pero **sin el suyo** —si se contara a sí mismo, marcar
+  «Riesgo bajo» dejaría las otras tres zonas en cero y el panel se vaciaría con
+  el primer clic—, y una opción marcada se sigue ofreciendo aunque cuente cero:
+  un filtro que desaparece del panel es un filtro que no hay forma de quitar.
+  Los VALORES viajan en la URL sin traducir (`zona[]=VERDE`), y solo el rótulo
+  se traduce: una dirección compartida tiene que valer en los dos idiomas.
+  Todo funciona sin JavaScript —formulario GET con su botón, `<details>`
+  nativos, el orden en enlaces—, y cada combinación deja su propia URL.
+
+  **Esa distribución ES un componente, y lo comparte con `/monitoreo`**: panel
+  de facetas, recuento, orden, pastillas de lo aplicado y rejilla viven en
+  `components/rejilla-facetas`; filtrar y contar, en `App\Core\Facetas`; el
+  filtrado vivo, en `assets/js/facetas.js`. Cada pantalla solo aporta sus
+  grupos (cierres que dicen qué valores tiene una fila), sus rótulos y el cierre
+  `$ficha` que dibuja una tarjeta. Vivían dentro de `comparar` —el guion como
+  `<script>` en línea— y salieron al llegar la segunda antesala. **No vuelva a
+  copiar ninguna de las tres a una pantalla nueva**: las dos antesalas se
+  recorren igual porque no hay dos copias que puedan separarse.
+
+  **Encima de eso, el filtro es VIVO: se refiltra al escribir.** Y el guion no
+  filtra: pide la misma ruta con la cabecera `X-Becajo-Asincrona` y recibe ESTA
+  MISMA VISTA ya dibujada por PHP —sin el marco del módulo, y por tanto sin el
+  guion, que el controlador pasa en `guiones`—, de la que copia cuatro regiones
+  (`data-facetas-limpiar`, `-grupos`, `-orden`, `-resultados`) más el texto del
+  recuento. Es la decisión de
+  `guardarControl()` otra vez: **el HTML lo arma el servidor y el guion solo
+  sustituye**, porque contar una faceta, ordenar la rejilla y pintar una ficha
+  son reglas del producto y una copia en JavaScript es una copia que un día dirá
+  otra cosa. Filtrar en el navegador además no podría: la ficha minimalista no
+  lleva las áreas evaluadas —y se busca por ellas— y los recuentos del panel
+  quedarían mintiendo.
+
+  Cuatro detalles de esa pieza que no son adorno: el campo de búsqueda queda
+  FUERA de las regiones que se sustituyen (es donde está el cursor); se manda el
+  formulario entero y no solo lo tocado, así que una casilla también aplica sola
+  —media panel vivo y media no sería peor que ninguno—; se restauran el
+  `<details>` que el auditor abriera y el foco de la casilla que acabara de
+  marcar, porque las dos cosas se sustituyen enteras; y la respuesta vieja no
+  puede pisar a la nueva (un contador de petición), ni los destellos se leen en
+  esa rama, porque leerlos los CONSUME y una tecla no puede gastarse un aviso.
+
+  **La ficha de una empresa NO se llama `$empresa` en la vista**: ese nombre lo
+  ocupa la consultora, que el marco del módulo pinta en el encabezado y el pie.
+  Pisarlo deja la barra lateral sin nombre y el pie sin año, con sus avisos
+  impresos encima de la página.
 - **El lienzo se invierte**: `<body class="rv-claro">` y la barra lateral con
   `.rv-oscuro`. Navegación de noche, trabajo sobre pergamino. No es un tema
   (ver «Sistema visual»); es cómo se separan las dos cosas sin gastar un borde.
@@ -954,9 +1075,99 @@ fácil al añadir una pantalla:
   secciones de los dominios inactivos, que nacen con `hidden` puesto: sin
   JavaScript se ven los siete dominios seguidos, que es más largo pero no es
   un error. Lo único que aparece por guion es la pareja anterior/siguiente.
+- **La ficha de sesión de la barra lateral ES el acceso a `/perfil`.** Era un
+  `<div>` que solo informaba y no había por dónde entrar a la propia ficha.
+  Conserva exactamente la misma pinta —retrato, nombre y rol— y solo añade la
+  flecha de la derecha, que es lo que anuncia que se pulsa: sin ella, un bloque
+  que reacciona al pasar por encima parece un fallo de estilo. Lleva
+  `rv-lateral-enlace` como las entradas del menú y `aria-current` cuando el
+  perfil es la pantalla actual, porque el relieve nunca es el único canal.
+- **`/perfil` es SIEMPRE el usuario de la sesión.** No hay `/perfil/{id}` y no
+  es un olvido: la única razón para mirar la ficha de otro sería administrar
+  cuentas, que hoy no existe. Mientras no exista, una ruta con id sería una URL
+  adivinable que enseña el nombre y la foto de cualquiera — el mismo problema
+  que resuelve `auditoriaPropia()`, pero resuelto quitando el parámetro en vez
+  de comprobándolo.
+- **La foto va en `usuario_foto`, tabla aparte; la descripción, en `usuario`.**
+  No es asimetría gratuita: `usuario` se consulta en CADA petición
+  —`Autenticacion` reconsulta la cuenta para que desactivarla surta efecto de
+  inmediato— y el driver materializa los LOB de la lista de columnas, así que un
+  BLOB ahí sería la foto viajando en cada clic. La descripción es un
+  `VARCHAR2(500)` y no tiene ese problema. Es el mismo criterio que separó
+  `evidencia_archivo` de `evaluacion_control`.
+- **El retrato es `components/avatar-usuario`**, compartido por la barra lateral
+  y la ficha. Las iniciales NO son un respaldo de emergencia: son el estado
+  normal, porque la foto es opcional y casi ninguna cuenta la tiene. La URL
+  lleva el sello de la carga (`?v=`) porque, aunque se sirva con `no-cache`, un
+  navegador que ya la tuviera enseñaría la anterior justo después de cambiarla
+  — el único momento en que alguien mira su propio avatar con atención.
+- **El calendario de `/perfil` no comunica con color solo**: un día con trabajo
+  lleva el fondo teñido, el número en negrita y el recuento debajo, así que en
+  gris o con daltonismo sigue diciendo lo mismo. Los meses vecinos son enlaces
+  —cada mes con su URL— y el detalle de un día es el emergente nativo, sin
+  JavaScript. El agrupado por día se hace en PHP sobre la lista que ya está en
+  memoria: pedirle a Oracle lo que se acaba de traer sería un viaje de más, y
+  la tabla de al lado necesita esa misma lista entera.
+- **La miga de pan se pinta si hay algo que decir, venga del menú o del
+  controlador.** Antes exigía un elemento de menú, así que `/perfil` —que no
+  está en él— se quedaba sin miga y sus niveles se descartaban en silencio.
 - No repita en la vista lo que ya está en la barra lateral (salir, sesión,
   saltos a otra sección). La cabecera de cada pantalla es para las acciones de
   esa pantalla.
+
+### Lembas, el asistente del módulo — HOY ES SOLO LA VISTA
+
+`partials/panel/asistente` + `assets/js/asistente.js` + sección «Asistente» de
+`rivendel.css`.
+
+**Se llama Lembas, y el nombre es TEXTO, no código**: vive en la clave
+`asistente.nombre` de los dos archivos de idioma y el resto de textos lo reciben
+como `%s` (`asistente.abrir`, `asistente.bienvenida`…). Clases, atributos
+`data-*`, la cookie y los archivos siguen diciendo «asistente» a propósito,
+porque nombran la función: rebautizarlo es cambiar esa clave, no renombrar
+selectores. En la cabecera el nombre va siempre con su función debajo
+(«LEMBAS» / «Asistente de auditoría»), porque «Lembas» a secas no dice qué es.
+
+- **El nombre va en Cinzel (`.rv-marca`) en la cabecera del panel, y SOLO
+  ahí.** DESVIACIÓN DECLARADA de las cuatro voces, anotada también junto a
+  `.rv-marca` en `rivendel.css`: se trata como marca de producto, al nivel de
+  «Rivendel» en la barra lateral y con su mismo cuerpo (15 px). En la
+  bienvenida, los globos y los rótulos accesibles «Lembas» es texto corrido y
+  va en Inter. No la extienda a otros sitios.
+- **El ícono `asistente` es una hoja de mallorn** (hoja, nervio y tallo): la
+  hoja en la que va envuelto el lembas. Sustituyó a un globo de conversación, y
+  lo que se perdió es la señal «aquí se conversa»; la recupera el contexto —el
+  botón se llama «Abrir Lembas» y abre una conversación—, y el tallo sale abajo
+  a la izquierda, donde un globo lleva la cola. Exclusivo de Lembas. Lo pinta `layouts/panel` **solo con sesión abierta**: responde
+con los permisos de quien pregunta, y sin cuenta no hay permisos que aplicar.
+**No hay servicio detrás todavía**: el guion pinta la pregunta y una respuesta
+fija que dice que no está conectado. No la sustituya por una respuesta inventada.
+
+- **El lanzador vive escondido** abajo a la derecha y aparece cuando el cursor
+  se ACERCA (140 px para aparecer, 200 para irse: dos radios para que no
+  parpadee), dibujando su anillo con `stroke-dashoffset` en 1,8 s. La cercanía
+  se MIDE en el guion; no es `:hover` sobre una zona invisible, que se tragaría
+  los clics de lo que haya debajo. Con teclado aparece al recibir el foco
+  (`opacity: 0`, nunca `hidden`), y en táctil (`hover: none`) está siempre a la
+  vista. Sin JavaScript no existe: nace con `hidden` y lo descubre el guion.
+- **El panel parte la ventana con el mismo reparto que la barra lateral, en
+  espejo**: desde `lg`, `data-asistente="abierto"` en `<html>` lo escribe el
+  SERVIDOR desde la cookie `becajo_asistente` (`Controlador::verPanel()`) y la
+  columna se aparta con `padding-right`, así que todo lo centrado con
+  `mx-auto max-w-*` se recentra solo. Por debajo, `data-asistente-cajon` lo pone
+  solo el guion, cubre la pantalla y no se recuerda. Ancho del panel y hueco de
+  la columna salen del MISMO token, `--rv-asistente-ancho`.
+- Va en `.rv-oscuro`, como la barra lateral: pergamino enmarcado por las dos
+  herramientas. Cerrado queda en `visibility: hidden` para salir del orden de
+  tabulación.
+- **Las sugerencias dependen del rol** (el administrador tiene dos más) y solo
+  rellenan el campo. Los globos salen de dos `<template>` que dibuja PHP y el
+  texto entra con `textContent`: el día que el servidor responda, el globo no
+  tiene que tener una segunda copia en JavaScript.
+- El formulario ya manda `ruta`, pero **el servidor tendrá que resolver el
+  alcance con la sesión, nunca con ese campo**: es texto del cliente, igual que
+  el id de `/evaluacion/9`. Cuando exista la ruta, el formulario lleva su
+  `campoToken()` y el guion manda con `X-Becajo-Asincrona`.
 
 ### Convenciones de controlador y vista
 
@@ -964,10 +1175,15 @@ fácil al añadir una pantalla:
   validación se guarda el intento con `guardarIntento($errores, $valores,
   $formulario)` y se redirige al GET, que lo recupera con
   `erroresGuardados($formulario)` / `valoresGuardados($formulario)`.
-  **El tercer argumento no es decorativo**: los tres formularios de
-  `AuditoriaController` —alta, encabezado y respuesta de un control— comparten
-  un único par de destellos en la sesión, y sin la marca el intento fallido de
-  uno se pinta en otro. Con valores de texto libre en juego (el entrevistado
+  **Vive en `Controlador`**, junto a `exigirToken` y por lo mismo: estaba
+  copiado, y la copia de `CatalogoController` se había quedado SIN la marca del
+  formulario —o sea, con el error que la marca existe para evitar—. Ese
+  controlador conserva tres envoltorios privados que solo le ponen su marca,
+  para no tocar sus llamadas.
+
+  **El tercer argumento no es decorativo**: los formularios comparten un único
+  par de destellos en la sesión, y sin la marca el intento fallido de uno se
+  pinta en otro. Con valores de texto libre en juego (el entrevistado
   escrito a mano) eso llegaba a rellenar el encabezado de una auditoría con los
   datos de otra, a un clic de guardarse. Una marca que no casa se descarta y el
   destello se consume igual.

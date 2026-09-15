@@ -18,16 +18,16 @@ declare(strict_types=1);
  * @var list<array{titulo: string, elementos: list<array{etiqueta: string, ruta: string, icono: string}>}> $grupos
  * @var string               $rutaActiva  Ruta del elemento activo, o '' si ninguno.
  * @var \App\Models\Entidades\Usuario|null $usuarioActual
+ * @var \App\Models\Entidades\FotoPerfil|null $fotoUsuario  Su retrato, si lo subió.
+ * @var string|null          $rutaActual   Para marcar «Mi perfil» cuando toca.
  * @var bool|null            $lateralOculta
  */
 $grupos        = $grupos ?? [];
 $rutaActiva    = $rutaActiva ?? '';
 $usuarioActual = $usuarioActual ?? null;
+$fotoUsuario   = $fotoUsuario ?? null;
+$rutaActual    = $rutaActual ?? '/';
 $lateralOculta = $lateralOculta ?? false;
-
-// Iniciales del avatar. La regla vive en funciones.php porque el encabezado
-// público pinta el mismo retrato en su botón de perfil.
-$iniciales = $usuarioActual !== null ? iniciales($usuarioActual->nombre) : '';
 ?>
 <?php
 /*
@@ -123,21 +123,46 @@ $iniciales = $usuarioActual !== null ? iniciales($usuarioActual->nombre) : '';
         <?php if ($usuarioActual !== null): ?>
             <?php
             /*
-             * Ficha de sesión. El rol se imprime porque decide qué se ve: quien
-             * no encuentra el catálogo en el menú necesita poder comprobar de un
+             * La ficha de sesión ES el acceso al perfil.
+             *
+             * Era un <div> que solo informaba, y quien quisiera su propia ficha
+             * no tenía por dónde entrar. Ahora es un enlace a /perfil, pero
+             * conserva EXACTAMENTE la misma pinta: retrato, nombre y rol en dos
+             * líneas. Lo único que se añade es la flecha de la derecha, que es
+             * lo que anuncia que se puede pulsar — sin ella, un bloque que
+             * reacciona al pasar por encima parece un fallo de estilo.
+             *
+             * Lleva `rv-lateral-enlace` como las entradas del menú, así que se
+             * hunde al pasar por encima igual que ellas y se marca con
+             * aria-current cuando el perfil ES la pantalla actual. Y aria-current
+             * ADEMÁS del hundido: el relieve nunca es el único canal.
+             *
+             * El rol se sigue imprimiendo porque decide qué se ve: quien no
+             * encuentra el catálogo en el menú necesita poder comprobar de un
              * vistazo que entró como auditor y no como administrador.
              */
+            $enPerfil = str_starts_with($rutaActual, '/perfil');
             ?>
-            <div class="mb-2 flex items-center gap-3 rounded-rv px-2 py-2">
-                <span class="rv-extruido grid h-9 w-9 flex-none place-items-center rounded-full bg-elevado text-[12.5px] font-semibold text-texto"
-                      aria-hidden="true"><?= e($iniciales) ?></span>
-                <span class="min-w-0">
+            <a href="<?= e($vista->url('perfil')) ?>"
+               class="rv-lateral-enlace mb-2 flex items-center gap-3 rounded-rv px-2 py-2"
+               <?= $enPerfil ? 'aria-current="page"' : '' ?>>
+                <?= $vista->componente('avatar-usuario', [
+                    'vista'   => $vista,
+                    'usuario' => $usuarioActual,
+                    'foto'    => $fotoUsuario,
+                ]) ?>
+                <span class="min-w-0 flex-1">
                     <span class="block truncate text-[13px] font-semibold text-texto"><?= e($usuarioActual->nombre) ?></span>
                     <span class="block truncate text-[11.5px] text-texto-2">
                         <?= e($usuarioActual->esAdministrador() ? $vista->t('panel.rol_admin') : $vista->t('panel.rol_auditor')) ?>
                     </span>
                 </span>
-            </div>
+                <?php /* La flecha es lo que dice «esto lleva a algún sitio». */ ?>
+                <span class="shrink-0 text-texto-2" aria-hidden="true">
+                    <?= icono('chevron', 'h-4 w-4') ?>
+                </span>
+                <span class="sr-only"><?= e($vista->t('perfil.ir')) ?></span>
+            </a>
 
             <a href="<?= e($vista->url()) ?>"
                class="rv-lateral-enlace flex items-center gap-3 rounded-rv px-4 py-2.5 text-[13.5px] font-medium text-texto-2">

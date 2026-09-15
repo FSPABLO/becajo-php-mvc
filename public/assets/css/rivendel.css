@@ -279,6 +279,11 @@ html textarea {
 /*
  * Cinzel: solo logotipo, portada y encabezado de informe exportado.
  * Nunca en cadenas de más de tres palabras.
+ *
+ * DESVIACIÓN DECLARADA: también el nombre de Lembas en la cabecera de su
+ * panel (partials/panel/asistente), y SOLO ahí. Es una marca de producto con
+ * nombre propio, como el logotipo; en cualquier otro sitio donde aparezca
+ * «Lembas» es texto corrido y va en la voz de interfaz.
  */
 .rv-marca {
     font-family: var(--rv-font-marca);
@@ -496,7 +501,8 @@ html textarea {
 @media (min-width: 1024px) {
     .rv-panel-columna {
         padding-left: 264px;
-        transition: padding-left 0.3s ease;
+        /* padding-right es el hueco del asistente; ver «Asistente» más abajo. */
+        transition: padding-left 0.3s ease, padding-right 0.3s ease;
     }
 
     /* Gana a la utilidad lg:translate-x-0 de la barra por especificidad. */
@@ -521,6 +527,228 @@ html textarea {
 @media (prefers-reduced-motion: reduce) {
     .rv-panel-columna {
         transition: none;
+    }
+}
+
+/* ── Asistente ───────────────────────────────────────────────────────────
+ *
+ * Dos piezas: el LANZADOR, escondido en la esquina inferior derecha, y el PANEL
+ * que parte la ventana desde la derecha. Marcado en partials/panel/asistente;
+ * comportamiento en assets/js/asistente.js.
+ *
+ * El panel se abre con el mismo reparto que la barra lateral, en espejo:
+ *
+ *   >= lg  data-asistente="abierto" en <html>, que escribe el SERVIDOR desde la
+ *          cookie. La columna del módulo se aparta con padding-right y todo lo
+ *          que va centrado dentro (mx-auto max-w-*) se vuelve a centrar en el
+ *          ancho que queda, sin que ninguna vista se entere.
+ *   <  lg  data-asistente-cajon, solo del guion y sin recordar. No hay ancho
+ *          que partir: el panel cubre la pantalla.
+ *
+ * El ancho del panel y el hueco de la columna salen del MISMO token. Dos cifras
+ * escritas por separado son una rendija, o un solape, el día que cambie una.
+ */
+:root {
+    --rv-asistente-ancho: clamp(22rem, 30vw, 28rem);
+}
+
+.rv-asistente-lanzador {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 55;
+}
+
+/*
+ * Escondido, pero NO fuera del árbol: opacidad 0 y sin puntero. Sigue en el
+ * orden de tabulación y aparece al recibir el foco, porque un botón al que solo
+ * se llega acercando un ratón no existe para quien usa el teclado.
+ *
+ * pointer-events: none mientras no se ve, para que no robe el clic de lo que
+ * haya debajo —el pie de una tarjeta, el botón «Guardar»— a quien no lo busca.
+ * Cuando el cursor se acerca lo recupera antes de llegar encima.
+ */
+.rv-asistente-boton {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-boton,
+.rv-asistente-boton:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transition-duration: 0.25s;
+}
+
+/*
+ * La animación de trazo (dash). El anillo es un círculo con pathLength="100":
+ * con el guion a 100 y el desfase a 100 no se ve nada, y llevar el desfase a 0
+ * lo DIBUJA. Arranca a las doce —de ahí el giro de -90°, que es donde empieza
+ * un círculo de SVG— y va despacio a propósito: 1,8 s de trazo con entrada y
+ * salida suaves, que es lo que lo distingue de un botón que simplemente se
+ * enciende.
+ *
+ * Es una TRANSICIÓN y no un @keyframes: si el cursor se aleja a medio trazo, el
+ * anillo se deshace desde donde iba en vez de saltar al final y borrarse.
+ *
+ * Verde de marca y no oro: el oro es referencia normativa, y esto es una acción.
+ */
+.rv-asistente-anillo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform: rotate(-90deg);
+}
+
+.rv-asistente-anillo circle {
+    fill: none;
+    stroke: rgb(var(--rv-primary));
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 0.5s ease-in;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-anillo circle,
+.rv-asistente-boton:focus-visible .rv-asistente-anillo circle {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.8s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/*
+ * El núcleo entra cuando el trazo ya va por un tercio: primero se dibuja el
+ * contorno y después aparece lo que contiene. El retraso va SOLO en el estado
+ * visible, así que al irse el núcleo se apaga sin esperar.
+ */
+.rv-asistente-nucleo {
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-nucleo,
+.rv-asistente-boton:focus-visible .rv-asistente-nucleo {
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity 0.5s ease 0.6s,
+        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s,
+        background-color 0.2s ease;
+}
+
+/* Dos clases y una pseudoclase: gana a la utilidad bg-primario del marcado. */
+.rv-asistente-boton:hover .rv-asistente-nucleo {
+    background-color: rgb(var(--rv-primary-hover));
+}
+
+/*
+ * Sin cursor no hay nada que acercar. En una pantalla táctil el lanzador está
+ * siempre a la vista y dibujado, o no habría forma de abrir el asistente.
+ */
+@media (hover: none) {
+    .rv-asistente-boton {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .rv-asistente-anillo circle {
+        stroke-dashoffset: 0;
+    }
+
+    .rv-asistente-nucleo {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
+ * Con movimiento reducido se va el TRAZO, no el lanzador: el anillo nace
+ * dibujado y el botón solo funde. La regla general recorta las duraciones pero
+ * no los RETRASOS, así que sin anular el del núcleo este aparecería de golpe
+ * medio segundo tarde.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rv-asistente-boton {
+        transition-duration: 0.2s !important;
+    }
+
+    .rv-asistente-anillo circle {
+        stroke-dashoffset: 0;
+    }
+
+    .rv-asistente-nucleo {
+        opacity: 1;
+        transform: none;
+        transition-delay: 0s !important;
+    }
+}
+
+/*
+ * El panel. Cerrado sale por la derecha y además queda en visibility: hidden,
+ * que lo saca del orden de tabulación y del árbol de accesibilidad: un panel
+ * fuera de la pantalla al que se llega tabulando es un foco perdido. La
+ * visibilidad cambia al FINAL de la salida y al PRINCIPIO de la entrada, para
+ * que el deslizamiento se vea en los dos sentidos.
+ *
+ * El ancho va aquí y no como utilidad (inset-0 / lg:w-*) por lo mismo que la
+ * barra lateral: el CDN inyecta Tailwind después de esta hoja y ganaría el
+ * empate. En angosto se ancla a los DOS bordes y no lleva width: 100%, que
+ * sumado al borde izquierdo se sale un par de píxeles por la derecha.
+ */
+.rv-asistente-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+[data-asistente-cajon] .rv-asistente-panel {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.3s ease, visibility 0s;
+}
+
+/* Con el panel abierto el lanzador sobra: quien lo cierra es su propio botón. */
+[data-asistente-cajon] .rv-asistente-lanzador {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .rv-asistente-panel {
+        left: auto;
+        width: var(--rv-asistente-ancho);
+    }
+
+    [data-asistente='abierto'] .rv-asistente-panel {
+        transform: none;
+        visibility: visible;
+        transition: transform 0.3s ease, visibility 0s;
+    }
+
+    [data-asistente='abierto'] .rv-asistente-lanzador {
+        display: none;
+    }
+
+    /* La ventana se parte: la columna se aparta y su contenido se recentra. */
+    [data-asistente='abierto'] .rv-panel-columna {
+        padding-right: var(--rv-asistente-ancho);
+    }
+
+    /* El aviso flotante sigue al borde del contenido y no se posa sobre el panel. */
+    [data-asistente='abierto'] .rv-aviso-flotante {
+        right: calc(var(--rv-asistente-ancho) + 1.5rem);
     }
 }
 
@@ -1225,5 +1453,16 @@ html textarea {
     .rv-nm-sombra,
     .rv-nm-realce {
         flood-opacity: 0 !important;
+    }
+
+    /* El asistente es una herramienta de pantalla: no se imprime, y la página
+       impresa recupera el ancho que le cedía. */
+    .rv-asistente-lanzador,
+    .rv-asistente-panel {
+        display: none !important;
+    }
+
+    [data-asistente] .rv-panel-columna {
+        padding-right: 0 !important;
     }
 }

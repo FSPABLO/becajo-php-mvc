@@ -10,6 +10,7 @@ use App\Controllers\HerramientasController;
 use App\Controllers\HomeController;
 use App\Controllers\IdiomaController;
 use App\Controllers\MonitorController;
+use App\Controllers\PerfilController;
 use App\Controllers\PreguntasController;
 use App\Core\Enrutador;
 
@@ -47,6 +48,20 @@ return static function (Enrutador $enrutador): void {
     // no debe poder dispararse con un simple enlace o una etiqueta <img>.
     $enrutador->post('/salir', [AutenticacionController::class, 'salir']);
 
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+    //
+    // Sin id en la ruta a propósito: SIEMPRE es el usuario de la sesión. Una
+    // /perfil/{id} sería una URL adivinable que enseña el nombre y la foto de
+    // cualquiera, y habría que defenderla; mientras no exista administración de
+    // cuentas, se resuelve quitando el parámetro en vez de comprobándolo.
+    $enrutador->get('/perfil', [PerfilController::class, 'mostrar']);
+    $enrutador->post('/perfil', [PerfilController::class, 'guardarDescripcion']);
+    $enrutador->post('/perfil/foto', [PerfilController::class, 'guardarFoto']);
+
+    // La foto vive en Oracle, no en public/: se sirve por ruta propia y detrás
+    // de la sesión, igual que el adjunto de la evidencia.
+    $enrutador->get('/perfil/foto', [PerfilController::class, 'foto']);
+
     // ── Módulo de evaluación de riesgo (Bloque 4) ────────────────────────────
     //
     // El orden de declaración no importa: el enrutador resuelve siempre la
@@ -54,6 +69,14 @@ return static function (Enrutador $enrutador): void {
     // "/evaluacion/nueva" nunca se lo queda "/evaluacion/{id}".
     $enrutador->get('/evaluacion', [AuditoriaController::class, 'panel']);
     $enrutador->get('/evaluacion/comparar', [AuditoriaController::class, 'comparar']);
+
+    // El histórico de UNA empresa. El nombre viaja en la URL codificado
+    // (rawurlencode) y el controlador lo resuelve contra las empresas que ese
+    // auditor evaluó de verdad: es texto de quien teclea la dirección, igual
+    // que el id de /evaluacion/9. Va declarada ANTES que los patrones con
+    // {id} para que una empresa llamada, por ejemplo, "resultados" no se la
+    // quede /evaluacion/{id}/resultados.
+    $enrutador->get('/evaluacion/comparar/{organizacion}', [AuditoriaController::class, 'compararOrganizacion']);
 
     $enrutador->get('/evaluacion/nueva', [AuditoriaController::class, 'nuevaFormulario']);
     $enrutador->post('/evaluacion/nueva', [AuditoriaController::class, 'crear']);
@@ -86,10 +109,13 @@ return static function (Enrutador $enrutador): void {
     // ── Monitor de salud de bases de datos (parte 2) ─────────────────────────
     //
     // Maqueta del frente 4: las dos rutas del §9 del plan sobre muestras
-    // sintéticas. El orden no importa —el enrutador resuelve la coincidencia
-    // exacta antes que los patrones—, así que "/monitoreo/alertas", cuando
-    // exista, nunca se lo quedará "/monitoreo/{instancia}".
-    $enrutador->get('/monitoreo', [MonitorController::class, 'panel']);
+    // sintéticas. /monitoreo es la antesala —una ficha por base vigilada— y
+    // /monitoreo/{instancia} la consola de una sola, igual que el par
+    // /evaluacion/comparar y /evaluacion/comparar/{empresa}. El orden no
+    // importa —el enrutador resuelve la coincidencia exacta antes que los
+    // patrones—, así que "/monitoreo/alertas", cuando exista, nunca se lo
+    // quedará "/monitoreo/{instancia}".
+    $enrutador->get('/monitoreo', [MonitorController::class, 'cartera']);
     $enrutador->get('/monitoreo/{instancia}', [MonitorController::class, 'panel']);
 
     // ── Catálogo maestro (Bloque 5) ──────────────────────────────────────────

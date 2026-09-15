@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controlador;
+use App\Core\Facetas;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\Control;
@@ -38,13 +39,6 @@ final class AuditoriaController extends Controlador
 
     /** Filas por página en la tabla del panel. */
     private const POR_PAGINA = 4;
-
-    /**
-     * El intento fallido de la petición anterior, ya leído de la sesión.
-     *
-     * @var array{de: string, errores: mixed, valores: mixed}|null
-     */
-    private ?array $intento = null;
 
     /** Calidad de la evidencia, según ck_evalctrl_calidad_evidencia. */
     private const CALIDADES = [
@@ -283,22 +277,6 @@ final class AuditoriaController extends Controlador
             $b->fecha <=> $a->fecha ?: $b->id <=> $a->id);
 
         return $auditorias;
-    }
-
-    /**
-     * Pasa un texto a minúsculas y sin tildes, para comparar.
-     *
-     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
-     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
-     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
-     * devuelve cosas distintas en la máquina de cada quien.
-     */
-    private function normalizar(string $texto): string
-    {
-        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
-            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
-        ]);
     }
 
     // ── Alta de auditoría ────────────────────────────────────────────────────
@@ -1021,58 +999,448 @@ final class AuditoriaController extends Controlador
         ]);
     }
 
-    // Compara el histórico de auditorías del auditor, agrupado por organización.
+    // ── Comparación histórica ────────────────────────────────────────────────
+
+    /**
+     * La ANTESALA del histórico: una tarjeta por empresa auditada.
+     *
+     * Antes esta misma ruta apilaba el histórico COMPLETO de cada empresa —dos
+     * gráficos y una tabla por tarjeta—, así que con tres empresas había que
+     * bajar media pantalla para llegar a la segunda, y para mirar UNA se
+     * cargaban todas: una llamada a sp_historico_dominio por organización.
+     *
+     * Aquí solo se ELIGE. El histórico vive ahora en
+     * /evaluacion/comparar/{empresa}, que es quien pide el desglose, y una sola
+     * vez. Todo lo que se lee en esta pantalla —recuentos, fechas, índices,
+     * áreas— sale de la lista que el repositorio ya tuvo que traer: ni un
+     * procedimiento más que antes, y N-1 menos.
+     */
     public function comparar(): void
     {
         $usuario = $this->exigirUsuario();
+
+        $empresas = $this->empresasAuditadas($this->auditorias()->auditoriasDe($usuario->id));
+
+        /*
+         * El buscador se aplica ANTES que las facetas y por eso viaja aparte:
+         * sus recuentos tienen que hablar de lo que el auditor está mirando.
+         * Con la búsqueda fuera de ese cálculo, el panel ofrecería «Riesgo alto
+         * (4)» sobre una rejilla donde solo quedan dos empresas.
+         */
+        $buscar = $this->peticion()->entrada('buscar');
+        $base   = $this->buscarEmpresas($empresas, $buscar);
+
+        /*
+         * Lo que está marcado en el panel de filtros: dentro de un grupo las
+         * opciones SUMAN (verde o ámbar) y entre grupos se cruzan (verde Y con
+         * tendencia). Las reglas viven en App\Core\Facetas, que comparte esta
+         * pantalla con la antesala del monitor.
+         *
+         * Nada de esto viaja al repositorio: se filtra sobre la lista que ya
+         * está en memoria, que es la del auditor conectado y de nadie más.
+         */
+        $facetas   = $this->facetasEmpresa();
+        $seleccion = $facetas->seleccion($this->peticion());
+
+        // Cualquier valor que no conozcamos cae en el de por defecto: un orden
+        // inventado en la URL no debe poder dejar la rejilla sin ordenar.
+        $orden = in_array($this->peticion()->entrada('orden'), self::ORDENES_EMPRESA, true)
+            ? (string) $this->peticion()->entrada('orden')
+            : self::ORDENES_EMPRESA[0];
+
+        $visibles = $this->ordenarEmpresas($facetas->filtrar($base, $seleccion), $orden);
+
+        $datos = [
+            'meta'      => $this->meta('Comparar histórico'),
+            'usuario'   => $usuario,
+            // La lista COMPLETA es la que dice si el auditor tiene cartera: sin
+            // ella, un filtro que no casa con nada se leería como «todavía no
+            // ha auditado a nadie», que es otra cosa muy distinta.
+            'total'     => count($empresas),
+            'empresas'  => $visibles,
+            'facetas'   => $facetas->contar($base, $seleccion),
+            'seleccion' => $seleccion,
+            'buscar'    => $buscar,
+            'orden'     => $orden,
+            'ordenes'   => self::ORDENES_EMPRESA,
+        ];
+
+        /*
+         * Quién pregunta decide la forma de la respuesta, igual que en
+         * guardarControl(): el navegador recibe la página entera y el guion
+         * —el que refiltra mientras se escribe— recibe ESTA MISMA VISTA ya
+         * dibujada por el servidor, sin el marco del módulo, para sustituir
+         * sus regiones.
+         *
+         * Es deliberado que no haya una segunda plantilla ni un fragmento
+         * aparte: cómo se cuenta una faceta, cómo se ordena la rejilla y cómo
+         * se pinta una ficha son reglas del producto, y tenerlas ADEMÁS en
+         * JavaScript sería garantizar que un día las dos copias dijeran cosas
+         * distintas. El guion no sabe filtrar; sabe pedir y sustituir.
+         *
+         * Los destellos van vacíos a propósito: leerlos los CONSUME, y una
+         * pulsación de tecla no puede gastarse el aviso que el auditor aún no
+         * ha visto.
+         */
+        if ($this->peticion()->esAsincrona()) {
+            $this->json([
+                'html' => $this->contenedor->vista()->renderizar('evaluacion/comparar', [
+                    ...$datos,
+                    'mensajes' => ['aviso' => null, 'error' => null],
+                ]),
+            ]);
+        }
+
+        $this->verPanel('evaluacion/comparar', [
+            ...$this->contexto(),
+            ...$datos,
+            // El filtrado vivo es un archivo aparte y no un <script> dentro de
+            // la vista: lo comparte con /monitoreo, y así la respuesta a cada
+            // tecla ya no tiene que acordarse de dejarlo fuera.
+            'guiones' => ['assets/js/facetas.js'],
+        ]);
+    }
+
+    /**
+     * El histórico de UNA empresa: los dos gráficos y el desglose.
+     *
+     * Es el contenido que antes vivía repetido dentro de cada tarjeta de
+     * /evaluacion/comparar. Al tener pantalla propia puede ocupar el ancho
+     * entero, y el desglose por dominio se pide para una sola organización.
+     */
+    public function compararOrganizacion(): void
+    {
+        $usuario    = $this->exigirUsuario();
         $auditorias = $this->auditorias()->auditoriasDe($usuario->id);
 
+        $organizacion = $this->organizacionPropia($auditorias);
+
+        /*
+         * La misma ficha que arma la tarjeta del selector, para una sola
+         * empresa: recuentos, índice, variación, zona y áreas ya calculados, y
+         * las auditorías ordenadas de la más antigua a la más reciente, que es
+         * como se lee una tendencia. Calcularlos otra vez aquí sería tener dos
+         * sitios donde decidir qué es «el último índice» de una empresa.
+         */
+        $ficha = $this->empresasAuditadas(array_values(array_filter(
+            $auditorias,
+            static fn (Auditoria $auditoria): bool => $auditoria->organizacion === $organizacion,
+        )))[0];
+
+        $grupo = $ficha['auditorias'];
+
+        /*
+         * Punto 18: madurez ponderada por dominio a través del tiempo.
+         *
+         * El procedimiento agrega por ORGANIZACIÓN y no sabe de auditores: si
+         * dos consultoras auditaron a la misma empresa, devuelve las dos
+         * carteras mezcladas. Aquí se recorta a las auditorías propias, que es
+         * el mismo criterio de auditoriaPropia() frente a /evaluacion/9 —
+         * filtrar la lista por auditor no basta si el desglose de al lado sigue
+         * enseñando el trabajo de otro. Además la pantalla se contradecía sola:
+         * la cabecera fechaba la última auditoría del auditor y la tabla
+         * llegaba hasta la de otra consultora.
+         */
+        $propias = array_flip(array_map(
+            static fn (Auditoria $auditoria): int => $auditoria->id,
+            $grupo,
+        ));
+
+        $historico = array_values(array_filter(
+            $this->auditorias()->historicoPorDominio($organizacion),
+            static fn (array $fila): bool => isset($propias[(int) $fila['id_auditoria']]),
+        ));
+
+        $this->verPanel('evaluacion/comparar-organizacion', [
+            ...$this->contexto(),
+            'meta'         => $this->meta('Histórico · ' . $organizacion),
+            // Por debajo de la entrada del menú la miga la pone el controlador:
+            // «Cooperativa de Ejemplo R.L.» no es una sección, es un registro.
+            'migaPagina'   => [['etiqueta' => $organizacion]],
+            'usuario'      => $usuario,
+            'organizacion' => $organizacion,
+            /*
+             * NO se llama 'empresa': ese nombre lo ocupa la consultora, que el
+             * marco del módulo recibe del repositorio de contenido y usa en el
+             * encabezado y el pie. Pisarlo dejaba la barra lateral sin nombre y
+             * el pie sin año, con sus avisos impresos encima de la página.
+             */
+            'ficha'        => $ficha,
+            'auditorias'   => $grupo,
+            'historico'    => $historico,
+        ]);
+    }
+
+    /**
+     * La empresa que pide la URL, resuelta contra las que este auditor auditó.
+     *
+     * Mismo razonamiento que auditoriaPropia() frente a /evaluacion/9: el
+     * segmento es texto de quien teclea la dirección, y pasarlo tal cual al
+     * repositorio sería una forma de preguntar por la cartera de otra
+     * consultora. Lo que no case vuelve al selector con un destello y no con un
+     * 404: quien llega desde un enlace viejo viene a elegir una empresa, y la
+     * pantalla que las lista está a un paso.
+     *
+     * @param list<Auditoria> $auditorias
+     */
+    private function organizacionPropia(array $auditorias): string
+    {
+        /*
+         * El nombre viaja codificado en la URL («Cooperativa%20de%20Ejemplo»):
+         * la ruta llega tal como la mandó el navegador y nadie la decodifica
+         * por el camino, así que se decodifica aquí. Es el par exacto de
+         * rawurlencode(), que es con el que la vista arma el enlace.
+         */
+        $pedida = rawurldecode((string) $this->parametro('organizacion', ''));
+
+        $organizaciones = [];
+
+        foreach ($auditorias as $auditoria) {
+            if ($auditoria->organizacion === $pedida) {
+                return $pedida;
+            }
+
+            $organizaciones[$auditoria->organizacion] = true;
+        }
+
+        /*
+         * Segunda oportunidad para el nombre escrito a mano: sin tildes, sin
+         * mayúsculas o a medias. Sigue sin salir de la lista de ESTE auditor,
+         * porque es lo único que buscarOrganizacion() mira.
+         */
+        $coincidencia = $pedida === ''
+            ? null
+            : $this->buscarOrganizacion($pedida, array_keys($organizaciones));
+
+        if ($coincidencia !== null) {
+            return $coincidencia;
+        }
+
+        $this->sesion()->destello('error', 'No hay auditorías suyas de esa empresa.');
+        $this->redirigir('/evaluacion/comparar');
+    }
+
+    // ── La cartera vista por empresa ─────────────────────────────────────────
+
+    /** Órdenes de la rejilla de empresas. El primero es el de por defecto. */
+    private const ORDENES_EMPRESA = ['reciente', 'auditorias', 'indice', 'nombre'];
+
+    /**
+     * Opciones de los grupos de filtro cerrados, en el orden en que se ofrecen.
+     *
+     * Se declaran y no se derivan de los datos porque son una escala: las zonas
+     * van de mejor a peor y no por frecuencia, y una lista que se reordena sola
+     * según lo que haya hoy en la cartera obliga a releerla entera cada vez. Las
+     * áreas evaluadas SÍ son datos, y por eso no están en esta tabla.
+     */
+    private const OPCIONES_FACETA = [
+        'zona'      => ['VERDE', 'AMARILLO', 'ROJO', 'SIN'],
+        'estado'    => ['EN_PROGRESO', 'FINALIZADA'],
+        'historico' => ['TENDENCIA', 'UNICA'],
+    ];
+
+    /**
+     * Agrupa la cartera por empresa y calcula lo que la tarjeta enseña.
+     *
+     * Todo sale de las auditorías que ya están en memoria. La entidad no gana
+     * un método para esto porque no es de UNA auditoría: es lo que resulta de
+     * mirar varias juntas.
+     *
+     * @param list<Auditoria> $auditorias
+     * @return list<array<string, mixed>>
+     */
+    private function empresasAuditadas(array $auditorias): array
+    {
         $porOrganizacion = [];
 
         foreach ($auditorias as $auditoria) {
             $porOrganizacion[$auditoria->organizacion][] = $auditoria;
         }
 
-        // Más antigua primero, así la tendencia se lee de izquierda a derecha.
-        foreach ($porOrganizacion as &$grupo) {
-            usort($grupo, static fn ($a, $b) => $a->fecha <=> $b->fecha);
-        }
-        unset($grupo);
-
-        // Punto 18: madurez ponderada por dominio, a través del tiempo, para
-        // cada organización que este auditor ya evaluó. Complementa las
-        // barras de índice general que ya se mostraban con el desglose por
-        // dominio, para ver en qué áreas mejoró o empeoró cada auditoría.
-        //
-        // El procedimiento agrega por ORGANIZACIÓN y no sabe de auditores: si
-        // dos consultoras auditaron a la misma empresa, devuelve las dos
-        // carteras mezcladas. Aquí se recorta a las auditorías propias, que es
-        // el mismo criterio de auditoriaPropia() frente a /evaluacion/9 —
-        // filtrar la lista por auditor no basta si el desglose de al lado
-        // sigue enseñando el trabajo de otro. Además la pantalla se
-        // contradecía sola: la cabecera fechaba la última auditoría del
-        // auditor y la tabla llegaba hasta la de otra consultora.
-        $historicoPorOrganizacion = [];
+        $empresas = [];
 
         foreach ($porOrganizacion as $organizacion => $grupo) {
-            $propias = array_flip(array_map(
-                static fn (Auditoria $auditoria): int => $auditoria->id,
+            // Más antigua primero: es el orden en que se lee una tendencia, y
+            // el que espera components/indice-historico.
+            usort($grupo, static fn (Auditoria $a, Auditoria $b): int
+                => [$a->fecha, $a->id] <=> [$b->fecha, $b->id]);
+
+            /*
+             * Una auditoría sin índice calculado no vale cero —no es riesgo
+             * máximo: es que todavía no se ha calculado—, así que se aparta en
+             * vez de promediarse. El índice de la tarjeta es el de la última
+             * auditoría QUE LO TENGA, y la variación compara con la anterior de
+             * esa misma serie: dos huecos en medio no inventan una pendiente.
+             */
+            $conIndice = array_values(array_filter(
                 $grupo,
+                static fn (Auditoria $a): bool => $a->indiceGeneralRiesgo !== null,
             ));
 
-            $historicoPorOrganizacion[$organizacion] = array_values(array_filter(
-                $this->auditorias()->historicoPorDominio($organizacion),
-                static fn (array $fila): bool => isset($propias[(int) $fila['id_auditoria']]),
-            ));
+            $indice   = $conIndice === [] ? null : $conIndice[count($conIndice) - 1]->indiceGeneralRiesgo;
+            $anterior = count($conIndice) > 1
+                ? $conIndice[count($conIndice) - 2]->indiceGeneralRiesgo
+                : null;
+
+            $areas      = [];
+            $enProgreso = 0;
+
+            foreach ($grupo as $auditoria) {
+                $areas[$auditoria->areaEvaluada] = true;
+
+                if (!$auditoria->estaFinalizada()) {
+                    $enProgreso++;
+                }
+            }
+
+            $empresas[] = [
+                'organizacion' => (string) $organizacion,
+                'auditorias'   => $grupo,
+                'total'        => count($grupo),
+                'ultima'       => $grupo[count($grupo) - 1],
+                'primera'      => $grupo[0],
+                'indice'       => $indice,
+                // Cuánto se movió el índice desde la lectura anterior. Null
+                // cuando no hay con qué comparar, que no es lo mismo que cero.
+                'variacion'    => $indice === null || $anterior === null
+                    ? null
+                    : $indice - $anterior,
+                'zona'         => $this->zonaIndice($indice),
+                'enProgreso'   => $enProgreso,
+                'areas'        => array_keys($areas),
+            ];
         }
 
-        $this->verPanel('evaluacion/comparar', [
-            ...$this->contexto(),
-            'meta'                     => $this->meta('Comparación histórica'),
-            'usuario'                  => $usuario,
-            'porOrganizacion'          => $porOrganizacion,
-            'historicoPorOrganizacion' => $historicoPorOrganizacion,
-        ]);
+        return $empresas;
+    }
+
+    /**
+     * Zona de riesgo de un índice general, con los MISMOS cortes que fn_zona de
+     * pkg_indicadores (0,50 y 0,80 sobre la escala 0–1).
+     *
+     * Repetidos aquí porque el índice ya viene calculado en la fila de la
+     * auditoría, y preguntarle a la base por su color sería un viaje por un dato
+     * que está en memoria. Si mañana se mueve el corte en la base, se mueve
+     * aquí: son los mismos dos números que dibuja el umbral de oro de
+     * components/indice-historico.
+     */
+    private function zonaIndice(?float $indice): ?string
+    {
+        if ($indice === null) {
+            return null;
+        }
+
+        return match (true) {
+            $indice < 0.5 => 'ROJO',
+            $indice < 0.8 => 'AMARILLO',
+            default       => 'VERDE',
+        };
+    }
+
+    /**
+     * Qué valores tiene cada empresa en cada grupo de filtro.
+     *
+     * Una tabla de cierres y no un match repartido por dos métodos: filtrar y
+     * contar recorren los mismos grupos, y con la regla escrita dos veces basta
+     * con que alguien afine una para que el recuento deje de corresponderse con
+     * lo que la rejilla enseña. Cómo se filtra y se cuenta con ella lo decide
+     * App\Core\Facetas, igual para esta pantalla que para /monitoreo.
+     */
+    private function facetasEmpresa(): Facetas
+    {
+        return new Facetas([
+            // La zona de la ÚLTIMA lectura con índice. 'SIN' no es una zona
+            // más: es no tener ninguna, y por eso se puede filtrar aparte.
+            'zona' => static fn (array $empresa): array => [$empresa['zona'] ?? 'SIN'],
+
+            // Una empresa con trabajo a medias es una empresa a la que hay que
+            // volver: es lo que se busca al filtrar por esto.
+            'estado' => static fn (array $empresa): array => [
+                $empresa['enProgreso'] > 0 ? 'EN_PROGRESO' : 'FINALIZADA',
+            ],
+
+            // Con una sola auditoría no hay tendencia que comparar, que es
+            // justo lo que esta sección del módulo existe para hacer.
+            'historico' => static fn (array $empresa): array => [
+                $empresa['total'] > 1 ? 'TENDENCIA' : 'UNICA',
+            ],
+
+            // El único grupo con varios valores por empresa: una auditada en
+            // respaldos y en accesos aparece en los dos.
+            'area' => static fn (array $empresa): array => $empresa['areas'],
+        ], self::OPCIONES_FACETA);
+    }
+
+    /**
+     * Filtra la rejilla por lo que el auditor escribió.
+     *
+     * Busca en el nombre de la empresa Y en las áreas evaluadas, por el mismo
+     * motivo que buscarAuditorias(): quien escribe «respaldos» busca un alcance,
+     * no una razón social, y obligarle a saber en qué campo vive lo que recuerda
+     * es trasladarle la estructura de la tabla.
+     *
+     * @param list<array<string, mixed>> $empresas
+     * @return list<array<string, mixed>>
+     */
+    private function buscarEmpresas(array $empresas, ?string $termino): array
+    {
+        if ($termino === null) {
+            return $empresas;
+        }
+
+        $buscado = $this->normalizar($termino);
+
+        return array_values(array_filter($empresas, function (array $empresa) use ($buscado): bool {
+            if (str_contains($this->normalizar((string) $empresa['organizacion']), $buscado)) {
+                return true;
+            }
+
+            foreach ($empresa['areas'] as $area) {
+                if (str_contains($this->normalizar((string) $area), $buscado)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+    }
+
+    /**
+     * Ordena la rejilla de empresas.
+     *
+     * @param list<array<string, mixed>> $empresas
+     * @return list<array<string, mixed>>
+     */
+    private function ordenarEmpresas(array $empresas, string $orden): array
+    {
+        usort($empresas, function (array $a, array $b) use ($orden): int {
+            return match ($orden) {
+                // Más auditorías primero; a igualdad, la visitada hace menos.
+                'auditorias' => $b['total'] <=> $a['total']
+                    ?: $b['ultima']->fecha <=> $a['ultima']->fecha,
+
+                /*
+                 * Mejor índice primero, y las SIN CALCULAR al final —nunca
+                 * mezcladas con las de índice bajo—. Un null no es un cero,
+                 * igual que en ordenarAuditorias(); lo que cambia es el
+                 * sentido: aquí el índice es madurez, y más es mejor.
+                 */
+                'indice' => $a['indice'] === null || $b['indice'] === null
+                    ? (($a['indice'] === null ? 1 : 0) <=> ($b['indice'] === null ? 1 : 0))
+                    : ($b['indice'] <=> $a['indice']),
+
+                // Por nombre, comparando el NORMALIZADO: sin eso «Ávila» caería
+                // detrás de «Zapata», porque la tilde pesa más que la Z.
+                'nombre' => $this->normalizar((string) $a['organizacion'])
+                    <=> $this->normalizar((string) $b['organizacion']),
+
+                // La auditada hace menos, que es de donde se viene.
+                default => $b['ultima']->fecha <=> $a['ultima']->fecha
+                    ?: $b['ultima']->id <=> $a['ultima']->id,
+            };
+        });
+
+        return $empresas;
     }
 
     // ── Lectura del formulario ───────────────────────────────────────────────
@@ -1376,24 +1744,6 @@ final class AuditoriaController extends Controlador
             : ArchivoEvidencia::MAXIMO_BYTES;
     }
 
-    /** El tipo MIME según el contenido del archivo, no según su nombre. */
-    private function tipoRealDe(string $ruta): ?string
-    {
-        $finfo = finfo_open(\FILEINFO_MIME_TYPE);
-
-        if ($finfo === false) {
-            return null;
-        }
-
-        try {
-            $tipo = finfo_file($finfo, $ruta);
-        } finally {
-            finfo_close($finfo);
-        }
-
-        return is_string($tipo) && $tipo !== '' ? $tipo : null;
-    }
-
     /**
      * Aplica al adjunto lo que pidió el formulario: sustituirlo, quitarlo o
      * dejarlo como estaba.
@@ -1424,7 +1774,7 @@ final class AuditoriaController extends Controlador
             $this->auditorias()->guardarArchivoEvidencia(
                 $idAuditoria,
                 $codigoControl,
-                $this->nombreSeguroDe($archivo['nombre'], (string) $this->tipoRealDe($archivo['ruta'])),
+                $this->nombreSeguroDe($archivo['nombre'], (string) $this->tipoRealDe($archivo['ruta']), ArchivoEvidencia::TIPOS, 'evidencia'),
                 (string) $this->tipoRealDe($archivo['ruta']),
                 $contenido,
             );
@@ -1435,33 +1785,6 @@ final class AuditoriaController extends Controlador
         if ($quitar) {
             $this->auditorias()->eliminarArchivoEvidencia($idAuditoria, $codigoControl);
         }
-    }
-
-    /**
-     * Deja el nombre del archivo en algo que se pueda guardar y volver a servir.
-     *
-     * El nombre lo escribe el cliente y viaja después en una cabecera
-     * Content-Disposition, así que se le quita la ruta (basename), los saltos de
-     * línea —que partirían la cabecera en dos— y se recorta a los 255 de la
-     * columna. La extensión se REESCRIBE a la del tipo real: si el contenido es
-     * un PNG, el archivo se llama .png aunque llegara como .pdf.
-     */
-    private function nombreSeguroDe(string $nombre, string $tipoMime): string
-    {
-        // Dos separadores: el cliente puede ser Windows y mandar la ruta entera.
-        $base = basename(str_replace('\\', '/', $nombre));
-        $base = preg_replace('/[\x00-\x1F\x7F"]+/u', '', $base) ?? '';
-        $base = pathinfo($base, PATHINFO_FILENAME);
-        $base = trim($base);
-
-        if ($base === '') {
-            $base = 'evidencia';
-        }
-
-        $extension = ArchivoEvidencia::TIPOS[$tipoMime] ?? 'bin';
-        $base = mb_substr($base, 0, 250 - mb_strlen($extension));
-
-        return $base . '.' . $extension;
     }
 
     private function fechaValida(string $fecha): bool
@@ -1529,14 +1852,6 @@ final class AuditoriaController extends Controlador
         if ($auditoria->estaFinalizada()) {
             $this->sesion()->destello('error', 'La auditoría está finalizada. Reábrala para modificarla.');
             $this->redirigir('/evaluacion/' . $auditoria->id);
-        }
-    }
-
-    private function exigirToken(string $destino): void
-    {
-        if (!$this->autenticacion()->tokenValido($this->peticion()->entrada('_token'))) {
-            $this->sesion()->destello('error', 'La sesión expiró. Intente de nuevo.');
-            $this->redirigir($destino);
         }
     }
 
@@ -1628,56 +1943,4 @@ final class AuditoriaController extends Controlador
      * pantalla que el auditor decidió no volver a abrir.
      */
 
-    /** @param array<string, string> $errores @param array<string, mixed> $valores */
-    private function guardarIntento(array $errores, array $valores, string $formulario): void
-    {
-        $this->sesion()->poner('form.errores', $errores);
-        $this->sesion()->poner('form.valores', $valores);
-        $this->sesion()->poner('form.de', $formulario);
-    }
-
-    /** @return array<string, string> */
-    private function erroresGuardados(string $formulario): array
-    {
-        $errores = $this->intentoGuardado($formulario)['errores'];
-
-        return is_array($errores) ? $errores : [];
-    }
-
-    /** @return array<string, mixed> */
-    private function valoresGuardados(string $formulario): array
-    {
-        $valores = $this->intentoGuardado($formulario)['valores'];
-
-        return is_array($valores) ? $valores : [];
-    }
-
-    /**
-     * Lee el intento UNA vez por petición y lo borra de la sesión.
-     *
-     * En memoria porque el encabezado pide errores y valores por separado, y
-     * el primero que llegara se llevaría el destello dejando al segundo vacío.
-     *
-     * @return array{errores: mixed, valores: mixed}
-     */
-    private function intentoGuardado(string $formulario): array
-    {
-        if ($this->intento === null) {
-            $de = $this->sesion()->obtener('form.de');
-
-            $this->intento = [
-                'de'      => is_string($de) ? $de : '',
-                'errores' => $this->sesion()->obtener('form.errores', []),
-                'valores' => $this->sesion()->obtener('form.valores', []),
-            ];
-
-            $this->sesion()->olvidar('form.errores');
-            $this->sesion()->olvidar('form.valores');
-            $this->sesion()->olvidar('form.de');
-        }
-
-        return $this->intento['de'] === $formulario
-            ? ['errores' => $this->intento['errores'], 'valores' => $this->intento['valores']]
-            : ['errores' => [], 'valores' => []];
-    }
 }

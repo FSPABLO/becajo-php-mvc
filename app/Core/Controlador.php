@@ -75,6 +75,26 @@ abstract class Controlador
         return $argumentos === [] ? $texto : vsprintf($texto, $argumentos);
     }
 
+    /**
+     * Pasa un texto a minúsculas y sin tildes, para comparar.
+     *
+     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
+     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
+     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
+     * devuelve cosas distintas en la máquina de cada quien.
+     *
+     * Vive aquí y no en AuditoriaController porque buscan con él las dos
+     * antesalas con buscador —empresas e instancias vigiladas—, y dos copias de
+     * «qué cuenta como la misma palabra» acaban encontrando cosas distintas.
+     */
+    protected function normalizar(string $texto): string
+    {
+        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
+        ]);
+    }
+
     protected function autenticacion(): Autenticacion
     {
         return $this->contenedor->autenticacion();
@@ -167,6 +187,16 @@ abstract class Controlador
         $datos['lateralOculta'] = $datos['lateralOculta']
             ?? $this->peticion()->cookie('becajo_lateral') === 'oculta';
 
+        /*
+         * Lo mismo con el panel del asistente, por la misma razón y del lado
+         * contrario: quien lo dejó abierto mientras recorría una auditoría
+         * espera encontrarlo abierto en la pantalla siguiente, y abrirlo desde
+         * el guion sería pintar la página a todo el ancho y encogerla a la
+         * vista. Solo vale en pantalla ancha; ver layouts/panel.
+         */
+        $datos['asistenteAbierto'] = $datos['asistenteAbierto']
+            ?? $this->peticion()->cookie('becajo_asistente') === 'abierto';
+
         $this->ver($vista, $datos, 'panel');
     }
 
@@ -190,10 +220,37 @@ abstract class Controlador
             // Null si no hay módulo de auditorías o si nadie inició sesión.
             // Así el encabezado sabe si mostrar "Ingresar" o "Mis auditorías".
             'usuarioActual' => $this->contenedor->hayAuditorias() ? $this->autenticacion()->usuario() : null,
+            /*
+             * Su fotografía de perfil, para el retrato de la barra lateral. Es
+             * la FICHA, sin el binario: una consulta corta más por pantalla, y
+             * la imagen solo se pide cuando el navegador va a por el <img>.
+             *
+             * Se resuelve aquí y no en cada controlador porque el retrato lo
+             * pinta el MARCO, que está en todas las pantallas del módulo.
+             */
+            'fotoUsuarioActual' => $this->fotoDelUsuarioActual(),
             // La barra lateral oculta la entrada "Monitor" en vez de suponer
             // que /monitoreo responde — mismo criterio que hayAuditorias().
             'hayMonitor'    => $this->contenedor->hayMonitor(),
         ];
+    }
+
+    /**
+     * La foto del usuario de la sesión, o null.
+     *
+     * Aparte de contexto() para que ese arreglo siga leyéndose de un vistazo, y
+     * porque son tres condiciones: que haya módulo de auditorías, que haya
+     * sesión, y que esa cuenta tenga foto — casi ninguna la tiene.
+     */
+    private function fotoDelUsuarioActual(): ?\App\Models\Entidades\FotoPerfil
+    {
+        if (!$this->contenedor->hayAuditorias()) {
+            return null;
+        }
+
+        $usuario = $this->autenticacion()->usuario();
+
+        return $usuario === null ? null : $this->auditorias()->fotoUsuario($usuario->id);
     }
 
     /** @return array{titulo: string, descripcion: string} */
@@ -205,6 +262,175 @@ abstract class Controlador
                 : 'Módulo de evaluación de riesgo en la administración de bases '
                 . 'de datos según ISO/IEC 27002.',
         ];
+    }
+
+    // ── El intento fallido de un formulario ──────────────────────────────────
+    //
+    // Al fallar la validación, el POST guarda lo enviado y sus errores y
+    // redirige al GET (patrón PRG); el GET los recupera y los pinta. Viven en
+    // la sesión porque la redirección es lo que hay entre los dos.
+    //
+    // LA MARCA DEL FORMULARIO NO ES DECORATIVA. Los destellos son UN par de
+    // claves para todo el sistema, así que sin ella el intento fallido de una
+    // pantalla se pinta en la siguiente que pregunte. Con valores de texto
+    // libre en juego —el entrevistado escrito a mano de una auditoría— eso
+    // llegaba a rellenar el encabezado de OTRA auditoría con datos ajenos, a un
+    // clic de guardarse. Quien lee dice de qué formulario viene; una marca que
+    // no casa se descarta y el destello se consume igual, porque es el intento
+    // de una pantalla que el usuario decidió no volver a abrir.
+    //
+    // Esto estaba COPIADO en AuditoriaController y CatalogoController, y la
+    // copia del catálogo se había quedado sin la marca —o sea, con el error que
+    // la marca existe para evitar—. Es la razón de subirlo: dos implementaciones
+    // del mismo mecanismo son dos, pero solo una se arregla.
+
+    /** @var array{de: string, errores: mixed, valores: mixed}|null */
+    private ?array $intentoLeido = null;
+
+    /**
+     * @param array<string, string> $errores
+     * @param array<string, mixed>  $valores
+     */
+    protected function guardarIntento(array $errores, array $valores, string $formulario): void
+    {
+        $this->sesion()->poner('form.errores', $errores);
+        $this->sesion()->poner('form.valores', $valores);
+        $this->sesion()->poner('form.de', $formulario);
+    }
+
+    /** @return array<string, string> */
+    protected function erroresGuardados(string $formulario): array
+    {
+        $errores = $this->intentoGuardado($formulario)['errores'];
+
+        return is_array($errores) ? $errores : [];
+    }
+
+    /** @return array<string, mixed> */
+    protected function valoresGuardados(string $formulario): array
+    {
+        $valores = $this->intentoGuardado($formulario)['valores'];
+
+        return is_array($valores) ? $valores : [];
+    }
+
+    /**
+     * Lee el intento UNA vez por petición y lo borra de la sesión.
+     *
+     * En memoria porque quien pinta pide errores y valores por separado, y el
+     * primero que llegara se llevaría el destello dejando al segundo vacío.
+     *
+     * @return array{errores: mixed, valores: mixed}
+     */
+    private function intentoGuardado(string $formulario): array
+    {
+        if ($this->intentoLeido === null) {
+            $de = $this->sesion()->obtener('form.de');
+
+            $this->intentoLeido = [
+                'de'      => is_string($de) ? $de : '',
+                'errores' => $this->sesion()->obtener('form.errores', []),
+                'valores' => $this->sesion()->obtener('form.valores', []),
+            ];
+
+            $this->sesion()->olvidar('form.errores');
+            $this->sesion()->olvidar('form.valores');
+            $this->sesion()->olvidar('form.de');
+        }
+
+        return $this->intentoLeido['de'] === $formulario
+            ? ['errores' => $this->intentoLeido['errores'], 'valores' => $this->intentoLeido['valores']]
+            : ['errores' => [], 'valores' => []];
+    }
+
+    /**
+     * Corta la petición si el token CSRF no cuadra.
+     *
+     * Primera línea de todo POST que escribe. Vive aquí y no en cada
+     * controlador porque estaba COPIADO en dos —AuditoriaController y
+     * CatalogoController— y el tercero que escribe (PerfilController) habría
+     * sido la tercera copia. Un control de seguridad repetido es un control que
+     * un día se arregla en dos sitios de tres.
+     *
+     * Redirige en vez de responder 403: quien pierde el token es casi siempre
+     * alguien cuya sesión caducó con el formulario abierto, y devolverle su
+     * pantalla con un mensaje es más útil que una página de error.
+     */
+    protected function exigirToken(string $destino): void
+    {
+        if (!$this->autenticacion()->tokenValido($this->peticion()->entrada('_token'))) {
+            $this->sesion()->destello('error', 'La sesión expiró. Intente de nuevo.');
+            $this->redirigir($destino);
+        }
+    }
+
+    // ── Archivos subidos ─────────────────────────────────────────────────────
+    //
+    // Dos piezas mecánicas que necesita CUALQUIER pantalla que reciba un
+    // archivo: hoy el adjunto de la evidencia y la fotografía de perfil. Viven
+    // aquí y no en cada controlador porque son exactamente el tipo de código
+    // que se copia una vez y se corrige en un solo sitio — y el que se corrige
+    // en un solo sitio es el que deja una vulnerabilidad en el otro.
+    //
+    // Lo que NO sube aquí es la validación: los topes, la lista blanca y los
+    // mensajes son de cada pantalla. Un PDF vale como evidencia y no vale como
+    // foto de perfil.
+
+    /**
+     * El tipo MIME según el CONTENIDO del archivo, no según su nombre.
+     *
+     * La extensión y el Content-Type que manda el navegador los escribe el
+     * cliente: `politica.pdf` puede ser cualquier cosa. Quien decide es finfo.
+     */
+    protected function tipoRealDe(string $ruta): ?string
+    {
+        $finfo = finfo_open(\FILEINFO_MIME_TYPE);
+
+        if ($finfo === false) {
+            return null;
+        }
+
+        try {
+            $tipo = finfo_file($finfo, $ruta);
+        } finally {
+            finfo_close($finfo);
+        }
+
+        return is_string($tipo) && $tipo !== '' ? $tipo : null;
+    }
+
+    /**
+     * Deja el nombre de un archivo subido en algo que se pueda guardar y volver
+     * a servir.
+     *
+     * El nombre lo escribe el cliente y viaja después en una cabecera
+     * Content-Disposition, así que se le quita la ruta (basename), los saltos
+     * de línea —que partirían la cabecera en dos— y se recorta a los 255 de la
+     * columna. La extensión se REESCRIBE a la del tipo real: si el contenido es
+     * un PNG, el archivo se llama .png aunque llegara como .pdf.
+     *
+     * @param array<string, string> $extensiones  tipo MIME => extensión.
+     */
+    protected function nombreSeguroDe(
+        string $nombre,
+        string $tipoMime,
+        array $extensiones,
+        string $porDefecto,
+    ): string {
+        // Dos separadores: el cliente puede ser Windows y mandar la ruta entera.
+        $base = basename(str_replace('\\', '/', $nombre));
+        $base = preg_replace('/[\x00-\x1F\x7F"]+/u', '', $base) ?? '';
+        $base = pathinfo($base, PATHINFO_FILENAME);
+        $base = trim($base);
+
+        if ($base === '') {
+            $base = $porDefecto;
+        }
+
+        $extension = $extensiones[$tipoMime] ?? 'bin';
+        $base = mb_substr($base, 0, 250 - mb_strlen($extension));
+
+        return $base . '.' . $extension;
     }
 
     /**

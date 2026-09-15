@@ -9,7 +9,7 @@
 -- backfill incluido). Este script crea el esquema completo desde cero, en
 -- su estado final, para quien monta el proyecto por primera vez.
 --
--- 9 tablas. Decisiones que aplican en esta versión:
+-- 10 tablas. Decisiones que aplican en esta versión:
 --   - No existe tabla ORGANIZACION: la afiliación institucional es el campo
 --     de texto usuario.organizacion.
 --   - resultado_riesgo.zona es VARCHAR2 con CHECK ('ROJO','AMARILLO','VERDE')
@@ -32,6 +32,7 @@
 --
 -- Orden de creación (respeta las dependencias de llave foránea):
 --   USUARIO, DOMINIO           (sin dependencias)
+--   USUARIO_FOTO               (depende de USUARIO)
 --   PROCESO                    (depende de DOMINIO)
 --   CONTROL                    (depende de PROCESO)
 --   AUDITORIA                  (depende de USUARIO)
@@ -53,10 +54,45 @@ CREATE TABLE usuario (
     rol              VARCHAR2(20)   NOT NULL,
     organizacion     VARCHAR2(200)  NOT NULL,
     activo           NUMBER(1)      DEFAULT 1 NOT NULL,
+    -- Nota que el propio usuario escribe sobre si mismo y edita desde /perfil.
+    -- VARCHAR2 y no CLOB a proposito: `usuario` se consulta en CADA peticion
+    -- (Autenticacion reconsulta al usuario) y un LOB en esa lista de columnas
+    -- viaja materializado en cada clic. 500 caracteres es una presentacion.
+    descripcion      VARCHAR2(500),
     fecha_creacion   TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT uq_usuario_correo UNIQUE (correo),
     CONSTRAINT ck_usuario_rol    CHECK (rol IN ('AUDITOR', 'ADMIN_BD')),
     CONSTRAINT ck_usuario_activo CHECK (activo IN (0, 1))
+);
+
+-- ── USUARIO_FOTO ─────────────────────────────────────────────────────────
+-- La fotografía de perfil. Tabla APARTE y no una columna BLOB en USUARIO, por
+-- lo mismo que EVIDENCIA_ARCHIVO no está dentro de EVALUACION_CONTROL: `usuario`
+-- se lee en cada petición y el driver materializa los LOB que estén en la lista
+-- de columnas, así que la foto viajaría entera en cada clic. Aquí el binario
+-- solo se toca cuando alguien pide la imagen.
+--
+-- UNIQUE sobre id_usuario: una foto por cuenta. ON DELETE CASCADE: borrar la
+-- cuenta se lleva su foto, en vez de dejar un binario que ya nadie alcanza.
+--
+-- Solo imágenes: un avatar en PDF no es un avatar. La lista blanca vive TAMBIÉN
+-- en PHP, que es quien da el mensaje; esta restricción es la última línea.
+CREATE TABLE usuario_foto (
+    id_usuario_foto  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario       NUMBER         NOT NULL,
+    nombre           VARCHAR2(255)  NOT NULL,
+    tipo_mime        VARCHAR2(100)  NOT NULL,
+    tamano_bytes     NUMBER         NOT NULL,
+    contenido        BLOB           NOT NULL,
+    fecha_carga      TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_usufoto_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+    CONSTRAINT uq_usufoto_usuario
+        UNIQUE (id_usuario),
+    CONSTRAINT ck_usufoto_tipo
+        CHECK (tipo_mime IN ('image/png', 'image/jpeg', 'image/webp', 'image/gif')),
+    CONSTRAINT ck_usufoto_tamano
+        CHECK (tamano_bytes BETWEEN 1 AND 2097152)
 );
 
 -- ── DOMINIO ──────────────────────────────────────────────────────────────

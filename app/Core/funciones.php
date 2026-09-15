@@ -71,6 +71,18 @@ if (!function_exists('icono')) {
             'llave'       => '<circle cx="7.5" cy="15.5" r="3.5"/><path d="m10 13 8-8"/><path d="m15 8 2 2"/><path d="m18 5 2 2"/>',
             'disco'       => '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
             'documento'   => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
+            /*
+             * Expediente: la carpeta de una empresa auditada, con su cajón
+             * dentro. Es el ícono central de las fichas de /evaluacion/comparar
+             * y no se gasta en ninguna otra pantalla — una ficha es la carpeta
+             * de un sujeto, y el resto del módulo habla de auditorías sueltas.
+             *
+             * Dos trazos y no uno: la carpeta identifica y el cajón dice que
+             * dentro hay algo guardado. El cajón nace en la línea de abajo de la
+             * carpeta —no se cierra por su cuenta— para no doblar el trazo justo
+             * ahí, que a 20 px se lee como un borrón.
+             */
+            'expediente'  => '<path d="M3 7a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.6.8l1.2 1.6a2 2 0 0 0 1.6.8H19a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M9.5 20v-4.2a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3V20"/><path d="M11.2 20v-1.7h1.6V20"/>',
             'tablero'     => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
             'libro'       => '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v5H6.5A2.5 2.5 0 0 1 4 19.5Z"/>',
             'enlace'      => '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
@@ -85,6 +97,35 @@ if (!function_exists('icono')) {
             // vitales de una instancia— y no se repite en ninguna otra
             // entrada del menú, así que no hay dos lecturas del mismo trazo.
             'corazon'     => '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+            /*
+             * Base de datos: la ficha de una instancia vigilada en /monitoreo.
+             * Es a esa antesala lo que 'expediente' es a /evaluacion/comparar,
+             * y por lo mismo no se gasta en otra pantalla.
+             *
+             * No es 'disco': aquel tiene dos anillos y ya significa «Memoria y
+             * almacenamiento» en los dominios y «Catálogo» en el menú. Este
+             * lleva la tapa y TRES anillos iguales —la silueta clásica del
+             * servidor de datos—, repartidos a partes iguales para que a 48 px
+             * no se lea como una lata con una tira.
+             */
+            'base-datos'  => '<ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5"/><path d="M4 9.7c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/><path d="M4 14.3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/>',
+            /*
+             * Asistente: la hoja de mallorn en la que va envuelto el lembas,
+             * que es el nombre del asistente. Tres trazos: la hoja, su nervio
+             * central y el tallo.
+             *
+             * Sustituyó a un globo de conversación con una estrella, y lo que
+             * se perdió es justo eso: el globo decía «aquí se conversa» y la
+             * hoja no. Lo recupera el contexto y no el trazo: el botón se llama
+             * «Abrir Lembas», vive solo en la esquina y el panel que abre es
+             * una conversación. Por eso el tallo sale abajo a la izquierda, en
+             * el sitio donde un globo lleva la cola.
+             *
+             * Hoja y no el pan envuelto: un paquete atado a 20 px es un borrón,
+             * y la hoja es la parte del lembas que se reconoce de un vistazo.
+             * No se gasta en ninguna otra pantalla, igual que 'expediente'.
+             */
+            'asistente'   => '<path d="M7 17C6 10 11 4 20 4c0 9-6 14-13 13Z"/><path d="M7 17 15.5 8.5"/><path d="M7 17l-3.5 3.5"/>',
 
             /*
              * Un ícono fijo por cada uno de los 7 dominios del instrumento

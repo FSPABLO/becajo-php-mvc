@@ -5,9 +5,10 @@ declare(strict_types=1);
 /**
  * Selector de base de datos vigilada.
  *
- * Sustituye a la rejilla de fichas: con cuatro instancias la rejilla cabía, con
- * veinte no, y el tablero de operación necesita el ancho para el instrumento,
- * no para el índice de instancias.
+ * Es el ATAJO de la consola, no el índice de la cartera: el índice —buscar,
+ * filtrar y elegir entre todas— es la antesala `/monitoreo`. Esto sirve para
+ * saltar de una base a otra sin volver atrás, y por eso sigue aquí: el tablero
+ * de operación necesita el ancho para el instrumento, no para una rejilla.
  *
  * ── El punto verde nunca va solo ─────────────────────────────────────────────
  *

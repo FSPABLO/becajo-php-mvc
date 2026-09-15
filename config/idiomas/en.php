@@ -36,6 +36,32 @@ return [
     'panel.rol_auditor'           => 'Auditor',
     'panel.rol_admin'             => 'DB administrator',
 
+    // Module assistant: corner launcher and right-hand panel.
+    // The NAME lives in a single key and the rest receive it as %s.
+    'asistente.nombre'              => 'Lembas',
+    'asistente.funcion'             => 'Audit assistant',
+    'asistente.abrir'               => 'Open %s',
+    'asistente.cerrar'              => 'Close %s',
+    'asistente.responde_como'       => 'With your account permissions · %s',
+    'asistente.contexto'            => 'Current screen',
+    'asistente.conversacion'        => 'Conversation with %s',
+    'asistente.bienvenida'          => 'Hi, %s. I am %s, what would you like to look up?',
+    'asistente.alcance_auditor'     => 'Ask about what is on this screen or request a report. Answers are limited to the audits you conducted.',
+    'asistente.alcance_admin'       => 'Ask about what is on this screen or request a report. As an administrator, answers also cover the master catalog and overdue remediations.',
+    'asistente.para_empezar'        => 'To get started',
+    'asistente.sugerencia_resumen'  => 'Summarize what I am looking at on this screen',
+    'asistente.sugerencia_hallazgos' => 'Which controls have high-risk findings?',
+    'asistente.sugerencia_informe'  => 'Prepare a compliance report by domain',
+    'asistente.sugerencia_vencidas' => 'Which remediations are overdue, and who owns them?',
+    'asistente.sugerencia_catalogo' => 'Which catalog controls cover the access domain?',
+    'asistente.mensaje'             => 'Message for %s',
+    'asistente.marcador'            => 'Ask %s…',
+    'asistente.enviar'              => 'Send',
+    'asistente.ayuda_teclado'       => 'Enter sends; Shift + Enter, new line.',
+    'asistente.aviso_ia'            => '%s is an AI: check its answers against the evidence.',
+    'asistente.usted'               => 'You',
+    'asistente.sin_conexion'        => 'I am not connected to any service yet. This is just my view: answers will arrive once it is wired up.',
+
     // Testimonios de la portada
     'testimonios.calificacion' => 'Rating: %s out of 5 stars',
     'testimonios.lista'        => 'Client testimonials',
@@ -315,6 +341,40 @@ return [
     'eval.dominio'               => 'Domain',
     'eval.madurez_por_dominio'   => 'Weighted maturity by domain',
     'eval.madurez_por_dominio_pie' => 'Average weighted by each control\'s weight. A dash marks a domain that audit did not assess.',
+    // Compare history — the antechamber: picking the company.
+    //
+    // The filter VALUES («VERDE», «TENDENCIA») travel in the URL and are not
+    // translated: a shared link has to keep working when whoever opens it
+    // works in the other language. What gets translated is the label.
+    'eval.filtros'               => 'Filters',
+    'eval.aplicar_filtros'       => 'Apply filters',
+    'eval.limpiar_filtros'       => 'Clear all',
+    'eval.filtros_activos'       => 'Applied filters',
+    // The verb lives in the accessible label: «Low risk ×» does not announce
+    // what pressing it does.
+    'eval.quitar_filtro'         => 'Remove the «%s» filter',
+    'eval.filtro_zona'           => 'Risk of the latest audit',
+    'eval.filtro_sin_indice'     => 'No index',
+    'eval.filtro_estado'         => 'Portfolio status',
+    'eval.filtro_con_progreso'   => 'With work in progress',
+    'eval.filtro_finalizadas'    => 'All finished',
+    'eval.filtro_historico'      => 'History',
+    'eval.filtro_con_tendencia'  => 'Two audits or more',
+    'eval.filtro_una_sola'       => 'A single audit',
+    // «Companies: 3 of 7» and not «3 companies»: the figure after the colon
+    // reads the same in the singular and in the plural.
+    'eval.empresas_rango'        => 'Companies: %s of %s',
+    'eval.orden_empresa_reciente'   => 'Most recently audited',
+    'eval.orden_empresa_auditorias' => 'Most audits',
+    'eval.orden_empresa_indice'     => 'Best index',
+    'eval.orden_empresa_nombre'     => 'Name (A-Z)',
+    'eval.sin_empresas_filtro'      => 'No company matches the filter.',
+    'eval.sin_empresas_filtro_texto' => 'Remove a condition to widen the result.',
+    'eval.ultimo_indice'         => 'Latest index',
+    'eval.variacion_anterior'    => '%s since the previous one',
+    'eval.primera_lectura'       => 'First reading with an index',
+    'eval.en_progreso_n'         => '%s in progress',
+    'eval.periodo_auditado'      => 'Audited period',
 
     // Header form (audit create/edit)
     'eval.admin_entrevistado_label' => 'Database administrator interviewed',
@@ -359,7 +419,23 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Database health monitor',
 
-    'mon.instancia_no_encontrada' => 'There is no instance with the key "%s". Showing the first one in the portfolio.',
+    'mon.instancia_no_encontrada' => 'There is no monitored database with that key.',
+
+    // Lobby: one card per monitored database
+    'mon.buscar_etiqueta'    => 'Search by key, engine or environment',
+    'mon.buscar_marcador'    => 'e.g. prodcore, 19c…',
+    'mon.filtro_banda'       => 'Health status',
+    'mon.filtro_conexion'    => 'Connection',
+    'mon.filtro_entorno'     => 'Environment',
+    'mon.filtro_motor'       => 'Engine',
+    'mon.filtro_sin_indice'  => 'No index',
+    'mon.instancias_rango'   => 'Databases: %s of %s',
+    'mon.orden_atencion'     => 'Most urgent',
+    'mon.orden_indice'       => 'Best index',
+    'mon.orden_reciente'     => 'Most recent sample',
+    'mon.orden_clave'        => 'Key (A-Z)',
+    'mon.sin_instancias_filtro' => 'No database matches the filter.',
+    'mon.ultima_muestra'     => 'Last sample %s',
 
     'mon.duracion'           => 'Collection time',
     'mon.hace_min'           => '%s min ago',
@@ -466,4 +542,50 @@ return [
     'mon.vacio_titulo'       => 'No instances are being monitored yet',
     'mon.vacio_texto'        => 'Once the collection agent leaves its first sample, this screen will show '
                               . 'each instance\'s health index, its components and its alerts.',
+
+    // ── User profile ─────────────────────────────────────────────────────────
+    'perfil.titulo'             => 'My profile',
+    'perfil.ir'                 => 'View my profile',
+    'perfil.id'                 => 'Identifier',
+    'perfil.descripcion'        => 'About me',
+    'perfil.descripcion_ayuda'  => 'A short note about your role or speciality. Only you can see it.',
+    'perfil.descripcion_marcador' => 'E.g.: Database auditor, focused on continuity and backup.',
+    'perfil.guardar_descripcion' => 'Save description',
+    'perfil.subir_foto'         => 'Upload a photo',
+    'perfil.cambiar_foto'       => 'Change photo',
+    'perfil.subir_ahora'        => 'Upload now',
+    'perfil.quitar_foto'        => 'Remove the photo',
+    'perfil.foto_ayuda'         => 'PNG, JPG, WEBP or GIF, up to %s MB.',
+    'perfil.calendario'         => 'Audits this month',
+    'perfil.mis_auditorias'     => 'Audits carried out',
+    'perfil.total_auditorias'   => 'Audits',
+    'perfil.finalizadas'        => 'Finished',
+    'perfil.en_progreso'        => 'In progress',
+    'perfil.mes_resumen'        => 'Audits this month: %s · Days worked: %s',
+    'perfil.mes_sin_auditorias' => 'No audits this month.',
+    'perfil.y_mas'              => 'and %s more',
+    'perfil.pagina_de'          => 'Page %s of %s',
+
+    // ── Calendar ─────────────────────────────────────────────────────────────
+    'cal.mes_anterior'  => 'Previous month',
+    'cal.mes_siguiente' => 'Next month',
+    'cal.mes_1'  => 'January',
+    'cal.mes_2'  => 'February',
+    'cal.mes_3'  => 'March',
+    'cal.mes_4'  => 'April',
+    'cal.mes_5'  => 'May',
+    'cal.mes_6'  => 'June',
+    'cal.mes_7'  => 'July',
+    'cal.mes_8'  => 'August',
+    'cal.mes_9'  => 'September',
+    'cal.mes_10' => 'October',
+    'cal.mes_11' => 'November',
+    'cal.mes_12' => 'December',
+    'cal.dia_1' => 'Mo',
+    'cal.dia_2' => 'Tu',
+    'cal.dia_3' => 'We',
+    'cal.dia_4' => 'Th',
+    'cal.dia_5' => 'Fr',
+    'cal.dia_6' => 'Sa',
+    'cal.dia_7' => 'Su',
 ];
