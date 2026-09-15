@@ -91,9 +91,17 @@ else
     echo "Cargando esquema y datos de prueba..."
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/01_esquema.sql > /dev/null
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/02_datos_semilla.sql > /dev/null
-    docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql > /dev/null
     verde "Esquema y datos de prueba cargados."
 fi
+
+# Multinorma va fuera del gate: es re-ejecutable y una base ya cargada también
+# lo necesita. 03 se carga después porque sp_evolucion_auditor lee
+# auditoria.codigo_estandar.
+echo "Cargando multinorma (ISO/IEC 27002 + COBIT 2019)..."
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql > /dev/null
+verde "Normas y procedimientos cargados."
 
 # ── 5. Esquema MONITOR (parte 2) ─────────────────────────────────────────
 # Gate aparte del anterior: alguien puede tener ya el esquema de la parte 1
@@ -122,3 +130,4 @@ verde "Listo. El sitio está en http://localhost:8080"
 echo "Cuentas de prueba:"
 echo "  Auditor:   ana.alfaro@consultora.example / auditor2026"
 echo "  Admin BD:  luis.rojas@empresa.example / adminbd2026"
+

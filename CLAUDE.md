@@ -41,6 +41,15 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evid
 # USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
 
+# Multinorma (ISO/IEC 27002 + COBIT 2019). Obligatorio: la aplicación filtra el
+# catálogo por auditoria.codigo_estandar. Re-ejecutable; retira Essential Eight
+# si quedó de la versión anterior. EXIGE recargar 03 después, y 05 y 12
+# dependen de él.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql
+# Captura propia de COBIT (capacidad por objetivo, logro N/P/L/F). 03 la exige.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
@@ -637,9 +646,26 @@ sistema sin decir de dónde salen:
 | `RepositorioAuditorias` | solo `RepositorioAuditoriasOracle` |
 
 `RepositorioInstrumentoOracle` **decora** a `RepositorioInstrumentoArreglo`: lee
-dominios, procesos y controles de las tablas, pero delega `meta()`, `escala()`,
+dominios, procesos, controles y escala de las tablas, pero delega `meta()`,
 `marco()` y `referencias()` al arreglo, porque el esquema no tiene tablas para
-esas cuatro secciones. Al tocar ese archivo, respete la delegación.
+esas tres secciones. Al tocar ese archivo, respete la delegación.
+
+**Multinorma.** `dominios()`, `procesos()`, `controles()` y `escala()` reciben
+el código de norma (`Estandar::ISO` por omisión). Todo lo que ocurre dentro de
+una auditoría pasa `$auditoria->codigoEstandar`; el sitio público, la
+herramienta y el catálogo administrable usan el valor por omisión y solo ven
+ISO. Normas cargadas: `ISO27002` y `COBIT2019` (`Scripts/14_multinorma.sql`).
+La norma se fija al crear la auditoría y no se edita.
+
+`estandar.modo_evaluacion` decide la captura. `CONTROL` (ISO): Sí/No/No
+aplica, madurez y C/I/D por control. `OBJETIVO` (COBIT): el auditor declara la
+capacidad 0–5 de cada objetivo (`evaluacion_objetivo`, con justificación) y
+califica cada práctica con N/P/L/F (`evaluacion_control.grado_logro`); el
+estado se deriva (L/F → SI, N/P → NO) para que cumplimiento y remediaciones
+sigan funcionando. El riesgo C/I/D de COBIT pondera la capacidad por la
+relación P/S del objetivo (P=2, S=1) en `pkg_indicadores`. La página
+individual del control redirige al panel en COBIT: sus campos son de ISO. El catálogo
+administrable todavía no permite elegir norma: los dominios que crea son ISO.
 
 `RepositorioCatalogo` es la "otra cara" del mismo objeto que devuelve
 `instrumento()`: `Contenedor::catalogo()` comprueba el tipo con `instanceof` en

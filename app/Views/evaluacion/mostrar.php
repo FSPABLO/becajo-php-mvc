@@ -7,6 +7,11 @@ declare(strict_types=1);
  *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Auditoria $auditoria
+ * @var \App\Models\Entidades\Estandar|null $estandar  Norma de la auditoría.
+ * @var bool $porObjetivo  La norma se evalúa por objetivo (COBIT).
+ * @var array<int, \App\Models\Entidades\EvaluacionObjetivo> $evaluacionesObjetivo
+ * @var array<string, string> $erroresObjetivo
+ * @var array<string, mixed>  $valoresObjetivo
  * @var list<\App\Models\Entidades\Control> $controles
  * @var array<int, \App\Models\Entidades\Proceso> $procesos
  * @var list<\App\Models\Entidades\Dominio> $dominios
@@ -118,7 +123,7 @@ $valores = ($valores ?? []) + [
                              portada del instrumento. */ ?>
                     <span class="rv-extruido-xs inline-flex items-center gap-2 rounded-full border border-oro/40 bg-oro-tinte px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-oro-texto">
                         <?= icono('escudo', 'h-3.5 w-3.5') ?>
-                        ISO/IEC 27002
+                        <?= e($estandar?->etiqueta() ?? 'ISO/IEC 27002') ?>
                     </span>
                     <?= $abierta
                         ? pill('warn', $vista->t('eval.en_progreso'))
@@ -389,6 +394,19 @@ $valores = ($valores ?? []) + [
                     <?php foreach ($procesosPorDominio[$dominio->clave] ?? [] as $proceso): ?>
                         <div data-grupo-proceso="<?= e((string) $proceso->numero) ?>">
 
+                            <?php if ($porObjetivo): ?>
+                            <?php $falloObjetivo = (int) ($valoresObjetivo['numero'] ?? 0) === $proceso->numero; ?>
+                            <?= $vista->componente('ficha-objetivo', [
+                                'vista'       => $vista,
+                                'proceso'     => $proceso,
+                                'evaluacion'  => $evaluacionesObjetivo[$proceso->numero] ?? null,
+                                'escala'      => $escala,
+                                'idAuditoria' => $auditoria->id,
+                                'abierta'     => $abierta,
+                                'errores'     => $falloObjetivo ? $erroresObjetivo : [],
+                                'valores'     => $falloObjetivo ? $valoresObjetivo : [],
+                            ]) ?>
+                            <?php else: ?>
                             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borde pb-3">
                                 <h4 class="text-base font-bold text-texto">
                                     <span class="text-primario"><?= e($vista->t('eval.col_proceso')) ?> <?= e((string) $proceso->numero) ?>.</span>
@@ -396,6 +414,7 @@ $valores = ($valores ?? []) + [
                                 </h4>
                                 <span class="text-xs font-medium text-texto-2"><?= e($proceso->ancla) ?></span>
                             </div>
+                            <?php endif; ?>
 
                             <div class="mt-4 space-y-4">
                                 <?php foreach ($controlesPorProceso[$proceso->numero] ?? [] as $control): ?>
@@ -420,6 +439,7 @@ $valores = ($valores ?? []) + [
                                         'limiteArchivo' => $limiteArchivo,
                                         'errores'      => $fallo ? $erroresControl : [],
                                         'valores'      => $fallo ? $valoresControl : [],
+                                        'porObjetivo'  => $porObjetivo,
                                     ]) ?>
                                 <?php endforeach; ?>
                             </div>

@@ -145,7 +145,14 @@ BEGIN
         RETURN;
     END IF;
 
-    FOR c IN (SELECT codigo FROM control ORDER BY codigo) LOOP
+    -- Solo los controles de la norma de esta auditoría.
+    FOR c IN (SELECT ctl.codigo
+                FROM control ctl
+                JOIN proceso pro   ON pro.numero = ctl.numero_proceso
+                JOIN dominio dom   ON dom.clave = pro.clave_dominio
+                JOIN auditoria aud ON aud.codigo_estandar = dom.codigo_estandar
+               WHERE aud.id_auditoria = c_auditoria
+               ORDER BY ctl.codigo) LOOP
 
         SELECT COUNT(*) INTO v_existe
           FROM evaluacion_control

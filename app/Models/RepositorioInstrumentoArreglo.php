@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Contratos\RepositorioInstrumento;
 use App\Models\Entidades\Control;
 use App\Models\Entidades\Dominio;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\Proceso;
 
 /**
@@ -16,6 +17,9 @@ use App\Models\Entidades\Proceso;
  * (apuntando a un proceso que no existe) rompería silenciosamente el conteo del
  * tablero. Es preferible un error explícito al arrancar que un porcentaje mal
  * calculado en el informe entregado al cliente.
+ *
+ * El archivo describe solo ISO/IEC 27002: para cualquier otra norma los
+ * métodos del catálogo devuelven listas vacías.
  */
 final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
 {
@@ -41,6 +45,12 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
         return $this->datos['meta'];
     }
 
+    /** @return list<Estandar> */
+    public function estandares(): array
+    {
+        return [new Estandar(Estandar::ISO, 'ISO/IEC 27002', '2022', 'ISO/IEC', 6, 1)];
+    }
+
     /**
      * @return list<Dominio>
      *
@@ -48,8 +58,12 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
      * escritos, así que se numera por posición. En Oracle, en cambio, no hay
      * "orden del archivo" y la columna 'orden' existe justo para suplirlo.
      */
-    public function dominios(): array
+    public function dominios(string $estandar = Estandar::ISO): array
     {
+        if ($estandar !== Estandar::ISO) {
+            return [];
+        }
+
         return array_map(
             static fn (int $i, array $fila): Dominio => Dominio::desdeArreglo($fila + ['orden' => $i + 1]),
             array_keys($this->datos['dominios']),
@@ -58,8 +72,12 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
     }
 
     /** @return list<Proceso> */
-    public function procesos(): array
+    public function procesos(string $estandar = Estandar::ISO): array
     {
+        if ($estandar !== Estandar::ISO) {
+            return [];
+        }
+
         return array_map(
             static fn (int $i, array $fila): Proceso => Proceso::desdeArreglo($fila + ['orden' => $i + 1]),
             array_keys($this->datos['procesos']),
@@ -68,8 +86,12 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
     }
 
     /** @return list<Control> */
-    public function controles(): array
+    public function controles(string $estandar = Estandar::ISO): array
     {
+        if ($estandar !== Estandar::ISO) {
+            return [];
+        }
+
         return array_map(
             static fn (array $fila): Control => Control::desdeArreglo($fila),
             $this->datos['controles'],
@@ -77,9 +99,9 @@ final class RepositorioInstrumentoArreglo implements RepositorioInstrumento
     }
 
     /** @return list<array{nivel: int, nombre: string, descripcion: string}> */
-    public function escala(): array
+    public function escala(string $estandar = Estandar::ISO): array
     {
-        return $this->datos['escala'];
+        return $estandar === Estandar::ISO ? $this->datos['escala'] : [];
     }
 
     /** @return list<array{norma: string, titulo: string, aporte: string}> */

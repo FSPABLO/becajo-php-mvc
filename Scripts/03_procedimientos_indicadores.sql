@@ -133,77 +133,112 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
 
 
     -- ------------------------------------------------------------------
-    -- calcular_riesgo_auditoria — ahora ponderado por CONTROL.peso.
+    -- Promedio de una dimensión en una auditoría COBIT.
+    --
+    -- Capacidad declarada por objetivo, ponderada por la relación del
+    -- objetivo con la dimensión (notación P/S de COBIT 4.1, Apéndice II):
+    -- P pesa 2, S pesa 1 y sin relación no entra. Normalizado a 0..1.
+    -- ------------------------------------------------------------------
+    FUNCTION fn_promedio_objetivos(
+        p_id_auditoria IN NUMBER,
+        p_dimension    IN VARCHAR2
+    ) RETURN NUMBER IS
+        v_promedio NUMBER(4,3);
+    BEGIN
+        SELECT ROUND(SUM(eo.capacidad * pp.peso) / NULLIF(SUM(pp.peso), 0) / 5, 3)
+          INTO v_promedio
+          FROM evaluacion_objetivo eo
+          JOIN (SELECT numero,
+                       CASE CASE p_dimension
+                                WHEN 'C' THEN relacion_confidencialidad
+                                WHEN 'I' THEN relacion_integridad
+                                ELSE relacion_disponibilidad
+                            END
+                           WHEN 'P' THEN 2
+                           WHEN 'S' THEN 1
+                       END AS peso
+                  FROM proceso) pp ON pp.numero = eo.numero_proceso
+         WHERE eo.id_auditoria = p_id_auditoria
+           AND pp.peso IS NOT NULL;
+
+        RETURN v_promedio;
+    END fn_promedio_objetivos;
+
+
+    -- ------------------------------------------------------------------
+    -- Promedio de una dimensión en una auditoría ISO: madurez por control,
+    -- ponderada por CONTROL.peso, de los controles marcados con esa
+    -- dimensión.
+    -- ------------------------------------------------------------------
+    FUNCTION fn_promedio_controles(
+        p_id_auditoria IN NUMBER,
+        p_dimension    IN VARCHAR2
+    ) RETURN NUMBER IS
+        v_promedio NUMBER(4,3);
+    BEGIN
+        SELECT ROUND(
+                 SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END)
+                 / NULLIF(SUM(CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END), 0)
+                 / 5
+               , 3)
+          INTO v_promedio
+          FROM evaluacion_control ec
+          JOIN control c ON c.codigo = ec.codigo_control
+         WHERE ec.id_auditoria = p_id_auditoria
+           AND ec.madurez IS NOT NULL
+           AND 1 = CASE p_dimension
+                       WHEN 'C' THEN ec.afecta_confidencialidad
+                       WHEN 'I' THEN ec.afecta_integridad
+                       ELSE ec.afecta_disponibilidad
+                   END;
+
+        RETURN v_promedio;
+    END fn_promedio_controles;
+
+
+    -- ------------------------------------------------------------------
+    -- calcular_riesgo_auditoria — exposición por dimensión e índice.
+    --
+    -- La norma decide de dónde sale cada promedio (estandar.modo_evaluacion);
+    -- la zona, el registro en resultado_riesgo y el índice son iguales para
+    -- las dos. En COBIT, resultado_riesgo.promedio_madurez guarda capacidad
+    -- normalizada: misma escala de 0 a 1, otro origen.
     -- ------------------------------------------------------------------
     PROCEDURE calcular_riesgo_auditoria(
         p_id_auditoria IN NUMBER
     ) IS
-        v_promedio_c  NUMBER(4,3);
-        v_promedio_i  NUMBER(4,3);
-        v_promedio_d  NUMBER(4,3);
-        v_zona_c      VARCHAR2(10);
-        v_zona_i      VARCHAR2(10);
-        v_zona_d      VARCHAR2(10);
-        v_indice      NUMBER(5,2);
+        TYPE t_texto IS VARRAY(3) OF VARCHAR2(20);
+        v_letras   t_texto := t_texto('C', 'I', 'D');
+        v_nombres  t_texto := t_texto('CONFIDENCIALIDAD', 'INTEGRIDAD', 'DISPONIBILIDAD');
+        v_modo     estandar.modo_evaluacion%TYPE;
+        v_promedio NUMBER(4,3);
+        v_indice   NUMBER(5,2);
     BEGIN
+        BEGIN
+            SELECT e.modo_evaluacion
+              INTO v_modo
+              FROM auditoria a
+              JOIN estandar e ON e.codigo = a.codigo_estandar
+             WHERE a.id_auditoria = p_id_auditoria;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RETURN;
+        END;
+
         DELETE FROM resultado_riesgo WHERE id_auditoria = p_id_auditoria;
 
-        SELECT ROUND(
-                 SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END)
-                 / NULLIF(SUM(CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END), 0)
-                 / 5
-               , 3)
-          INTO v_promedio_c
-          FROM evaluacion_control ec
-          JOIN control c ON c.codigo = ec.codigo_control
-         WHERE ec.id_auditoria = p_id_auditoria
-           AND ec.afecta_confidencialidad = 1
-           AND ec.madurez IS NOT NULL;
+        FOR i IN 1 .. v_letras.COUNT LOOP
+            IF v_modo = 'OBJETIVO' THEN
+                v_promedio := fn_promedio_objetivos(p_id_auditoria, v_letras(i));
+            ELSE
+                v_promedio := fn_promedio_controles(p_id_auditoria, v_letras(i));
+            END IF;
 
-        v_zona_c := fn_zona(v_promedio_c);
-
-        IF v_promedio_c IS NOT NULL THEN
-            INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
-            VALUES (p_id_auditoria, 'CONFIDENCIALIDAD', v_promedio_c, v_zona_c);
-        END IF;
-
-        SELECT ROUND(
-                 SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END)
-                 / NULLIF(SUM(CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END), 0)
-                 / 5
-               , 3)
-          INTO v_promedio_i
-          FROM evaluacion_control ec
-          JOIN control c ON c.codigo = ec.codigo_control
-         WHERE ec.id_auditoria = p_id_auditoria
-           AND ec.afecta_integridad = 1
-           AND ec.madurez IS NOT NULL;
-
-        v_zona_i := fn_zona(v_promedio_i);
-
-        IF v_promedio_i IS NOT NULL THEN
-            INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
-            VALUES (p_id_auditoria, 'INTEGRIDAD', v_promedio_i, v_zona_i);
-        END IF;
-
-        SELECT ROUND(
-                 SUM(ec.madurez * CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END)
-                 / NULLIF(SUM(CASE c.peso WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END), 0)
-                 / 5
-               , 3)
-          INTO v_promedio_d
-          FROM evaluacion_control ec
-          JOIN control c ON c.codigo = ec.codigo_control
-         WHERE ec.id_auditoria = p_id_auditoria
-           AND ec.afecta_disponibilidad = 1
-           AND ec.madurez IS NOT NULL;
-
-        v_zona_d := fn_zona(v_promedio_d);
-
-        IF v_promedio_d IS NOT NULL THEN
-            INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
-            VALUES (p_id_auditoria, 'DISPONIBILIDAD', v_promedio_d, v_zona_d);
-        END IF;
+            IF v_promedio IS NOT NULL THEN
+                INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
+                VALUES (p_id_auditoria, v_nombres(i), v_promedio, fn_zona(v_promedio));
+            END IF;
+        END LOOP;
 
         SELECT ROUND(AVG(promedio_madurez), 2)
           INTO v_indice
@@ -438,10 +473,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
     -- Promediar razones le daría el mismo peso a una auditoría con tres
     -- controles respondidos que a una con setenta y cinco.
     --
-    -- La cobertura se mide contra el catálogo VIVO (COUNT(*) FROM control)
-    -- y no contra un 75 escrito a mano: el catálogo es editable desde la
-    -- aplicación, y una constante quedaría mintiendo el día que alguien
-    -- añada un control.
+    -- La cobertura se mide contra el catálogo VIVO de la norma de cada
+    -- auditoría y no contra un 75 escrito a mano: el catálogo es editable,
+    -- y con varias normas cargadas un conteo global mezclaría catálogos.
     -- ------------------------------------------------------------------
     --
     -- p_organizacion filtra por la EMPRESA AUDITADA, que es la del
@@ -453,15 +487,20 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
         p_organizacion IN  VARCHAR2,
         p_cursor       OUT SYS_REFCURSOR
     ) IS
-        v_controles NUMBER;
     BEGIN
-        SELECT COUNT(*) INTO v_controles FROM control;
-
         OPEN p_cursor FOR
-            WITH por_auditoria AS (
+            WITH catalogo AS (
+                SELECT d.codigo_estandar, COUNT(*) AS controles
+                  FROM control c
+                  JOIN proceso p ON p.numero = c.numero_proceso
+                  JOIN dominio d ON d.clave = p.clave_dominio
+                 GROUP BY d.codigo_estandar
+            ),
+            por_auditoria AS (
                 SELECT
                     aud.id_auditoria,
                     TO_CHAR(aud.fecha, 'YYYY-MM') AS mes,
+                    MAX(cat.controles) AS controles,
                     COUNT(CASE WHEN ec.estado = 'SI' THEN 1 END)          AS si,
                     COUNT(CASE WHEN ec.estado IN ('SI', 'NO') THEN 1 END) AS si_no,
                     -- COUNT sobre la columna, no sobre la fila: una
@@ -478,6 +517,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
                 JOIN v_auditoria_entrevistado adm ON adm.id_auditoria = aud.id_auditoria
                 LEFT JOIN evaluacion_control ec ON ec.id_auditoria = aud.id_auditoria
                 LEFT JOIN control c ON c.codigo = ec.codigo_control
+                LEFT JOIN catalogo cat ON cat.codigo_estandar = aud.codigo_estandar
                 WHERE aud.id_auditor = p_id_auditor
                   AND (p_organizacion IS NULL OR adm.organizacion = p_organizacion)
                 GROUP BY aud.id_auditoria, TO_CHAR(aud.fecha, 'YYYY-MM')
@@ -486,7 +526,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
                 mes,
                 COUNT(*) AS auditorias,
                 ROUND(SUM(si) / NULLIF(SUM(si_no), 0), 4)                       AS cumplimiento,
-                ROUND(SUM(respondidos) / NULLIF(COUNT(*) * v_controles, 0), 4)  AS cobertura,
+                ROUND(SUM(respondidos) / NULLIF(SUM(controles), 0), 4)          AS cobertura,
                 ROUND(SUM(madurez_pond) / NULLIF(SUM(peso_total), 0), 2)        AS madurez_promedio
             FROM por_auditoria
             GROUP BY mes

@@ -86,6 +86,7 @@ return static function (Enrutador $enrutador): void {
 
     $enrutador->get('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'plantillaControl']);
     $enrutador->post('/evaluacion/{id}/controles/{codigo}', [AuditoriaController::class, 'guardarControl']);
+    $enrutador->post('/evaluacion/{id}/objetivos/{numero}', [AuditoriaController::class, 'guardarObjetivo']);
 
     // El adjunto de la evidencia. Cuelga del CONTROL y no de la auditoría
     // porque es de un control concreto, y se sirve por una ruta propia —y no
@@ -147,3 +148,4 @@ return static function (Enrutador $enrutador): void {
     $enrutador->post('/catalogo/controles/{codigo}', [CatalogoController::class, 'guardarControl']);
     $enrutador->post('/catalogo/controles/{codigo}/eliminar', [CatalogoController::class, 'eliminarControl']);
 };
+

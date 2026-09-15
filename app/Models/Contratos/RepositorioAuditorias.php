@@ -6,7 +6,9 @@ namespace App\Models\Contratos;
 
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvaluacionObjetivo;
 use App\Models\Entidades\FotoPerfil;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
@@ -112,6 +114,9 @@ interface RepositorioAuditorias
      * organización escritos a mano si no la tiene. Quien pase las dos —o
      * ninguna— choca contra ck_auditoria_administrador, que es donde la regla
      * está escrita de verdad; esta firma solo la deja expresable.
+     *
+     * La norma se fija aquí y actualizarAuditoria() no la cambia: las
+     * respuestas ya guardadas solo valen contra el catálogo de esa norma.
      */
     public function crearAuditoria(
         int $idAuditor,
@@ -120,6 +125,7 @@ interface RepositorioAuditorias
         string $fecha,
         ?string $administradorNombre = null,
         ?string $administradorOrganizacion = null,
+        string $codigoEstandar = Estandar::ISO,
     ): int;
 
     /** Reescribe el encabezado, entrevistado incluido. Ver crearAuditoria(). */
@@ -159,6 +165,16 @@ interface RepositorioAuditorias
     public function guardarEvaluacion(EvaluacionControl $evaluacion): void;
 
     public function eliminarEvaluacion(int $idAuditoria, string $codigoControl): void;
+
+    /**
+     * Capacidades declaradas por objetivo (normas que evalúan por objetivo).
+     *
+     * @return array<int, EvaluacionObjetivo> Indexadas por número de proceso.
+     */
+    public function evaluacionesObjetivo(int $idAuditoria): array;
+
+    /** Inserta o reemplaza la capacidad declarada de un objetivo. */
+    public function guardarEvaluacionObjetivo(EvaluacionObjetivo $evaluacion): void;
 
     /** Cuántos controles llevan estado asignado. Alimenta la barra de avance. */
     public function controlesEvaluados(int $idAuditoria): int;
