@@ -473,15 +473,21 @@ COLUMN nombre FORMAT A20
 COLUMN organismo FORMAT A12
 COLUMN restriccion_madurez FORMAT A40
 
+-- Un PROMPT que TERMINE en guion se interpreta como continuación de línea:
+-- SQL*Plus se traga la siguiente línea completa (aquí, el SELECT) como si
+-- fuera parte del mismo texto, y la consulta nunca llega a ejecutarse. Por
+-- eso el guion de cierre se quitó de las siete líneas de este bloque: es la
+-- causa por la que esta verificación nunca se había corrido contra Oracle.
+
 PROMPT
-PROMPT --- Normas cargadas (deben ser 2: ISO27002 y COBIT2019) ---
+PROMPT --- Normas cargadas (deben ser 2: ISO27002 y COBIT2019)
 SELECT codigo, nombre, version, organismo, escala_niveles FROM estandar ORDER BY orden;
 
-PROMPT --- Niveles de madurez por norma (6 y 6, de 0 a 5) ---
+PROMPT --- Niveles de madurez por norma (6 y 6, de 0 a 5)
 SELECT codigo_estandar, COUNT(*) AS niveles, MIN(nivel) AS desde, MAX(nivel) AS hasta
   FROM nivel_madurez GROUP BY codigo_estandar ORDER BY codigo_estandar;
 
-PROMPT --- Catálogo por norma (COBIT2019 4/12/24, ISO27002 7/25/75) ---
+PROMPT --- Catálogo por norma (COBIT2019 4/12/24, ISO27002 7/25/75)
 SELECT d.codigo_estandar,
        COUNT(DISTINCT d.clave)  AS dominios,
        COUNT(DISTINCT p.numero) AS procesos,
@@ -492,9 +498,9 @@ SELECT d.codigo_estandar,
  GROUP BY d.codigo_estandar
  ORDER BY d.codigo_estandar;
 
-PROMPT --- Auditorías por norma ---
+PROMPT --- Auditorías por norma
 SELECT codigo_estandar, COUNT(*) AS auditorias FROM auditoria GROUP BY codigo_estandar;
 
-PROMPT --- Restricción de madurez (debe decir BETWEEN 0 AND 5) ---
+PROMPT --- Restricción de madurez (debe decir BETWEEN 0 AND 5)
 SELECT search_condition_vc AS restriccion_madurez
   FROM user_constraints WHERE constraint_name = 'CK_EVALCTRL_MADUREZ';

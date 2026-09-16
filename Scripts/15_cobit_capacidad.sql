@@ -81,9 +81,13 @@ END;
 UPDATE estandar SET modo_evaluacion = 'OBJETIVO' WHERE codigo = 'COBIT2019';
 COMMIT;
 
+-- Un PROMPT que termina en guion se interpreta como continuación de línea y
+-- se traga el SELECT siguiente sin ejecutarlo (ver la misma nota en
+-- Scripts/14_multinorma.sql) — por eso ninguna línea de aquí abajo cierra en "-".
+
 PROMPT
-PROMPT --- Modo por norma (ISO27002 CONTROL, COBIT2019 OBJETIVO) ---
+PROMPT --- Modo por norma (ISO27002 CONTROL, COBIT2019 OBJETIVO)
 SELECT codigo, modo_evaluacion FROM estandar ORDER BY orden;
 
-PROMPT --- Tabla nueva (debe existir) ---
+PROMPT --- Tabla nueva (debe existir)
 SELECT table_name FROM user_tables WHERE table_name = 'EVALUACION_OBJETIVO';
