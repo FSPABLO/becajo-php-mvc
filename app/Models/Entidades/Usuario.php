@@ -28,6 +28,13 @@ final class Usuario
         public readonly string $rol,
         public readonly string $organizacion,
         public readonly bool $activo,
+        /**
+         * La nota que el propio usuario escribe sobre sí mismo y edita desde
+         * /perfil. Opcional: casi todas las cuentas nacen sin ella, y una
+         * cadena vacía se guarda como NULL para que «sin descripción» y
+         * «descripción en blanco» no sean dos estados distintos.
+         */
+        public readonly ?string $descripcion = null,
     ) {
     }
 
@@ -41,6 +48,9 @@ final class Usuario
             rol:          (string) ($fila['rol'] ?? self::ROL_AUDITOR),
             organizacion: (string) ($fila['organizacion'] ?? ''),
             activo:       (int) ($fila['activo'] ?? 0) === 1,
+            descripcion:  ($fila['descripcion'] ?? null) === null || $fila['descripcion'] === ''
+                ? null
+                : (string) $fila['descripcion'],
         );
     }
 

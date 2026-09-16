@@ -40,6 +40,29 @@ if (!function_exists('env')) {
     }
 }
 
+if (!function_exists('normalizarBusqueda')) {
+    /**
+     * Pasa un texto a minúsculas y sin tildes, para comparar.
+     *
+     * Sin quitar las tildes, buscar «produccion» no encontraría «producción», y
+     * es exactamente lo que se escribe con prisa. El mapa es explícito y no
+     * iconv //TRANSLIT: ese depende de la configuración regional del servidor y
+     * devuelve cosas distintas en la máquina de cada quien.
+     *
+     * Es función global y no método de Controlador porque la necesitan también
+     * los modelos: Lembas busca controles del catálogo y reconoce nombres de
+     * empresas con ella. Dos copias de «qué cuenta como la misma palabra»
+     * acaban encontrando cosas distintas.
+     */
+    function normalizarBusqueda(string $texto): string
+    {
+        return strtr(mb_strtolower(trim($texto), 'UTF-8'), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ü' => 'u', 'ñ' => 'n', 'ç' => 'c',
+        ]);
+    }
+}
+
 if (!function_exists('icono')) {
     /**
      * Devuelve el SVG de un ícono del catálogo interno.
@@ -71,6 +94,18 @@ if (!function_exists('icono')) {
             'llave'       => '<circle cx="7.5" cy="15.5" r="3.5"/><path d="m10 13 8-8"/><path d="m15 8 2 2"/><path d="m18 5 2 2"/>',
             'disco'       => '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
             'documento'   => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
+            /*
+             * Expediente: la carpeta de una empresa auditada, con su cajón
+             * dentro. Es el ícono central de las fichas de /evaluacion/comparar
+             * y no se gasta en ninguna otra pantalla — una ficha es la carpeta
+             * de un sujeto, y el resto del módulo habla de auditorías sueltas.
+             *
+             * Dos trazos y no uno: la carpeta identifica y el cajón dice que
+             * dentro hay algo guardado. El cajón nace en la línea de abajo de la
+             * carpeta —no se cierra por su cuenta— para no doblar el trazo justo
+             * ahí, que a 20 px se lee como un borrón.
+             */
+            'expediente'  => '<path d="M3 7a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.6.8l1.2 1.6a2 2 0 0 0 1.6.8H19a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/><path d="M9.5 20v-4.2a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3V20"/><path d="M11.2 20v-1.7h1.6V20"/>',
             'tablero'     => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
             'libro'       => '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20v5H6.5A2.5 2.5 0 0 1 4 19.5Z"/>',
             'enlace'      => '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
@@ -81,6 +116,39 @@ if (!function_exists('icono')) {
             'chispa'      => '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="m6.5 6.5 3 3M14.5 14.5l3 3M17.5 6.5l-3 3M9.5 14.5l-3 3"/>',
             'pregunta'    => '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3 2.4c-.6.2-1 .8-1 1.4v.4"/><path d="M11.5 17h.01"/>',
             'alerta'      => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+            // Monitor de salud. El corazón es la metáfora del módulo —signos
+            // vitales de una instancia— y no se repite en ninguna otra
+            // entrada del menú, así que no hay dos lecturas del mismo trazo.
+            'corazon'     => '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+            /*
+             * Base de datos: la ficha de una instancia vigilada en /monitoreo.
+             * Es a esa antesala lo que 'expediente' es a /evaluacion/comparar,
+             * y por lo mismo no se gasta en otra pantalla.
+             *
+             * No es 'disco': aquel tiene dos anillos y ya significa «Memoria y
+             * almacenamiento» en los dominios y «Catálogo» en el menú. Este
+             * lleva la tapa y TRES anillos iguales —la silueta clásica del
+             * servidor de datos—, repartidos a partes iguales para que a 48 px
+             * no se lea como una lata con una tira.
+             */
+            'base-datos'  => '<ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5"/><path d="M4 9.7c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/><path d="M4 14.3c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/>',
+            /*
+             * Asistente: la hoja de mallorn en la que va envuelto el lembas,
+             * que es el nombre del asistente. Tres trazos: la hoja, su nervio
+             * central y el tallo.
+             *
+             * Sustituyó a un globo de conversación con una estrella, y lo que
+             * se perdió es justo eso: el globo decía «aquí se conversa» y la
+             * hoja no. Lo recupera el contexto y no el trazo: el botón se llama
+             * «Abrir Lembas», vive solo en la esquina y el panel que abre es
+             * una conversación. Por eso el tallo sale abajo a la izquierda, en
+             * el sitio donde un globo lleva la cola.
+             *
+             * Hoja y no el pan envuelto: un paquete atado a 20 px es un borrón,
+             * y la hoja es la parte del lembas que se reconoce de un vistazo.
+             * No se gasta en ninguna otra pantalla, igual que 'expediente'.
+             */
+            'asistente'   => '<path d="M7 17C6 10 11 4 20 4c0 9-6 14-13 13Z"/><path d="M7 17 15.5 8.5"/><path d="M7 17l-3.5 3.5"/>',
 
             /*
              * Un ícono fijo por cada uno de los 7 dominios del instrumento
@@ -109,6 +177,10 @@ if (!function_exists('icono')) {
             'alert-triangle' => '<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
             'alert-octagon'  => '<path d="M8.4 2.5h7.2l5.9 5.9v7.2l-5.9 5.9H8.4l-5.9-5.9V8.4l5.9-5.9Z"/><path d="M12 7.5v5"/><path d="M12 16h.01"/>',
             'minus'          => '<path d="M6 12h12"/>',
+            // Aspa de la casilla de resultado del monitor. Es el negativo de
+            // 'check', no un octógono ni un triángulo: aquí no se comunica
+            // severidad, solo «esta comprobación no pasó».
+            'aspa'           => '<path d="m7 7 10 10"/><path d="m17 7-10 10"/>',
 
         ];
 
@@ -184,7 +256,7 @@ if (!function_exists('pill')) {
      * Contorno y texto teñido, sin relleno sólido: cuatro rellenos saturados
      * compitiendo en una tabla de 75 filas destruyen la jerarquía de lectura.
      *
-     * @param string $tono     ok | warn | bad | na
+     * @param string $tono     opt | ok | warn | bad | crit | na
      * @param string $etiqueta Texto visible; ya traducido por quien llama.
      */
     function pill(string $tono, string $etiqueta): string
@@ -197,14 +269,144 @@ if (!function_exists('pill')) {
             // 'crit' comparte color con 'bad' y se distingue por el ícono:
             // un octógono es la señal de alto, no una advertencia más.
             'crit' => 'alert-octagon',
+            /*
+             * 'opt' es la quinta banda de la escala del monitor de salud
+             * (§5.2 del plan de la parte 2) y se resuelve igual que 'crit':
+             * comparte el color de 'ok' y se distingue por el ícono. El
+             * sistema visual sigue teniendo CUATRO niveles de color y pasa a
+             * tener CINCO de significado — que es justo lo que se necesita.
+             * Un quinto color, o un verde más claro, contradice el sistema
+             * visual y además no sobrevive a la impresión en gris.
+             */
+            'opt'  => 'escudo',
         ];
 
-        $clase = $tono === 'crit' ? 'bad' : $tono;
+        $clase = match ($tono) {
+            'crit'  => 'bad',
+            'opt'   => 'ok',
+            default => $tono,
+        };
+
         $icono = $iconos[$tono] ?? 'minus';
 
         return '<span class="rv-pill rv-pill--' . e($clase) . '">'
              . icono($icono, 'h-3.5 w-3.5 shrink-0')
              . '<span>' . e($etiqueta) . '</span>'
              . '</span>';
+    }
+}
+
+if (!function_exists('tonoBanda')) {
+    /**
+     * Traduce una banda de la escala del monitor al tono de pill().
+     *
+     * Las cinco bandas del §5.2 del plan de la parte 2 son UN SOLO vocabulario
+     * en métrica, componente e índice, así que esta correspondencia se escribe
+     * UNA vez. Repetirla dentro de cada vista es exactamente la «tabla de
+     * traducción» que el plan quiere evitar: en cuanto hay dos copias, una se
+     * queda vieja y la misma banda se pinta de dos colores en dos pantallas.
+     *
+     * Null no es una banda: es la ausencia de dato (una métrica que no se pudo
+     * recolectar, un componente sin métricas, un índice que no se publica). Va
+     * a 'na', que es gris y dice «no se sabe», y NO a un color de estado.
+     */
+    function tonoBanda(?string $banda): string
+    {
+        return match ($banda) {
+            'OPTIMO'      => 'opt',
+            'SALUDABLE'   => 'ok',
+            'ADVERTENCIA' => 'warn',
+            'DEGRADADO'   => 'bad',
+            'CRITICO'     => 'crit',
+            default       => 'na',
+        };
+    }
+}
+
+if (!function_exists('semaforo')) {
+    /**
+     * La luz del semáforo de una banda.
+     *
+     * NO es una segunda escala: es un AGRUPAMIENTO de las cinco bandas del
+     * §5.2, con las mismas fronteras de siempre (40 / 60 / 75 / 90).
+     *
+     *   rojo      CRÍTICO [0,40] y DEGRADADO (40,60]
+     *   amarillo  ADVERTENCIA (60,75]
+     *   verde     SALUDABLE (75,90] y ÓPTIMO (90,100]
+     *
+     * Esa distinción importa. Un semáforo con cortes propios —pongamos 30 y
+     * 60— sería una escala rival: un índice de 65 saldría «verde» en el
+     * tablero y ADVERTENCIA en la alerta, en la misma pantalla y sobre el
+     * mismo número. Al agrupar las bandas existentes no hay forma de que las
+     * dos lecturas se contradigan, y la pill puede seguir diciendo la banda
+     * exacta mientras el color dice si hay que levantarse.
+     *
+     * Se deriva de la BANDA y no del número por el mismo motivo: la banda ya
+     * la decidió el motor sobre el valor sin redondear, y recalcularla aquí
+     * sobre la cifra publicada haría que en las fronteras el color y la
+     * etiqueta discreparan.
+     */
+    function semaforo(?string $banda): string
+    {
+        return match ($banda) {
+            'OPTIMO', 'SALUDABLE' => 'verde',
+            'ADVERTENCIA'         => 'amarillo',
+            'DEGRADADO', 'CRITICO' => 'rojo',
+            default               => 'na',
+        };
+    }
+}
+
+if (!function_exists('semaforoGeneral')) {
+    /**
+     * La luz del conjunto a partir de las luces de sus partes.
+     *
+     * **Rojo si alguna parte está en rojo; verde solo si TODAS están en
+     * verde.** Es la regla del eslabón más débil del §5.4 aplicada al color en
+     * vez de al número: un promedio en verde con un componente en rojo es
+     * exactamente la emergencia que el promedio esconde.
+     *
+     * Una parte sin dato no cuenta como verde ni como roja: impide el verde
+     * —no se puede afirmar que todo está bien sin haberlo medido— pero no
+     * enciende el rojo, porque tampoco se ha medido nada malo. Queda en ámbar,
+     * que es lo que significa «no lo sé del todo».
+     *
+     * @param list<string> $luces Resultados de semaforo(), uno por parte.
+     */
+    function semaforoGeneral(array $luces): string
+    {
+        if ($luces === []) {
+            return 'na';
+        }
+
+        if (in_array('rojo', $luces, true)) {
+            return 'rojo';
+        }
+
+        foreach ($luces as $luz) {
+            if ($luz !== 'verde') {
+                return 'amarillo';
+            }
+        }
+
+        return 'verde';
+    }
+}
+
+if (!function_exists('tonoSemaforo')) {
+    /**
+     * Del semáforo al tono de pill(), en un solo sitio.
+     *
+     * Tres luces sobre la escala de color que ya existe: no se inventa ningún
+     * color nuevo, se usan tres de los cuatro niveles.
+     */
+    function tonoSemaforo(string $luz): string
+    {
+        return match ($luz) {
+            'rojo'     => 'bad',
+            'amarillo' => 'warn',
+            'verde'    => 'ok',
+            default    => 'na',
+        };
     }
 }

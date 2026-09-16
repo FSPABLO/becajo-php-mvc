@@ -224,7 +224,7 @@ Administración del instrumento: **dominios**, **procesos** y **controles**.
 
 ### 15. Matriz de procesos vs C-I-D — `/catalogo/matriz` · `ADMIN_BD`
 
-- Reproduce la tabla del **Apéndice II de COBIT 4.1**: cada proceso frente a cada criterio de información.
+- Reproduce el **criterio de valoración de riesgo de ISO/IEC 27005**: cada proceso frente a cada criterio de información.
 - Los 25 procesos, agrupados por dominio, cruzados con confidencialidad, integridad y disponibilidad.
 - Cada cruce tiene tres valores posibles que hay que distinguir con claridad: **relación primaria**, **relación secundaria** y **sin relación**.
 - Debe aclararse que es la relación *declarada* en el catálogo, no lo que el auditor marcó en una evaluación concreta.

@@ -26,10 +26,21 @@ declare(strict_types=1);
  * @var list<string>|null      $hojas    Hojas de estilo propias de la página.
  * @var list<string>|null      $guiones  Guiones (scripts) propios de la página.
  * @var \App\Models\Entidades\Usuario|null $usuarioActual
+ * @var bool|null              $hayMonitor  ¿Existe el módulo de monitoreo?
  * @var string|null            $rutaActual
  * @var bool|null              $lateralOculta  Barra lateral plegada (cookie).
+ * @var bool|null              $asistenteAbierto  Panel del asistente abierto (cookie).
+ * @var bool|null              $hayAsistente      ¿Lembas está configurado? (clave de API)
+ * @var list<array{pregunta: string, html: string}>|null $lembasTranscripcion
+ *      La conversación con Lembas guardada en sesión, para repintarla.
+ * @var list<array{etiqueta: string, ruta?: string|null}>|null $migaPagina
+ *      Niveles de miga POR DEBAJO de la entrada del menú, que el menú no puede
+ *      saber: «Auditoría 152» no es una sección, es un registro. Los pone el
+ *      controlador, que es quien tiene el dato. Ver partials/panel/barra-superior.
  */
 $lateralOculta = $lateralOculta ?? false;
+$asistenteAbierto = $asistenteAbierto ?? false;
+$migaPagina    = $migaPagina ?? [];
 $hojas         = $hojas ?? [];
 $guiones       = $guiones ?? [];
 $herramientas  = $herramientas ?? [];
@@ -51,6 +62,27 @@ $grupos = [[
         ['etiqueta' => $vista->t('eval.comparar_historico'), 'ruta' => '/evaluacion/comparar', 'icono' => 'grafica'],
     ],
 ]];
+
+/*
+ * Monitoreo continuo. Grupo propio y no una cuarta entrada de «Auditorías»
+ * porque no es lo mismo: una auditoría es una medición fechada que alguien
+ * conduce, y el monitor es una vigilancia que corre sola cada cinco minutos.
+ * Mezclarlos en el mismo grupo diría que se hacen en el mismo momento y con
+ * el mismo gesto, y no es así.
+ *
+ * Nace con una sola entrada a propósito: /monitoreo/alertas y
+ * /monitoreo/metricas ya están en el contrato de rutas y entran aquí sin
+ * mover nada más. El elemento activo gana por ruta declarada MÁS LARGA, así
+ * que /monitoreo/PRODCORE1 —que no tiene entrada propia— ilumina «Monitor».
+ */
+if ($hayMonitor ?? false) {
+    $grupos[] = [
+        'titulo'    => $vista->t('panel.grupo_monitoreo'),
+        'elementos' => [
+            ['etiqueta' => $vista->t('mon.monitor'), 'ruta' => '/monitoreo', 'icono' => 'corazon'],
+        ],
+    ];
+}
 
 if ($esAdministrador) {
     $grupos[] = [
@@ -119,17 +151,37 @@ foreach ($grupos as $grupo) {
         }
     }
 }
+
+/*
+ * El asistente existe solo con una sesión abierta Y con el servicio configurado
+ * (ANTHROPIC_API_KEY en .env). No es un adorno que se oculte: responde CON LOS
+ * PERMISOS de quien pregunta, y sin cuenta no hay permisos que aplicar —
+ * mostrarlo a un visitante sería prometer un acceso que no tiene—; sin clave,
+ * sería un botón que abre un chat que no contesta.
+ */
+$pintarAsistente = $usuarioActual !== null && ($hayAsistente ?? false);
+
+/*
+ * Sobre qué pantalla se pregunta: el último nivel de la miga, que es el nombre
+ * más preciso que el marco tiene de la página actual («Auditoría 152» antes que
+ * «Mis auditorías»). Se enseña en la cabecera del panel para que quien escribe
+ * sepa a qué se refiere «esto».
+ */
+$contextoAsistente = $migaPagina !== []
+    ? $migaPagina[array_key_last($migaPagina)]['etiqueta']
+    : $migaElemento;
 ?>
 <?php
 /*
- * data-lateral lo escribe el servidor, no el guion: la página tiene que nacer
- * con la barra en el estado en que el auditor la dejó. Va en <html> y no en
- * <body> porque las reglas de rivendel.css cuelgan de él.
+ * data-lateral y data-asistente los escribe el servidor, no el guion: la página
+ * tiene que nacer con las dos piezas en el estado en que el auditor las dejó.
+ * Van en <html> y no en <body> porque las reglas de rivendel.css cuelgan de él.
  */
 ?>
 <!DOCTYPE html>
 <html lang="<?= e($vista->idiomaActual() === 'en' ? 'en' : 'es-CR') ?>"
-      <?= $lateralOculta ? 'data-lateral="oculta"' : '' ?>>
+      <?= $lateralOculta ? 'data-lateral="oculta"' : '' ?>
+      <?= $pintarAsistente && $asistenteAbierto ? 'data-asistente="abierto"' : '' ?>>
 <head>
     <?= $vista->renderizar('partials/head', compact('meta', 'empresa', 'hojas')) ?>
 </head>
@@ -158,6 +210,8 @@ foreach ($grupos as $grupo) {
         'grupos'        => $grupos,
         'rutaActiva'    => $rutaActiva,
         'usuarioActual' => $usuarioActual,
+        'fotoUsuario'   => $fotoUsuarioActual ?? null,
+        'rutaActual'    => $rutaActual,
     ]) ?>
 
     <?php
@@ -179,7 +233,8 @@ foreach ($grupos as $grupo) {
         <?= $vista->renderizar('partials/panel/barra-superior', [
             'migaGrupo'     => $migaGrupo,
             'migaElemento'  => $migaElemento,
-            'usuarioActual' => $usuarioActual,
+            'migaRuta'      => $rutaActiva !== '' ? $rutaActiva : null,
+            'migaPagina'    => $migaPagina,
             'rutaActual'    => $rutaActual,
             'lateralOculta' => $lateralOculta,
         ]) ?>
@@ -204,7 +259,27 @@ foreach ($grupos as $grupo) {
         </footer>
     </div>
 
+    <?php
+    /*
+     * Fuera de la columna y DESPUÉS de ella: el panel es `fixed` y la columna
+     * se le aparta con padding, igual que se aparta de la barra lateral. Dentro
+     * de la columna quedaría sometido a su padding y a sus transiciones.
+     */
+    ?>
+    <?php if ($pintarAsistente): ?>
+        <?= $vista->renderizar('partials/panel/asistente', [
+            'usuarioActual'    => $usuarioActual,
+            'contexto'         => $contextoAsistente,
+            'rutaActual'       => $rutaActual,
+            'asistenteAbierto' => $asistenteAbierto,
+            'transcripcion'    => $lembasTranscripcion ?? [],
+        ]) ?>
+    <?php endif; ?>
+
     <script src="<?= e($vista->recurso('assets/js/principal.js')) ?>" defer></script>
+    <?php if ($pintarAsistente): ?>
+    <script src="<?= e($vista->recurso('assets/js/asistente.js')) ?>" defer></script>
+    <?php endif; ?>
     <?php foreach ($guiones as $guion): ?>
     <script src="<?= e($vista->recurso($guion)) ?>" defer></script>
     <?php endforeach; ?>

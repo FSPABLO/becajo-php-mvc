@@ -9,7 +9,7 @@
 -- backfill incluido). Este script crea el esquema completo desde cero, en
 -- su estado final, para quien monta el proyecto por primera vez.
 --
--- 8 tablas. Decisiones que aplican en esta versión:
+-- 10 tablas. Decisiones que aplican en esta versión:
 --   - No existe tabla ORGANIZACION: la afiliación institucional es el campo
 --     de texto usuario.organizacion.
 --   - resultado_riesgo.zona es VARCHAR2 con CHECK ('ROJO','AMARILLO','VERDE')
@@ -20,9 +20,9 @@
 --   - Un control puede tener varias dimensiones de riesgo (C/I/D) marcadas a
 --     la vez, y pueden variar de una evaluación a otra del mismo control.
 --   - control.peso (ALTA/MEDIA/BAJA) y proceso.relacion_confidencialidad /
---     relacion_integridad / relacion_disponibilidad (P/S) usan la misma
---     notación que COBIT 4.1 (Apéndice II): importancia relativa y relación
---     primaria/secundaria con cada criterio de información.
+--     relacion_integridad / relacion_disponibilidad (P/S) siguen el criterio
+--     de valoración de riesgo de ISO/IEC 27005: importancia relativa y
+--     relación primaria/secundaria con cada criterio de información.
 --   - evaluacion_control.evidencia_verificada y calidad_evidencia son
 --     obligatorias cuando estado='SI': la conformidad se prueba con
 --     evidencia, no con la afirmación del auditado (ISO/IEC 27007).
@@ -32,12 +32,15 @@
 --
 -- Orden de creación (respeta las dependencias de llave foránea):
 --   USUARIO, DOMINIO           (sin dependencias)
+--   USUARIO_FOTO               (depende de USUARIO)
 --   PROCESO                    (depende de DOMINIO)
 --   CONTROL                    (depende de PROCESO)
 --   AUDITORIA                  (depende de USUARIO)
 --   EVALUACION_CONTROL         (depende de AUDITORIA, CONTROL)
+--   EVIDENCIA_ARCHIVO          (depende de EVALUACION_CONTROL)
 --   RESULTADO_RIESGO           (depende de AUDITORIA)
 --   REMEDIACION                (depende de EVALUACION_CONTROL, AUDITORIA)
+--   ASISTENTE_CONSULTA         (depende de USUARIO)
 -- ============================================================================
 
 -- ── USUARIO ──────────────────────────────────────────────────────────────
@@ -52,10 +55,45 @@ CREATE TABLE usuario (
     rol              VARCHAR2(20)   NOT NULL,
     organizacion     VARCHAR2(200)  NOT NULL,
     activo           NUMBER(1)      DEFAULT 1 NOT NULL,
+    -- Nota que el propio usuario escribe sobre si mismo y edita desde /perfil.
+    -- VARCHAR2 y no CLOB a proposito: `usuario` se consulta en CADA peticion
+    -- (Autenticacion reconsulta al usuario) y un LOB en esa lista de columnas
+    -- viaja materializado en cada clic. 500 caracteres es una presentacion.
+    descripcion      VARCHAR2(500),
     fecha_creacion   TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT uq_usuario_correo UNIQUE (correo),
     CONSTRAINT ck_usuario_rol    CHECK (rol IN ('AUDITOR', 'ADMIN_BD')),
     CONSTRAINT ck_usuario_activo CHECK (activo IN (0, 1))
+);
+
+-- ── USUARIO_FOTO ─────────────────────────────────────────────────────────
+-- La fotografía de perfil. Tabla APARTE y no una columna BLOB en USUARIO, por
+-- lo mismo que EVIDENCIA_ARCHIVO no está dentro de EVALUACION_CONTROL: `usuario`
+-- se lee en cada petición y el driver materializa los LOB que estén en la lista
+-- de columnas, así que la foto viajaría entera en cada clic. Aquí el binario
+-- solo se toca cuando alguien pide la imagen.
+--
+-- UNIQUE sobre id_usuario: una foto por cuenta. ON DELETE CASCADE: borrar la
+-- cuenta se lleva su foto, en vez de dejar un binario que ya nadie alcanza.
+--
+-- Solo imágenes: un avatar en PDF no es un avatar. La lista blanca vive TAMBIÉN
+-- en PHP, que es quien da el mensaje; esta restricción es la última línea.
+CREATE TABLE usuario_foto (
+    id_usuario_foto  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario       NUMBER         NOT NULL,
+    nombre           VARCHAR2(255)  NOT NULL,
+    tipo_mime        VARCHAR2(100)  NOT NULL,
+    tamano_bytes     NUMBER         NOT NULL,
+    contenido        BLOB           NOT NULL,
+    fecha_carga      TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_usufoto_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+    CONSTRAINT uq_usufoto_usuario
+        UNIQUE (id_usuario),
+    CONSTRAINT ck_usufoto_tipo
+        CHECK (tipo_mime IN ('image/png', 'image/jpeg', 'image/webp', 'image/gif')),
+    CONSTRAINT ck_usufoto_tamano
+        CHECK (tamano_bytes BETWEEN 1 AND 2097152)
 );
 
 -- ── DOMINIO ──────────────────────────────────────────────────────────────
@@ -76,10 +114,10 @@ CREATE TABLE dominio (
 -- de presentación, para trazabilidad con el marco de referencia de Persona 1.
 -- relacion_confidencialidad/integridad/disponibilidad: 'P' (relación
 -- primaria) / 'S' (relación secundaria) / NULL (sin relación relevante) —
--- notación de COBIT 4.1, Apéndice II. Es la relación DECLARADA del proceso
--- en el catálogo; no reemplaza lo que el auditor marca en cada evaluación
--- puntual (evaluacion_control.afecta_*), que sigue siendo lo que se usa
--- para calcular el riesgo.
+-- criterio de valoración de riesgo de ISO/IEC 27005. Es la relación
+-- DECLARADA del proceso en el catálogo; no reemplaza lo que el auditor
+-- marca en cada evaluación puntual (evaluacion_control.afecta_*), que
+-- sigue siendo lo que se usa para calcular el riesgo.
 CREATE TABLE proceso (
     numero                      NUMBER(3)      PRIMARY KEY,
     clave_dominio                VARCHAR2(20)   NOT NULL,
@@ -103,8 +141,8 @@ CREATE TABLE proceso (
 -- codigo: identificador natural del catálogo (C-001 ... C-075). Una sola
 -- pregunta por control por defecto; el auditor puede sobrescribirla por
 -- evaluación (ver EVALUACION_CONTROL.pregunta_personalizada).
--- peso: importancia relativa (COBIT 4.1) usada en el promedio ponderado del
--- cálculo de riesgo — un control ALTA pesa más que uno BAJA.
+-- peso: importancia relativa (criterio de ISO/IEC 27005) usada en el promedio
+-- ponderado del cálculo de riesgo — un control ALTA pesa más que uno BAJA.
 CREATE TABLE control (
     codigo              VARCHAR2(6)    PRIMARY KEY,
     numero_proceso      NUMBER(3)      NOT NULL,
@@ -121,11 +159,26 @@ CREATE TABLE control (
 
 -- ── AUDITORIA ────────────────────────────────────────────────────────────
 -- Sin referencia a ninguna tabla de organizaciones: la organización auditada
--- se identifica a través de id_administrador_bd -> USUARIO.organizacion.
+-- se identifica a través del entrevistado, y hay DOS formas de identificarlo:
+--
+--   a) id_administrador_bd -> USUARIO (cuenta registrada con rol ADMIN_BD).
+--      Es el caso normal y el único que existía antes.
+--   b) administrador_nombre + administrador_organizacion, escritos a mano.
+--      Un auditor entrevista a gente que no tiene —ni va a tener— cuenta en
+--      el sistema; obligarlo a registrarla antes de abrir la auditoría era
+--      pedirle que creara un usuario falso para poder trabajar.
+--
+-- ck_auditoria_administrador obliga a UNA de las dos, nunca las dos ni
+-- ninguna: con la cuenta y el texto rellenos a la vez, «¿de quién es esta
+-- auditoría?» tendría dos respuestas y quien lea la fila elegiría una.
+-- Por eso el id ya no es NOT NULL — la restricción lo cubre mejor que la
+-- columna, porque sabe de la alternativa.
 CREATE TABLE auditoria (
     id_auditoria            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_auditor              NUMBER         NOT NULL,
-    id_administrador_bd     NUMBER         NOT NULL,
+    id_administrador_bd     NUMBER,
+    administrador_nombre       VARCHAR2(150),
+    administrador_organizacion VARCHAR2(200),
     area_evaluada           VARCHAR2(200)  NOT NULL,
     fecha                   DATE           NOT NULL,
     estado                  VARCHAR2(20)   NOT NULL,
@@ -137,7 +190,16 @@ CREATE TABLE auditoria (
     CONSTRAINT fk_auditoria_administrador_bd
         FOREIGN KEY (id_administrador_bd) REFERENCES usuario (id_usuario),
     CONSTRAINT ck_auditoria_estado
-        CHECK (estado IN ('EN_PROGRESO', 'FINALIZADA'))
+        CHECK (estado IN ('EN_PROGRESO', 'FINALIZADA')),
+    CONSTRAINT ck_auditoria_administrador
+        CHECK (
+            (id_administrador_bd IS NOT NULL
+             AND administrador_nombre IS NULL
+             AND administrador_organizacion IS NULL)
+         OR (id_administrador_bd IS NULL
+             AND administrador_nombre IS NOT NULL
+             AND administrador_organizacion IS NOT NULL)
+        )
 );
 
 -- ── EVALUACION_CONTROL ───────────────────────────────────────────────────
@@ -195,6 +257,48 @@ CREATE TABLE evaluacion_control (
         CHECK (estado != 'SI' OR (evidencia_verificada IS NOT NULL AND calidad_evidencia IS NOT NULL))
 );
 
+-- ── EVIDENCIA_ARCHIVO ────────────────────────────────────────────────────
+-- El adjunto de la evidencia: la captura, el PDF de la política, el log
+-- exportado. evaluacion_control.evidencia_verificada sigue siendo la
+-- DESCRIPCIÓN escrita por el auditor y no se sustituye — ISO/IEC 27007 pide
+-- que quede constancia de qué se revisó, y un archivo sin una línea que diga
+-- qué se miró en él obliga a abrirlo para saberlo.
+--
+-- Tabla APARTE y no una columna BLOB en evaluacion_control, por una razón
+-- práctica: el repositorio lee esa tabla con SELECT * (las 75 evaluaciones de
+-- una auditoría de una vez) y el driver trae los LOB ya materializados, así
+-- que abrir el panel se llevaría por delante los 75 adjuntos. Aquí el binario
+-- solo se toca cuando alguien pide el archivo.
+--
+-- UNIQUE sobre id_evaluacion_control: un adjunto por control evaluado. Si
+-- mañana hacen falta varios, se cae esa restricción y no cambia nada más.
+--
+-- ON DELETE CASCADE: borrar la evaluación de un control se lleva su adjunto.
+-- Sin eso, eliminarEvaluacion() dejaría binarios huérfanos que nadie puede
+-- alcanzar ya desde ninguna pantalla.
+CREATE TABLE evidencia_archivo (
+    id_evidencia_archivo   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_evaluacion_control  NUMBER         NOT NULL,
+    nombre                 VARCHAR2(255)  NOT NULL,
+    tipo_mime              VARCHAR2(100)  NOT NULL,
+    tamano_bytes           NUMBER         NOT NULL,
+    contenido              BLOB           NOT NULL,
+    fecha_carga            TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT fk_evidarch_evalctrl
+        FOREIGN KEY (id_evaluacion_control)
+        REFERENCES evaluacion_control (id_evaluacion_control) ON DELETE CASCADE,
+    CONSTRAINT uq_evidarch_evalctrl
+        UNIQUE (id_evaluacion_control),
+    -- La lista blanca vive TAMBIÉN aquí, no solo en PHP: es el mismo criterio
+    -- que el resto del esquema — la validación en PHP da el mensaje, la
+    -- restricción es la última línea de defensa.
+    CONSTRAINT ck_evidarch_tipo
+        CHECK (tipo_mime IN ('image/png', 'image/jpeg', 'image/webp',
+                             'image/gif', 'application/pdf')),
+    CONSTRAINT ck_evidarch_tamano
+        CHECK (tamano_bytes BETWEEN 1 AND 5242880)
+);
+
 -- ── RESULTADO_RIESGO ─────────────────────────────────────────────────────
 -- promedio_madurez: promedio PONDERADO (por control.peso) de la madurez de
 -- los controles que afectan cada dimensión, normalizado sobre 1 — no un
@@ -241,5 +345,53 @@ CREATE TABLE remediacion (
     CONSTRAINT ck_remediacion_estado
         CHECK (estado IN ('PENDIENTE', 'EN_PROCESO', 'CUMPLIDO', 'VENCIDO'))
 );
+
+-- ── ASISTENTE_CONSULTA ───────────────────────────────────────────────────
+-- Una fila por pregunta que llegó a la API de Anthropic desde Lembas, el
+-- asistente del módulo. Alimenta los límites diarios de la aplicación y deja
+-- trazabilidad del uso (A.8.15).
+--
+-- NO guarda la pregunta ni la respuesta: en el chat se puede escribir un
+-- hallazgo aunque el panel pida que no, y esta tabla no debe ser una copia de
+-- datos de auditoría fuera de su sitio. Ver Scripts/16_asistente_consulta.sql.
+CREATE TABLE asistente_consulta (
+    id_asistente_consulta  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario             NUMBER         NOT NULL,
+    fecha                  TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    pantalla               VARCHAR2(300),
+    herramientas           VARCHAR2(500),
+    tokens_entrada         NUMBER         DEFAULT 0 NOT NULL,
+    tokens_salida          NUMBER         DEFAULT 0 NOT NULL,
+    resultado              VARCHAR2(20)   NOT NULL,
+    CONSTRAINT fk_asiscons_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+    CONSTRAINT ck_asiscons_resultado
+        CHECK (resultado IN ('RESPONDIDA', 'RECHAZADA', 'ERROR')),
+    CONSTRAINT ck_asiscons_tokens
+        CHECK (tokens_entrada >= 0 AND tokens_salida >= 0)
+);
+
+CREATE INDEX ix_asiscons_usuario_fecha ON asistente_consulta (id_usuario, fecha);
+CREATE INDEX ix_asiscons_fecha ON asistente_consulta (fecha);
+
+-- ── V_AUDITORIA_ENTREVISTADO ─────────────────────────────────────────────
+-- La ÚNICA definición de «quién fue entrevistado y de qué empresa».
+--
+-- Con dos orígenes posibles (cuenta registrada o texto a mano), resolver la
+-- pareja es un NVL sobre un LEFT JOIN. Ese NVL se necesita en cinco sitios
+-- —la consulta de auditorías en PHP y tres procedimientos de 03— y repetirlo
+-- es garantizar que un día uno se quede con el JOIN antiguo y las auditorías
+-- escritas a mano desaparezcan de ese informe sin avisar. La vista lo escribe
+-- una vez; los demás la consultan por id_auditoria.
+--
+-- No es un indicador y por eso es una vista y no un procedimiento: no calcula
+-- nada, solo dice de dónde sale un dato que la tabla guarda en dos columnas.
+CREATE OR REPLACE VIEW v_auditoria_entrevistado AS
+SELECT a.id_auditoria,
+       NVL(dba.nombre,       a.administrador_nombre)       AS nombre_administrador_bd,
+       NVL(dba.organizacion, a.administrador_organizacion) AS organizacion,
+       CASE WHEN a.id_administrador_bd IS NULL THEN 1 ELSE 0 END AS es_manual
+  FROM auditoria a
+  LEFT JOIN usuario dba ON dba.id_usuario = a.id_administrador_bd;
 
 COMMIT;

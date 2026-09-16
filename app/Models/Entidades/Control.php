@@ -14,7 +14,7 @@ namespace App\Models\Entidades;
  */
 final class Control
 {
-    /** Importancia relativa del control (COBIT 4.1, Apéndice II). */
+    /** Importancia relativa del control (criterio de valoración de riesgo de ISO/IEC 27005). */
     public const PESO_ALTA = 'ALTA';
     public const PESO_MEDIA = 'MEDIA';
     public const PESO_BAJA = 'BAJA';

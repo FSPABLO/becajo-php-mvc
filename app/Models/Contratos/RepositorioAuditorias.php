@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models\Contratos;
 
+use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvaluacionObjetivo;
+use App\Models\Entidades\FotoPerfil;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
 use App\Models\Entidades\Usuario;
@@ -48,6 +52,35 @@ interface RepositorioAuditorias
      */
     public function correoRegistrado(string $correo): bool;
 
+    // ── Perfil del usuario ───────────────────────────────────────────────────
+
+    /**
+     * Guarda la descripción que el usuario escribe sobre sí mismo. Vacía se
+     * guarda como NULL: «sin descripción» y «descripción en blanco» no son dos
+     * estados distintos.
+     */
+    public function actualizarDescripcionUsuario(int $idUsuario, ?string $descripcion): void;
+
+    /** La FICHA de la foto de perfil, sin el binario. La pinta cada pantalla. */
+    public function fotoUsuario(int $idUsuario): ?FotoPerfil;
+
+    /**
+     * Los BYTES de la foto. Es la única lectura que toca el BLOB, y existe
+     * separada de la ficha justamente para que nadie lo arrastre sin querer.
+     */
+    public function contenidoFotoUsuario(int $idUsuario): ?string;
+
+    /** Guarda la foto de perfil, sustituyendo la que hubiera. */
+    public function guardarFotoUsuario(
+        int $idUsuario,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void;
+
+    /** Quita la foto de perfil. La cuenta vuelve a mostrarse con sus iniciales. */
+    public function eliminarFotoUsuario(int $idUsuario): void;
+
     /**
      * Crea una cuenta y devuelve su identificador.
      *
@@ -73,19 +106,36 @@ interface RepositorioAuditorias
 
     public function auditoria(int $id): ?Auditoria;
 
-    /** Crea una auditoría EN_PROGRESO y devuelve su identificador. */
+    /**
+     * Crea una auditoría EN_PROGRESO y devuelve su identificador.
+     *
+     * El entrevistado llega de UNA de dos formas, nunca de las dos: con
+     * $idAdministradorBd si es una cuenta registrada, o con el nombre y la
+     * organización escritos a mano si no la tiene. Quien pase las dos —o
+     * ninguna— choca contra ck_auditoria_administrador, que es donde la regla
+     * está escrita de verdad; esta firma solo la deja expresable.
+     *
+     * La norma se fija aquí y actualizarAuditoria() no la cambia: las
+     * respuestas ya guardadas solo valen contra el catálogo de esa norma.
+     */
     public function crearAuditoria(
         int $idAuditor,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
+        string $codigoEstandar = Estandar::ISO,
     ): int;
 
+    /** Reescribe el encabezado, entrevistado incluido. Ver crearAuditoria(). */
     public function actualizarAuditoria(
         int $id,
-        int $idAdministradorBd,
+        ?int $idAdministradorBd,
         string $areaEvaluada,
         string $fecha,
+        ?string $administradorNombre = null,
+        ?string $administradorOrganizacion = null,
     ): void;
 
     /** Marca la auditoría como FINALIZADA y sella la fecha de cierre. */
@@ -116,8 +166,55 @@ interface RepositorioAuditorias
 
     public function eliminarEvaluacion(int $idAuditoria, string $codigoControl): void;
 
+    /**
+     * Capacidades declaradas por objetivo (normas que evalúan por objetivo).
+     *
+     * @return array<int, EvaluacionObjetivo> Indexadas por número de proceso.
+     */
+    public function evaluacionesObjetivo(int $idAuditoria): array;
+
+    /** Inserta o reemplaza la capacidad declarada de un objetivo. */
+    public function guardarEvaluacionObjetivo(EvaluacionObjetivo $evaluacion): void;
+
     /** Cuántos controles llevan estado asignado. Alimenta la barra de avance. */
     public function controlesEvaluados(int $idAuditoria): int;
+
+    // ── Adjunto de la evidencia ──────────────────────────────────────────────
+
+    /**
+     * Las FICHAS de los adjuntos de una auditoría, indexadas por código de
+     * control. Sin el binario: las pintan las 75 tarjetas del panel a la vez.
+     *
+     * @return array<string, ArchivoEvidencia>
+     */
+    public function archivosEvidencia(int $idAuditoria): array;
+
+    /** La ficha de UN adjunto, o null si ese control no tiene ninguno. */
+    public function archivoEvidencia(int $idAuditoria, string $codigoControl): ?ArchivoEvidencia;
+
+    /**
+     * Los BYTES del adjunto. Es la única lectura que toca el BLOB, y existe
+     * separada de la ficha justamente para que nadie lo arrastre sin querer.
+     */
+    public function contenidoArchivoEvidencia(int $idAuditoria, string $codigoControl): ?string;
+
+    /**
+     * Guarda el adjunto de un control, sustituyendo el que hubiera.
+     *
+     * La evaluación tiene que existir ya: el adjunto cuelga de ella por llave
+     * foránea. Quien llama guarda primero la evaluación — en la práctica es la
+     * misma pulsación de «Guardar».
+     */
+    public function guardarArchivoEvidencia(
+        int $idAuditoria,
+        string $codigoControl,
+        string $nombre,
+        string $tipoMime,
+        string $contenido,
+    ): void;
+
+    /** Quita el adjunto de un control. No toca el resto de la evaluación. */
+    public function eliminarArchivoEvidencia(int $idAuditoria, string $codigoControl): void;
 
     // ── Indicadores (pkg_indicadores) ────────────────────────────────────────
 
@@ -223,4 +320,28 @@ interface RepositorioAuditorias
     public function programarReauditoria(int $idRemediacion, int $idAuditoriaReauditoria): void;
 
     public function actualizarEstadoRemediacion(int $idRemediacion, string $estado): void;
+
+    // ── Lembas, el asistente ─────────────────────────────────────────────────
+
+    /**
+     * Preguntas de hoy que llegaron a la API: de un usuario, o de todos si el
+     * id es null. Alimentan los límites diarios de la aplicación.
+     */
+    public function consultasAsistenteHoy(?int $idUsuario = null): int;
+
+    /**
+     * Anota una pregunta que llegó a la API. Solo metadatos: la pregunta y la
+     * respuesta NO se guardan (ver Scripts/16_asistente_consulta.sql).
+     *
+     * @param list<string> $herramientas  Nombres de las herramientas que pidió el modelo.
+     * @param string       $resultado     RESPONDIDA | RECHAZADA | ERROR
+     */
+    public function registrarConsultaAsistente(
+        int $idUsuario,
+        string $pantalla,
+        array $herramientas,
+        int $tokensEntrada,
+        int $tokensSalida,
+        string $resultado,
+    ): void;
 }

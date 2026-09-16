@@ -67,6 +67,25 @@ final class Peticion
     }
 
     /**
+     * ¿La envía un guion por fetch, o el navegador con un formulario?
+     *
+     * Se decide por una cabecera PROPIA y no por Accept ni por el
+     * X-Requested-With de jQuery: Accept lo mandan también los navegadores y
+     * su valor depende del día, mientras que esta cabecera solo puede
+     * ponerla nuestro guion. La diferencia importa porque el mismo POST
+     * responde JSON o redirige según quién pregunte, y equivocarse deja al
+     * auditor mirando un JSON en pantalla.
+     *
+     * Una petición de otro origen no puede añadir cabeceras propias sin que
+     * el navegador pida permiso antes (CORS), así que esto tampoco abre una
+     * puerta: el token CSRF se sigue exigiendo igual.
+     */
+    public function esAsincrona(): bool
+    {
+        return ($_SERVER['HTTP_X_BECAJO_ASINCRONA'] ?? '') === '1';
+    }
+
+    /**
      * Lee una cookie del navegador.
      *
      * Existe por la misma razón que entrada(): que $_COOKIE quede encapsulado
@@ -128,6 +147,120 @@ final class Peticion
     public function marcada(string $clave): bool
     {
         return $this->entrada($clave) !== null;
+    }
+
+    /**
+     * Lee un archivo subido, si de verdad llegó uno.
+     *
+     * Existe por la misma razón que entrada(): que $_FILES quede encapsulado
+     * aquí y no aparezca en un controlador. Devuelve null en los dos casos que
+     * significan "no adjuntó nada" —el campo no viajó, o viajó vacío
+     * (UPLOAD_ERR_NO_FILE)—, porque para quien llama son lo mismo: el auditor
+     * no puso archivo. Un error DISTINTO de ésos sí se devuelve, con su código
+     * dentro, para que la validación pueda decir qué pasó en vez de tratarlo
+     * como "no adjuntó nada" — que es como se pierde un archivo en silencio.
+     *
+     * `es_uploaded_file` es la comprobación que impide que un nombre de ruta
+     * fabricado a mano convierta esto en una lectura de cualquier archivo del
+     * servidor.
+     *
+     * @return array{nombre: string, tipo: string, tamano: int, ruta: string, error: int}|null
+     */
+    public function archivo(string $clave): ?array
+    {
+        $archivo = $_FILES[$clave] ?? null;
+
+        if (!is_array($archivo) || !isset($archivo['error']) || is_array($archivo['error'])) {
+            return null;
+        }
+
+        $error = (int) $archivo['error'];
+
+        if ($error === \UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        $ruta = is_string($archivo['tmp_name'] ?? null) ? $archivo['tmp_name'] : '';
+
+        return [
+            'nombre' => is_string($archivo['name'] ?? null) ? $archivo['name'] : '',
+            // El tipo que declara el navegador NO se usa para decidir nada:
+            // lo escribe el cliente. Viaja solo para poder decirlo en el
+            // mensaje de error; quien manda es finfo sobre el contenido.
+            'tipo'   => is_string($archivo['type'] ?? null) ? $archivo['type'] : '',
+            'tamano' => (int) ($archivo['size'] ?? 0),
+            'ruta'   => ($error === \UPLOAD_ERR_OK && $ruta !== '' && is_uploaded_file($ruta)) ? $ruta : '',
+            'error'  => $error,
+        ];
+    }
+
+    /**
+     * ¿El cuerpo de la petición se pasó de post_max_size?
+     *
+     * Cuando eso ocurre PHP no devuelve un error: descarta el cuerpo entero y
+     * deja $_POST y $_FILES VACÍOS, con la petición pareciendo un POST normal
+     * sin campos. Sin esta comprobación, adjuntar un archivo demasiado grande
+     * se manifiesta como "el token CSRF no coincide" —porque el token también
+     * se perdió— y el auditor lee que su sesión caducó cuando lo que pasó es
+     * que el archivo no cabía.
+     *
+     * Se mira Content-Length y no $_FILES porque a estas alturas ya no queda
+     * rastro del archivo. Si el límite no se puede leer, se responde false: es
+     * preferible seguir al camino normal que inventar un error.
+     */
+    public function excedioLimitePost(): bool
+    {
+        if (!$this->esPost() || $_POST !== [] || $_FILES !== []) {
+            return false;
+        }
+
+        $limite = $this->bytesDeIni('post_max_size');
+        $enviado = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+
+        return $limite > 0 && $enviado > $limite;
+    }
+
+    /**
+     * Tamaño máximo de archivo que este PHP acepta de verdad, en bytes.
+     *
+     * Es el MENOR de upload_max_filesize y post_max_size: de nada sirve
+     * admitir un archivo de 6 MB si el cuerpo entero se corta en 4. Lo consulta
+     * la validación para no prometer en pantalla un tope que el servidor no va
+     * a respetar — ver docker/php.ini.
+     */
+    public function limiteSubidaBytes(): int
+    {
+        $porArchivo = $this->bytesDeIni('upload_max_filesize');
+        $porPeticion = $this->bytesDeIni('post_max_size');
+
+        $topes = array_filter([$porArchivo, $porPeticion], static fn (int $v): bool => $v > 0);
+
+        return $topes === [] ? 0 : min($topes);
+    }
+
+    /**
+     * Traduce un valor de php.ini con sufijo ("6M", "10G") a bytes.
+     *
+     * Los sufijos de PHP son potencias de 1024, no de 1000, y se acumulan: "1G"
+     * es 1024 M, que es 1024 K, que es 1024 bytes. Un valor sin sufijo ya está
+     * en bytes; 0 o vacío significan "sin límite" y se devuelven como 0.
+     */
+    private function bytesDeIni(string $directiva): int
+    {
+        $valor = trim((string) ini_get($directiva));
+
+        if ($valor === '') {
+            return 0;
+        }
+
+        $numero = (int) $valor;
+
+        return match (strtolower(substr($valor, -1))) {
+            'g'     => $numero * 1024 * 1024 * 1024,
+            'm'     => $numero * 1024 * 1024,
+            'k'     => $numero * 1024,
+            default => $numero,
+        };
     }
 
     /** Parámetro tomado de la URL. En la ruta /auditorias/{id}, parametro('id'). */

@@ -47,7 +47,80 @@ final class Contenedor
          * @var list<array<string, mixed>>
          */
         private readonly array $conexiones = [],
+        /**
+         * Muestras del monitor de salud (parte 2, frente 4).
+         *
+         * Entra igual que $conexiones y por la misma razón: hoy es
+         * configuración —un arreglo de muestras de maqueta leído de
+         * config/monitor-mockup.php— y todavía no hay nada que consultar.
+         * Cuando los frentes 2 y 3 estén fusionados, esto pasa a ser un
+         * RepositorioMonitor y solo cambia public/index.php; el controlador y
+         * las vistas del monitor no se enteran.
+         *
+         * @var array<string, mixed>
+         */
+        private readonly array $monitor = [],
+        /**
+         * Configuración de Lembas, el asistente, leída del entorno en
+         * public/index.php (ver .env.ejemplo). Llega como arreglo y no se lee
+         * aquí dentro por lo mismo que las demás: que la única que sabe de
+         * dónde sale la configuración sea public/index.php.
+         *
+         * @var array{clave?: string, modelo?: string, esfuerzo?: string, max_tokens?: int, limite_usuario?: int, limite_total?: int}
+         */
+        private readonly array $asistente = [],
     ) {
+    }
+
+    private ?\App\Models\Asistente\Lembas $lembas = null;
+
+    /**
+     * ¿Existe Lembas?
+     *
+     * Hacen falta las dos cosas: una clave de API y el módulo de auditorías,
+     * porque Lembas responde con los permisos de una sesión y sin Oracle no hay
+     * sesión que valga. Sin cualquiera de las dos, el botón de la esquina no se
+     * pinta — el mismo interruptor que hayMonitor() o hayAuditorias().
+     */
+    public function hayAsistente(): bool
+    {
+        return $this->hayAuditorias() && ($this->asistente['clave'] ?? '') !== '';
+    }
+
+    /**
+     * Lembas, construido al pedirlo.
+     *
+     * Perezoso a propósito: construirlo no llama a la API, pero no hay razón
+     * para armar el cliente en cada página que no pregunta nada.
+     */
+    public function asistente(): \App\Models\Asistente\Lembas
+    {
+        if (!$this->hayAsistente()) {
+            throw new \RuntimeException(
+                'Lembas necesita ANTHROPIC_API_KEY en .env y el módulo de auditorías. '
+                . 'Ver .env.ejemplo.'
+            );
+        }
+
+        return $this->lembas ??= new \App\Models\Asistente\Lembas(
+            new \App\Models\Asistente\ClienteClaude(
+                clave:     (string) $this->asistente['clave'],
+                modelo:    (string) ($this->asistente['modelo'] ?? 'claude-opus-5'),
+                esfuerzo:  (string) ($this->asistente['esfuerzo'] ?? 'low'),
+                maxTokens: (int) ($this->asistente['max_tokens'] ?? 8000),
+            ),
+            $this->auditorias(),
+            $this->instrumento,
+        );
+    }
+
+    /** Los dos límites diarios de la aplicación. */
+    public function limitesAsistente(): array
+    {
+        return [
+            'usuario' => max(0, (int) ($this->asistente['limite_usuario'] ?? 20)),
+            'total'   => max(0, (int) ($this->asistente['limite_total'] ?? 150)),
+        ];
     }
 
     /**
@@ -58,6 +131,28 @@ final class Contenedor
     public function conexiones(): array
     {
         return $this->conexiones;
+    }
+
+    /**
+     * Muestras del monitor de salud.
+     *
+     * @return array<string, mixed>
+     */
+    public function monitor(): array
+    {
+        return $this->monitor;
+    }
+
+    /**
+     * ¿Existe el módulo de monitoreo?
+     *
+     * Lo consultan las vistas para ocultar la entrada del menú en vez de
+     * suponer que la ruta responde — mismo criterio que hayAuditorias() y
+     * hayCatalogo().
+     */
+    public function hayMonitor(): bool
+    {
+        return $this->monitor !== [];
     }
 
     /**

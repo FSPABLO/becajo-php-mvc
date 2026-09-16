@@ -2,10 +2,15 @@
 .env
 .env.local
 config/base_datos.php
+config/monitor.php
 
 # Dependencias
 /vendor/
 /node_modules/
+
+# Cache de PHPUnit
+/.phpunit.cache/
+.phpunit.result.cache
 
 # Basura del sistema operativo
 .DS_Store
@@ -28,3 +33,6 @@ desktop.ini
 # Respaldos de base de datos
 *.dmp
 *.sql.gz
+
+# Visual Studio (configuración local)
+.vs/

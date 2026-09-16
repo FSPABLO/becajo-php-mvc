@@ -24,7 +24,6 @@ declare(strict_types=1);
  * @var string|null $organizacion  La empresa que mira el gráfico ahora mismo.
  * @var string|null $organizacionEscrita  Lo que el auditor tecleó, tal cual.
  * @var bool $organizacionSinCoincidencia  Lo escrito no casó con ninguna.
- * @var list<array<string, mixed>> $conexiones  Bases de datos conectadas.
  * @var list<\App\Models\Entidades\Auditoria> $visibles  La página actual.
  * @var int $encontradas  Auditorías que pasan el filtro (todas las páginas).
  * @var string|null $buscar
@@ -41,7 +40,6 @@ $organizaciones     = $organizaciones ?? [];
 $organizacion       = $organizacion ?? null;
 $organizacionEscrita = $organizacionEscrita ?? null;
 $organizacionSinCoincidencia = $organizacionSinCoincidencia ?? false;
-$conexiones         = $conexiones ?? [];
 $visibles           = $visibles ?? [];
 $encontradas        = $encontradas ?? 0;
 $buscar             = $buscar ?? null;
@@ -159,49 +157,223 @@ $resumen = [
 
     <?php
     /*
-     * Dos pestañas en vez de todo apilado: antes, entrar al panel obligaba a
-     * pasar por la matriz, la evolución y las bases conectadas —contenido de
-     * "¿cómo voy?"— antes de llegar a la tabla que da nombre a la página
-     * ("Mis auditorías"). Con pestañas, quien entra a buscar una auditoría la
-     * tiene sin bajar nada, y quien quiere el resumen lo pide con un clic.
+     * El orden de la pantalla: primero el tablero, después el listado.
      *
-     * "Mis auditorías" nace activa: es lo que el título de la página promete y
-     * lo que trae al auditor de vuelta día a día. "Resumen" es la vista de
-     * "¿cómo voy?" que antes ocupaba toda la mitad de arriba.
+     * Antes eran dos pestañas —«Mis auditorías» y «Resumen»— y el listado
+     * nacía activo. Se retiraron: ninguna de las dos secciones es larga, así
+     * que la pestaña solo cobraba un clic por ver la otra mitad de una página
+     * que cabe entera, y quien llegaba desde un enlace con ?buscar= aterrizaba
+     * en la pestaña de la tabla por casualidad, no por diseño.
      *
-     * Mismo estilo de pestilla que las pestañas principales del instrumento
-     * (herramientas/instrumento-bd.php): relleno cuando está activa, para que
-     * se lea como el nivel más alto de navegación de la pantalla y no se
-     * confunda con las pestañas de dominio (subrayado, un nivel más abajo).
+     * El tablero va arriba porque responde «¿cómo voy?» —la pregunta con la
+     * que se entra al módulo— y se lee de un vistazo. El listado va debajo
+     * porque se RECORRE: filtro, filas y recuento son tres cosas que se leen
+     * en orden, y el que viene a por una auditoría concreta ya sabe bajar.
      */
-    $pestanasPanel = [
-        ['clave' => 'auditorias', 'etiqueta' => $vista->t('eval.mis_auditorias'), 'icono' => 'documento'],
-        ['clave' => 'resumen',    'etiqueta' => $vista->t('eval.pestana_resumen'), 'icono' => 'tablero'],
-    ];
     ?>
-    <div class="mb-6 flex gap-1.5 overflow-x-auto no-imprimir" role="tablist"
-         data-tabs-panel aria-label="<?= e($vista->t('eval.secciones_panel')) ?>">
-        <?php foreach ($pestanasPanel as $indice => $pestana): ?>
-            <?php $activo = $indice === 0; ?>
-            <button type="button"
-                    role="tab"
-                    id="pestana-panel-<?= e($pestana['clave']) ?>"
-                    data-pestana-panel="<?= e($pestana['clave']) ?>"
-                    aria-controls="panel-panel-<?= e($pestana['clave']) ?>"
-                    aria-selected="<?= $activo ? 'true' : 'false' ?>"
-                    tabindex="<?= $activo ? '0' : '-1' ?>"
-                    class="rv-opcion flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold
-                           <?= $activo
-                               ? 'bg-primario text-primario-texto'
-                               : 'bg-superficie text-texto-2 hover:text-texto' ?>">
-                <?= icono($pestana['icono'], 'h-4 w-4') ?>
-                <?= e($pestana['etiqueta']) ?>
-            </button>
-        <?php endforeach; ?>
-    </div>
+    <?php if ($ultima !== null): ?>
+        <?php
+        /*
+         * EL TABLERO ES UNA SOLA FICHA. Eran dos tarjetas —matriz a la
+         * izquierda, evolución a la derecha— cada una con su cabecera, y el
+         * buscador de empresa vivía dentro de la segunda. Eso decía que la
+         * empresa era asunto del gráfico, cuando la pregunta que se responde
+         * arriba es una sola: «¿cómo va ESTA empresa?». La matriz dice cómo
+         * quedó su última auditoría y la curva si va mejorando; son dos
+         * lecturas del mismo sujeto, no dos temas.
+         *
+         * Por eso el buscador sube a la cabecera COMPARTIDA, y por eso hubo
+         * que hacer que gobernara también la matriz —ver panel() en el
+         * controlador—: un filtro en la cabecera de una ficha que solo afecta
+         * a media ficha es peor que no tenerlo.
+         *
+         * Dentro, el reparto 2/5 y 3/5 no es estético: la matriz es cuadrada y
+         * se lee entera de un vistazo, mientras que una serie de tiempo
+         * necesita anchura o las pendientes se exageran. Las separa una línea
+         * y no un hueco entre tarjetas, que es lo que las hace una.
+         */
+        ?>
+        <section class="rv-extruido mb-8 rounded-rv-lg border border-borde bg-superficie">
 
-    <div id="panel-panel-auditorias" role="tabpanel" aria-labelledby="pestana-panel-auditorias"
-         data-panel-panel="auditorias" tabindex="0">
+            <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-borde p-5">
+                <div class="min-w-0">
+                    <h2 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.tablero_titulo')) ?></h2>
+                    <p class="mt-0.5 truncate text-xs text-texto-2">
+                        <?= e($vista->t('eval.auditoria_n', (string) $ultima->id)) ?> ·
+                        <?= e($ultima->organizacion) ?>
+                    </p>
+                </div>
+
+                <?php
+                /*
+                 * El auditor ESCRIBE la empresa que quiere mirar.
+                 *
+                 * Formulario GET, sin guion: cambiar de empresa es una petición
+                 * normal, funciona sin JavaScript y cada empresa queda con su
+                 * propia URL, que se puede guardar y compartir.
+                 *
+                 * Debajo hay DOS ayudas para no tener que recordar el nombre
+                 * exacto, y las dos sobreviven a que el guion no cargue:
+                 *
+                 *   - el <datalist>, que es la sugerencia nativa del navegador
+                 *     y no necesita nada más;
+                 *   - el buscador de coincidencias que monta principal.js
+                 *     encima, que filtra mientras se escribe, se recorre con
+                 *     las flechas y envía al elegir. Cuando ese arranca, QUITA
+                 *     el atributo `list`: dos desplegables a la vez sobre el
+                 *     mismo campo se pisan y el navegador acaba enseñando los
+                 *     dos.
+                 *
+                 * Y el controlador acepta el nombre a medias de todos modos,
+                 * así que teclear «cooperativa» y pulsar basta.
+                 *
+                 * Los otros filtros viajan escondidos: cambiar la empresa del
+                 * tablero no tiene por qué deshacer la búsqueda de la tabla de
+                 * abajo.
+                 */
+                ?>
+                <form method="get" action="<?= e($vista->url('evaluacion')) ?>"
+                      class="w-full shrink-0 sm:w-auto" data-buscador-empresa>
+                    <?php foreach (['buscar' => $buscar, 'orden' => $orden, 'pagina' => (string) $pagina] as $campo => $valor): ?>
+                        <?php if ((string) $valor !== '' && $valor !== null): ?>
+                            <input type="hidden" name="<?= e($campo) ?>" value="<?= e((string) $valor) ?>">
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+
+                    <label for="organizacion" class="block text-xs font-medium text-texto-2">
+                        <?= e($vista->t('eval.empresa_auditada')) ?>
+                    </label>
+
+                    <div class="relative mt-1.5 flex gap-2">
+                        <div class="relative min-w-0 flex-1 sm:w-64">
+                            <input type="text"
+                                   id="organizacion"
+                                   name="organizacion"
+                                   list="empresas-auditadas"
+                                   value="<?= e($organizacion ?? '') ?>"
+                                   placeholder="<?= e($vista->t('eval.empresa_marcador')) ?>"
+                                   autocomplete="off"
+                                   data-buscador-campo
+                                   class="rv-hundido w-full rounded-rv border border-borde bg-fondo px-3 py-2 text-sm text-texto placeholder-texto-2/60 outline-none transition focus:border-primario-hover">
+
+                            <?php
+                            /*
+                             * La variable del bucle NO se llama $empresa: el
+                             * layout recibe un $empresa con los datos de la
+                             * consultora y reutilizar el nombre aquí lo dejaría
+                             * pisado para el resto de la vista.
+                             */
+                            ?>
+                            <datalist id="empresas-auditadas">
+                                <?php foreach ($organizaciones as $candidata): ?>
+                                    <option value="<?= e($candidata) ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+
+                            <?php
+                            /*
+                             * El panel de coincidencias. Nace vacío y OCULTO, y
+                             * lo llena el guion desde este mismo arreglo, que ya
+                             * viaja en el <datalist>: sin guion no hay dos
+                             * copias de la lista en el HTML, y con guion no hay
+                             * que ir a buscarla al servidor en cada tecla — son
+                             * las empresas de este auditor, no un catálogo.
+                             */
+                            ?>
+                            <ul id="empresas-coincidencias" data-buscador-lista hidden
+                                role="listbox" aria-label="<?= e($vista->t('eval.empresa_coincidencias')) ?>"
+                                class="rv-extruido absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-rv border border-borde bg-superficie py-1 text-sm shadow-lg"></ul>
+                        </div>
+
+                        <button type="submit"
+                                class="rv-extruido rv-interactivo shrink-0 self-start rounded-rv bg-primario px-3.5 py-2 text-sm font-semibold text-primario-texto">
+                            <?= e($vista->t('eval.ver_progreso')) ?>
+                        </button>
+                    </div>
+
+                    <?php
+                    /*
+                     * Si lo escrito no casó con ninguna empresa se dice, y se
+                     * dice CUÁL se está mostrando en su lugar. Callarlo dejaría
+                     * al auditor leyendo la curva de otra empresa creyendo que
+                     * es la que pidió.
+                     */
+                    ?>
+                    <?php if ($organizacionSinCoincidencia && $organizacion !== null): ?>
+                        <p class="mt-2 max-w-sm text-xs text-warn">
+                            <?= e($vista->t('eval.empresa_sin_coincidencia', $organizacionEscrita, $organizacion)) ?>
+                        </p>
+                    <?php endif; ?>
+                </form>
+            </header>
+
+            <div class="grid gap-5 p-5 lg:grid-cols-5 lg:gap-0 lg:divide-x lg:divide-borde lg:p-0">
+
+                <div class="lg:col-span-2 lg:p-5">
+                    <header class="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+                        <h3 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.matriz_riesgo')) ?></h3>
+
+                        <?php
+                        /*
+                         * Leyenda de zonas. El punto de color va SIEMPRE con su
+                         * etiqueta al lado: el color solo, en una escala de tres
+                         * tonos que además significan gravedad, no basta.
+                         */
+                        ?>
+                        <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-texto-2">
+                            <?php foreach ([
+                                ['bg-ok',   $vista->t('eval.zona_baja')],
+                                ['bg-warn', $vista->t('eval.zona_media')],
+                                ['bg-bad',  $vista->t('eval.zona_alta')],
+                            ] as [$fondo, $etiqueta]): ?>
+                                <li class="flex items-center gap-1.5">
+                                    <span class="rv-extruido-xs h-2 w-2 rounded-full <?= e($fondo) ?>" aria-hidden="true"></span>
+                                    <?= e($etiqueta) ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </header>
+
+                    <?= $vista->componente('matriz-riesgo', [
+                        'vista'        => $vista,
+                        'evaluaciones' => $evaluacionesUltima,
+                        'compacto'     => true,
+                    ]) ?>
+
+                    <footer class="mt-4 flex items-center justify-between gap-3 text-xs">
+                        <span class="text-texto-2"><?= e($vista->t('eval.eje_matriz_corto')) ?></span>
+                        <a href="<?= e($vista->url('evaluacion/' . $ultima->id . '/resultados')) ?>"
+                           class="shrink-0 font-semibold text-primario hover:underline">
+                            <?= e($vista->t('eval.ver_resultados')) ?> →
+                        </a>
+                    </footer>
+                </div>
+
+                <div class="flex flex-col lg:col-span-3 lg:p-5">
+                    <header class="mb-4">
+                        <h3 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.evolucion_titulo')) ?></h3>
+                        <p class="mt-0.5 text-xs text-texto-2"><?= e($vista->t('eval.evolucion_texto')) ?></p>
+                    </header>
+
+                    <?php
+                    /*
+                     * Las dos mitades tienen la misma altura —la manda la
+                     * matriz, que es cuadrada— y el contenido de esta se centra
+                     * en lo que sobra. Anclado arriba, el estado de un solo mes
+                     * deja media ficha en blanco y parece que falta algo por
+                     * cargar.
+                     */
+                    ?>
+                    <div class="flex flex-1 flex-col justify-center">
+                        <?= $vista->componente('evolucion-mensual', [
+                            'vista'     => $vista,
+                            'evolucion' => $evolucion,
+                        ]) ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <?php if ($auditorias === []): ?>
         <div class="rv-hundido rounded-rv-lg border border-borde bg-superficie px-6 py-16 text-center">
@@ -483,263 +655,4 @@ $resumen = [
 
         </section>
     <?php endif; ?>
-
-    </div>
-
-    <div id="panel-panel-resumen" role="tabpanel" aria-labelledby="pestana-panel-resumen"
-         data-panel-panel="resumen" tabindex="0" hidden>
-
-    <?php if ($ultima !== null): ?>
-        <?php
-        /*
-         * El tablero: el estado de la última auditoría a la izquierda y la
-         * evolución del trabajo a la derecha. Dos preguntas distintas y por eso
-         * dos tarjetas — «¿cómo quedó lo último que hice?» y «¿voy mejorando?».
-         *
-         * El reparto 2/5 y 3/5 no es estético: la matriz es cuadrada y se lee
-         * entera de un vistazo, mientras que una serie de tiempo necesita
-         * anchura o las pendientes se exageran.
-         */
-        ?>
-        <div class="mb-8 grid gap-4 lg:grid-cols-5">
-
-            <section class="rv-extruido rounded-rv-lg border border-borde bg-superficie p-5 lg:col-span-2">
-                <header class="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                    <div class="min-w-0">
-                        <h2 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.matriz_riesgo')) ?></h2>
-                        <p class="mt-0.5 truncate text-xs text-texto-2">
-                            <?= e($vista->t('eval.auditoria_n', (string) $ultima->id)) ?> ·
-                            <?= e($ultima->organizacion) ?>
-                        </p>
-                    </div>
-
-                    <?php
-                    /*
-                     * Leyenda de zonas. El punto de color va SIEMPRE con su
-                     * etiqueta al lado: el color solo, en una escala de tres
-                     * tonos que además significan gravedad, no basta.
-                     */
-                    ?>
-                    <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-texto-2">
-                        <?php foreach ([
-                            ['bg-ok',   $vista->t('eval.zona_baja')],
-                            ['bg-warn', $vista->t('eval.zona_media')],
-                            ['bg-bad',  $vista->t('eval.zona_alta')],
-                        ] as [$fondo, $etiqueta]): ?>
-                            <li class="flex items-center gap-1.5">
-                                <span class="rv-extruido-xs h-2 w-2 rounded-full <?= e($fondo) ?>" aria-hidden="true"></span>
-                                <?= e($etiqueta) ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </header>
-
-                <?= $vista->componente('matriz-riesgo', [
-                    'vista'        => $vista,
-                    'evaluaciones' => $evaluacionesUltima,
-                    'compacto'     => true,
-                ]) ?>
-
-                <footer class="mt-4 flex items-center justify-between gap-3 text-xs">
-                    <span class="text-texto-2"><?= e($vista->t('eval.eje_matriz_corto')) ?></span>
-                    <a href="<?= e($vista->url('evaluacion/' . $ultima->id . '/resultados')) ?>"
-                       class="shrink-0 font-semibold text-primario hover:underline">
-                        <?= e($vista->t('eval.ver_resultados')) ?> →
-                    </a>
-                </footer>
-            </section>
-
-            <section class="rv-extruido flex flex-col rounded-rv-lg border border-borde bg-superficie p-5 lg:col-span-3">
-                <header class="mb-4">
-                    <h2 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.evolucion_titulo')) ?></h2>
-                    <p class="mt-0.5 text-xs text-texto-2"><?= e($vista->t('eval.evolucion_texto')) ?></p>
-
-                    <?php
-                    /*
-                     * El auditor ESCRIBE la empresa cuyo progreso quiere ver.
-                     *
-                     * Formulario GET, sin guion: cambiar de empresa es una
-                     * petición normal, funciona sin JavaScript y cada empresa
-                     * queda con su propia URL, que se puede guardar y compartir.
-                     *
-                     * El <datalist> es la ayuda que hace que un campo libre no
-                     * sea un examen de memoria: el navegador ofrece las empresas
-                     * que este auditor ya evaluó, sin obligar a elegir de la
-                     * lista. Y el controlador acepta el nombre a medias, así que
-                     * «cooperativa» basta.
-                     *
-                     * Los otros filtros viajan escondidos: cambiar la empresa
-                     * del gráfico no tiene por qué deshacer la búsqueda de la
-                     * tabla de abajo.
-                     */
-                    ?>
-                    <form method="get" action="<?= e($vista->url('evaluacion')) ?>" class="mt-3">
-                        <?php foreach (['buscar' => $buscar, 'orden' => $orden, 'pagina' => (string) $pagina] as $campo => $valor): ?>
-                            <?php if ((string) $valor !== '' && $valor !== null): ?>
-                                <input type="hidden" name="<?= e($campo) ?>" value="<?= e((string) $valor) ?>">
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-
-                        <label for="organizacion" class="block text-xs font-medium text-texto-2">
-                            <?= e($vista->t('eval.empresa_auditada')) ?>
-                        </label>
-
-                        <div class="mt-1.5 flex gap-2">
-                            <input type="text"
-                                   id="organizacion"
-                                   name="organizacion"
-                                   list="empresas-auditadas"
-                                   value="<?= e($organizacion ?? '') ?>"
-                                   placeholder="<?= e($vista->t('eval.empresa_marcador')) ?>"
-                                   autocomplete="off"
-                                   class="rv-hundido min-w-0 flex-1 rounded-rv border border-borde bg-fondo px-3 py-2 text-sm text-texto placeholder-texto-2/60 outline-none transition focus:border-primario-hover">
-
-                            <?php
-                            /*
-                             * La variable del bucle NO se llama $empresa: el
-                             * layout recibe un $empresa con los datos de la
-                             * consultora y reutilizar el nombre aquí lo dejaría
-                             * pisado para el resto de la vista.
-                             */
-                            ?>
-                            <datalist id="empresas-auditadas">
-                                <?php foreach ($organizaciones as $candidata): ?>
-                                    <option value="<?= e($candidata) ?>"></option>
-                                <?php endforeach; ?>
-                            </datalist>
-
-                            <button type="submit"
-                                    class="rv-extruido rv-interactivo shrink-0 rounded-rv bg-primario px-3.5 py-2 text-sm font-semibold text-primario-texto">
-                                <?= e($vista->t('eval.ver_progreso')) ?>
-                            </button>
-                        </div>
-
-                        <?php
-                        /*
-                         * Si lo escrito no casó con ninguna empresa se dice, y
-                         * se dice CUÁL se está mostrando en su lugar. Callarlo
-                         * dejaría al auditor leyendo la curva de otra empresa
-                         * creyendo que es la que pidió.
-                         */
-                        ?>
-                        <?php if ($organizacionSinCoincidencia && $organizacion !== null): ?>
-                            <p class="mt-2 text-xs text-warn">
-                                <?= e($vista->t('eval.empresa_sin_coincidencia', $organizacionEscrita, $organizacion)) ?>
-                            </p>
-                        <?php endif; ?>
-                    </form>
-                </header>
-
-                <?php
-                /*
-                 * Las dos tarjetas tienen la misma altura —la manda la matriz,
-                 * que es cuadrada— y el contenido de esta se centra en lo que
-                 * sobra. Anclado arriba, el estado de un solo mes deja media
-                 * tarjeta en blanco y parece que falta algo por cargar.
-                 */
-                ?>
-                <div class="flex flex-1 flex-col justify-center">
-                    <?= $vista->componente('evolucion-mensual', [
-                        'vista'     => $vista,
-                        'evolucion' => $evolucion,
-                    ]) ?>
-                </div>
-            </section>
-        </div>
-    <?php endif; ?>
-
-    <?php
-    /*
-     * Bases de datos conectadas. Antes vivía en una fila 2/5 al lado de la
-     * tabla de auditorías; con la tabla en su propia pestaña, esta tarjeta ya
-     * no necesita repartir el ancho con nada y se queda en una columna angosta
-     * —max-w-md— para que una lista corta no se estire a lo ancho de la
-     * pantalla sin motivo.
-     *
-     * Va FUERA del if de $ultima: lo que hay conectado no depende de que el
-     * auditor haya hecho una auditoría todavía.
-     */
-    ?>
-    <section class="rv-extruido max-w-md rounded-rv-lg border border-borde bg-superficie p-5">
-        <header class="mb-4">
-            <h2 class="text-sm font-semibold text-texto"><?= e($vista->t('bd.titulo')) ?></h2>
-            <p class="mt-0.5 text-xs text-texto-2"><?= e($vista->t('bd.texto')) ?></p>
-        </header>
-
-        <?= $vista->componente('conexiones-bd', [
-            'vista'      => $vista,
-            'conexiones' => $conexiones,
-        ]) ?>
-    </section>
-
-    </div>
 </section>
-
-<script>
-/*
- * Pestañas de nivel de página (Mis auditorías / Resumen) — ver el comentario
- * junto a $pestanasPanel en evaluacion/panel.php.
- *
- * Independiente de assets/js/instrumento.js por la misma razón que en
- * evaluacion/mostrar.php: ese archivo gobierna el instrumento público sin
- * sesión con su propio almacén en localStorage, y no tiene nada que ver con
- * estas dos secciones de un dashboard ya resuelto por el servidor.
- */
-(function () {
-    'use strict';
-
-    var lista = document.querySelector('[data-tabs-panel]');
-
-    if (!lista) {
-        return;
-    }
-
-    var tabs = Array.prototype.slice.call(lista.querySelectorAll('[data-pestana-panel]'));
-    var paneles = Array.prototype.slice.call(document.querySelectorAll('[data-panel-panel]'));
-
-    function activar(clave, moverFoco) {
-        tabs.forEach(function (tab) {
-            var activo = tab.dataset.pestanaPanel === clave;
-
-            tab.setAttribute('aria-selected', String(activo));
-            tab.tabIndex = activo ? 0 : -1;
-            tab.classList.toggle('bg-primario', activo);
-            tab.classList.toggle('text-primario-texto', activo);
-            tab.classList.toggle('bg-superficie', !activo);
-            tab.classList.toggle('text-texto-2', !activo);
-
-            if (activo && moverFoco) {
-                tab.focus();
-            }
-        });
-
-        paneles.forEach(function (panel) {
-            panel.hidden = panel.dataset.panelPanel !== clave;
-        });
-    }
-
-    tabs.forEach(function (tab, indice) {
-        tab.addEventListener('click', function () {
-            activar(tab.dataset.pestanaPanel, false);
-        });
-
-        tab.addEventListener('keydown', function (evento) {
-            var saltos = { ArrowRight: 1, ArrowLeft: -1 };
-            var destino = null;
-
-            if (saltos[evento.key] !== undefined) {
-                destino = (indice + saltos[evento.key] + tabs.length) % tabs.length;
-            } else if (evento.key === 'Home') {
-                destino = 0;
-            } else if (evento.key === 'End') {
-                destino = tabs.length - 1;
-            }
-
-            if (destino !== null) {
-                evento.preventDefault();
-                activar(tabs[destino].dataset.pestanaPanel, true);
-            }
-        });
-    });
-})();
-</script>

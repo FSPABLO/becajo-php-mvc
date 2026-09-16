@@ -5,9 +5,9 @@ declare(strict_types=1);
 /**
  * Mapa de procesos vs C-I-D (punto 17).
  *
- * Reproduce visualmente la tabla del Apéndice II de COBIT 4.1: cada proceso
- * en una fila, y su relación declarada (Primaria / Secundaria / ninguna) con
- * Confidencialidad, Integridad y Disponibilidad en tres columnas.
+ * Reproduce visualmente el criterio de valoración de riesgo de ISO/IEC 27005:
+ * cada proceso en una fila, y su relación declarada (Primaria / Secundaria /
+ * ninguna) con Confidencialidad, Integridad y Disponibilidad en tres columnas.
  *
  * Es la relación DECLARADA a nivel de catálogo (Proceso.relacion_*), no lo
  * que el auditor marcó en una evaluación concreta — ver la nota al pie de
@@ -63,7 +63,7 @@ $etiquetaRelacion = static function (?string $relacion): string {
         <h1 class="rv-titulo text-3xl font-semibold text-texto">Mapa de procesos vs C-I-D</h1>
         <p class="mt-1 text-texto-2">
             Relación declarada de cada proceso con Confidencialidad, Integridad y Disponibilidad —
-            notación de COBIT 4.1 (Apéndice II): <strong>P</strong> = relación primaria,
+            criterio de valoración de riesgo de ISO/IEC 27005: <strong>P</strong> = relación primaria,
             <strong>S</strong> = relación secundaria, sin marca = sin relación relevante.
         </p>
     </header>

@@ -241,8 +241,21 @@ body {
  * El alto lo fija el atributo 'rows' de cada vista, que es donde se sabe
  * cuánto texto se espera. Lo que no cabe se recorre con la barra del propio
  * campo: no se pierde ni se recorta nada.
+ *
+ * EL `html` DE DELANTE NO SOBRA. Preflight, la base de Tailwind, trae su
+ * propio `textarea { resize: vertical }`, y como el CDN inyecta su <style> en
+ * el <head> al ejecutarse, entra DESPUÉS del <link> de esta hoja. A igual
+ * especificidad —las dos son un selector de tipo— gana la última, así que la
+ * regla de arriba se escribió, se documentó y nunca llegó a aplicarse: los
+ * campos de la auditoría se estiraban con el ratón hasta empujar los controles
+ * fuera de la pantalla. Con `html` delante son dos elementos contra uno y ya
+ * no depende del orden en que cargue nada.
+ *
+ * Deja de ganar, a propósito, ante una utilidad `resize-y` escrita a mano en
+ * una vista: eso es una decisión explícita de quien la escribe y debe poder
+ * tomarse. Hoy no hay ninguna, y no debería haberla.
  */
-textarea {
+html textarea {
     resize: none;
 }
 
@@ -266,6 +279,11 @@ textarea {
 /*
  * Cinzel: solo logotipo, portada y encabezado de informe exportado.
  * Nunca en cadenas de más de tres palabras.
+ *
+ * DESVIACIÓN DECLARADA: también el nombre de Lembas en la cabecera de su
+ * panel (partials/panel/asistente), y SOLO ahí. Es una marca de producto con
+ * nombre propio, como el logotipo; en cualquier otro sitio donde aparezca
+ * «Lembas» es texto corrido y va en la voz de interfaz.
  */
 .rv-marca {
     font-family: var(--rv-font-marca);
@@ -483,7 +501,8 @@ textarea {
 @media (min-width: 1024px) {
     .rv-panel-columna {
         padding-left: 264px;
-        transition: padding-left 0.3s ease;
+        /* padding-right es el hueco del asistente; ver «Asistente» más abajo. */
+        transition: padding-left 0.3s ease, padding-right 0.3s ease;
     }
 
     /* Gana a la utilidad lg:translate-x-0 de la barra por especificidad. */
@@ -508,6 +527,228 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
     .rv-panel-columna {
         transition: none;
+    }
+}
+
+/* ── Asistente ───────────────────────────────────────────────────────────
+ *
+ * Dos piezas: el LANZADOR, escondido en la esquina inferior derecha, y el PANEL
+ * que parte la ventana desde la derecha. Marcado en partials/panel/asistente;
+ * comportamiento en assets/js/asistente.js.
+ *
+ * El panel se abre con el mismo reparto que la barra lateral, en espejo:
+ *
+ *   >= lg  data-asistente="abierto" en <html>, que escribe el SERVIDOR desde la
+ *          cookie. La columna del módulo se aparta con padding-right y todo lo
+ *          que va centrado dentro (mx-auto max-w-*) se vuelve a centrar en el
+ *          ancho que queda, sin que ninguna vista se entere.
+ *   <  lg  data-asistente-cajon, solo del guion y sin recordar. No hay ancho
+ *          que partir: el panel cubre la pantalla.
+ *
+ * El ancho del panel y el hueco de la columna salen del MISMO token. Dos cifras
+ * escritas por separado son una rendija, o un solape, el día que cambie una.
+ */
+:root {
+    --rv-asistente-ancho: clamp(22rem, 30vw, 28rem);
+}
+
+.rv-asistente-lanzador {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 55;
+}
+
+/*
+ * Escondido, pero NO fuera del árbol: opacidad 0 y sin puntero. Sigue en el
+ * orden de tabulación y aparece al recibir el foco, porque un botón al que solo
+ * se llega acercando un ratón no existe para quien usa el teclado.
+ *
+ * pointer-events: none mientras no se ve, para que no robe el clic de lo que
+ * haya debajo —el pie de una tarjeta, el botón «Guardar»— a quien no lo busca.
+ * Cuando el cursor se acerca lo recupera antes de llegar encima.
+ */
+.rv-asistente-boton {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-boton,
+.rv-asistente-boton:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transition-duration: 0.25s;
+}
+
+/*
+ * La animación de trazo (dash). El anillo es un círculo con pathLength="100":
+ * con el guion a 100 y el desfase a 100 no se ve nada, y llevar el desfase a 0
+ * lo DIBUJA. Arranca a las doce —de ahí el giro de -90°, que es donde empieza
+ * un círculo de SVG— y va despacio a propósito: 1,8 s de trazo con entrada y
+ * salida suaves, que es lo que lo distingue de un botón que simplemente se
+ * enciende.
+ *
+ * Es una TRANSICIÓN y no un @keyframes: si el cursor se aleja a medio trazo, el
+ * anillo se deshace desde donde iba en vez de saltar al final y borrarse.
+ *
+ * Verde de marca y no oro: el oro es referencia normativa, y esto es una acción.
+ */
+.rv-asistente-anillo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform: rotate(-90deg);
+}
+
+.rv-asistente-anillo circle {
+    fill: none;
+    stroke: rgb(var(--rv-primary));
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 0.5s ease-in;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-anillo circle,
+.rv-asistente-boton:focus-visible .rv-asistente-anillo circle {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.8s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/*
+ * El núcleo entra cuando el trazo ya va por un tercio: primero se dibuja el
+ * contorno y después aparece lo que contiene. El retraso va SOLO en el estado
+ * visible, así que al irse el núcleo se apaga sin esperar.
+ */
+.rv-asistente-nucleo {
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
+}
+
+.rv-asistente-lanzador[data-cerca] .rv-asistente-nucleo,
+.rv-asistente-boton:focus-visible .rv-asistente-nucleo {
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity 0.5s ease 0.6s,
+        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s,
+        background-color 0.2s ease;
+}
+
+/* Dos clases y una pseudoclase: gana a la utilidad bg-primario del marcado. */
+.rv-asistente-boton:hover .rv-asistente-nucleo {
+    background-color: rgb(var(--rv-primary-hover));
+}
+
+/*
+ * Sin cursor no hay nada que acercar. En una pantalla táctil el lanzador está
+ * siempre a la vista y dibujado, o no habría forma de abrir el asistente.
+ */
+@media (hover: none) {
+    .rv-asistente-boton {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .rv-asistente-anillo circle {
+        stroke-dashoffset: 0;
+    }
+
+    .rv-asistente-nucleo {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/*
+ * Con movimiento reducido se va el TRAZO, no el lanzador: el anillo nace
+ * dibujado y el botón solo funde. La regla general recorta las duraciones pero
+ * no los RETRASOS, así que sin anular el del núcleo este aparecería de golpe
+ * medio segundo tarde.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rv-asistente-boton {
+        transition-duration: 0.2s !important;
+    }
+
+    .rv-asistente-anillo circle {
+        stroke-dashoffset: 0;
+    }
+
+    .rv-asistente-nucleo {
+        opacity: 1;
+        transform: none;
+        transition-delay: 0s !important;
+    }
+}
+
+/*
+ * El panel. Cerrado sale por la derecha y además queda en visibility: hidden,
+ * que lo saca del orden de tabulación y del árbol de accesibilidad: un panel
+ * fuera de la pantalla al que se llega tabulando es un foco perdido. La
+ * visibilidad cambia al FINAL de la salida y al PRINCIPIO de la entrada, para
+ * que el deslizamiento se vea en los dos sentidos.
+ *
+ * El ancho va aquí y no como utilidad (inset-0 / lg:w-*) por lo mismo que la
+ * barra lateral: el CDN inyecta Tailwind después de esta hoja y ganaría el
+ * empate. En angosto se ancla a los DOS bordes y no lleva width: 100%, que
+ * sumado al borde izquierdo se sale un par de píxeles por la derecha.
+ */
+.rv-asistente-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+[data-asistente-cajon] .rv-asistente-panel {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.3s ease, visibility 0s;
+}
+
+/* Con el panel abierto el lanzador sobra: quien lo cierra es su propio botón. */
+[data-asistente-cajon] .rv-asistente-lanzador {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .rv-asistente-panel {
+        left: auto;
+        width: var(--rv-asistente-ancho);
+    }
+
+    [data-asistente='abierto'] .rv-asistente-panel {
+        transform: none;
+        visibility: visible;
+        transition: transform 0.3s ease, visibility 0s;
+    }
+
+    [data-asistente='abierto'] .rv-asistente-lanzador {
+        display: none;
+    }
+
+    /* La ventana se parte: la columna se aparta y su contenido se recentra. */
+    [data-asistente='abierto'] .rv-panel-columna {
+        padding-right: var(--rv-asistente-ancho);
+    }
+
+    /* El aviso flotante sigue al borde del contenido y no se posa sobre el panel. */
+    [data-asistente='abierto'] .rv-aviso-flotante {
+        right: calc(var(--rv-asistente-ancho) + 1.5rem);
     }
 }
 
@@ -637,6 +878,198 @@ textarea {
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
+}
+
+/* ── Aviso flotante (destello de confirmación) ───────────────────────────
+ * Confirmación de una acción que YA se hizo: se asoma abajo a la derecha,
+ * se queda dos segundos y se va. No lleva botón de cerrar porque no pide
+ * nada — cerrar algo que se cierra solo es una tarea inventada.
+ *
+ * Solo los AVISOS. Un error se queda en su franja de siempre, arriba del
+ * contenido: un mensaje que dice qué salió mal y desaparece a los dos
+ * segundos es un mensaje que se puede perder, y el que lo pierde no tiene
+ * cómo recuperarlo.
+ *
+ * Abajo a la derecha, y no arriba: arriba taparía la barra del módulo y la
+ * miga de pan justo cuando el auditor acaba de navegar. Aquí solo pisa el
+ * pie de página.
+ *
+ * Es `fixed`, así que no importa en qué punto del documento se pinte —el
+ * parcial va donde iba la franja—, mientras ningún ancestro tenga
+ * `transform` o `filter`: eso convertiría a este elemento en fijo RESPECTO
+ * A ÉL y lo dejaría a media página. En el módulo el único transformado es
+ * la barra lateral, que ya es `fixed` y no envuelve al contenido.
+ */
+.rv-aviso-flotante {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 60;
+    max-width: min(26rem, calc(100vw - 3rem));
+    animation: rv-aviso-asoma 2.6s ease forwards;
+}
+
+/*
+ * 2,6 s en total: 0,2 de entrada, DOS de lectura y 0,4 de salida. Lo que se
+ * pidió son los dos segundos visibles, no los dos de reloj — un aviso que
+ * empieza a irse mientras aparece no llega a leerse.
+ *
+ * Termina en `visibility: hidden` y no solo en opacidad 0: un elemento
+ * transparente sigue estando ahí, y este flota sobre el pie de página.
+ */
+@keyframes rv-aviso-asoma {
+    0%   { opacity: 0; transform: translateY(0.75rem); }
+    8%   { opacity: 1; transform: translateY(0); }
+    85%  { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0.5rem); visibility: hidden; }
+}
+
+/*
+ * Con movimiento reducido se va el DESPLAZAMIENTO, no el aviso. La regla
+ * general de más abajo recorta toda animación a 0,01 ms, que aquí dejaría
+ * un parpadeo ilegible; esta la recupera —gana por selector de clase frente
+ * al universal— y cambia el fotograma por uno que solo funde.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rv-aviso-flotante {
+        animation-name: rv-aviso-funde !important;
+        animation-duration: 2.6s !important;
+    }
+}
+
+@keyframes rv-aviso-funde {
+    0%   { opacity: 0; }
+    8%   { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+/* ── Conmutador de dos paneles excluyentes ───────────────────────────────
+ * Dos radios eligen cuál de dos grupos de campos se rellena. Hoy lo usa el
+ * encabezado de una auditoría: el entrevistado sale de una cuenta registrada
+ * o se escribe a mano, nunca de los dos sitios.
+ *
+ * Está aquí y no resuelto con `peer-checked/nombre:` de Tailwind por una
+ * razón práctica: Tailwind entra por CDN y esa variante con nombre depende de
+ * la versión que el CDN sirva ese día. Si un día sirviera una anterior, los
+ * dos paneles se verían a la vez y el formulario mandaría los dos lados sin
+ * que nadie se enterase hasta leer la fila en la base. Con selectores de
+ * hermano escritos a mano, el conmutador no depende de nada.
+ *
+ * Sin CSS —o con la hoja sin cargar— los dos paneles quedan visibles y el
+ * formulario sigue funcionando: los radios son radios, y quien decide qué
+ * lado se lee es el servidor. Se degrada a más largo, no a roto.
+ */
+.rv-conmutador > input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.rv-conmutador > [data-panel] {
+    display: none;
+}
+
+.rv-conmutador > input[value="registrado"]:checked ~ [data-panel="registrado"] {
+    display: block;
+}
+
+.rv-conmutador > input[value="manual"]:checked ~ [data-panel="manual"] {
+    display: grid;
+}
+
+/* La pastilla activa: relleno primario y su tinta, como el orden de la tabla
+ * de auditorías o la página actual de la paginación. */
+.rv-conmutador > input[value="registrado"]:checked ~ * [data-para="registrado"],
+.rv-conmutador > input[value="manual"]:checked ~ * [data-para="manual"] {
+    background-color: rgb(var(--rv-primary));
+    color: rgb(var(--rv-on-primary));
+}
+
+/* El foco se ve en la pastilla, que es lo que se ve; el radio está oculto. */
+.rv-conmutador > input[value="registrado"]:focus-visible ~ * [data-para="registrado"],
+.rv-conmutador > input[value="manual"]:focus-visible ~ * [data-para="manual"] {
+    outline: 2px solid rgb(var(--rv-primary));
+    outline-offset: 2px;
+}
+/* ── Zona de soltar archivos ─────────────────────────────────────────────
+ *
+ * El campo de archivo del adjunto de la evidencia. La pieza ES un <label> que
+ * envuelve al <input type="file">, y eso resuelve casi todo sin una línea de
+ * guion: pulsar en cualquier punto de la zona abre el diálogo del sistema
+ * porque eso es lo que hace un label sobre su campo, y el campo sigue en el
+ * árbol de accesibilidad y en el orden de tabulación (va en .sr-only, que lo
+ * oculta a la vista pero no al lector de pantalla ni al teclado).
+ *
+ * Lo ÚNICO que necesita JavaScript es soltar de verdad: arrastrar un archivo
+ * hasta un elemento y que acabe dentro del input no tiene equivalente en HTML.
+ * Sin guion la zona se queda como un botón grande que abre el diálogo — más
+ * discreta, pero entera.
+ *
+ * HUNDIDA, como el resto de campos: en el sistema visual el inset significa
+ * «aquí se recibe algo», y no hay nada que lo signifique más literalmente que
+ * esto. El borde va PUNTEADO y no continuo porque es el gesto con el que se
+ * dibuja un contenedor que espera contenido; un borde macizo lo leería como
+ * una caja ya cerrada.
+ */
+.rv-soltar {
+    display: block;
+    cursor: pointer;
+    border: 2px dashed rgb(var(--rv-border));
+    border-radius: var(--rv-radio-lg);
+    background-color: rgb(var(--rv-surface));
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/*
+ * El foco se ve en la ZONA porque el campo está oculto. Sin esto, tabular
+ * hasta aquí no dibujaría nada en ninguna parte: el anillo iría a un elemento
+ * de un píxel recortado. Es el mismo oro del foco general (§10).
+ */
+.rv-soltar:hover,
+.rv-soltar:focus-within {
+    border-color: rgb(var(--rv-primary));
+    background-color: rgb(var(--rv-primary) / 0.05);
+}
+
+.rv-soltar:focus-within {
+    outline: 2px solid var(--rv-gold-hex);
+    outline-offset: 3px;
+}
+
+/*
+ * Mientras el archivo sobrevuela la zona. Lo pone y lo quita el guion, que es
+ * quien puede saberlo; el estilo vive aquí para que siga los tokens como todo
+ * lo demás. Más marcado que el hover a propósito: hay que poder distinguir
+ * «el cursor pasa por encima» de «suelte aquí y se queda».
+ */
+.rv-soltar[data-soltando] {
+    border-color: rgb(var(--rv-primary));
+    border-style: solid;
+    background-color: rgb(var(--rv-primary) / 0.12);
+}
+
+/*
+ * Elegido un archivo, la zona deja de pedirlo y dice cuál es. El intercambio se
+ * hace por CSS a partir de UN atributo que pone el guion, y no ocultando y
+ * mostrando trozos desde JavaScript: así el estado de partida —sin guion, o
+ * antes de que arranque— es el correcto sin que nadie tenga que ponerlo, y no
+ * hay forma de dejar los dos textos visibles a la vez.
+ */
+.rv-soltar [data-soltar-nombre] {
+    display: none;
+}
+
+.rv-soltar[data-elegido] [data-soltar-nombre] {
+    display: block;
+}
+
+.rv-soltar[data-elegido] [data-soltar-pedir] {
+    display: none;
 }
 
 /* ── Formato numérico español (§2.3): 68,0 % ─────────────────────────── */
@@ -1020,5 +1453,16 @@ textarea {
     .rv-nm-sombra,
     .rv-nm-realce {
         flood-opacity: 0 !important;
+    }
+
+    /* El asistente es una herramienta de pantalla: no se imprime, y la página
+       impresa recupera el ancho que le cedía. */
+    .rv-asistente-lanzador,
+    .rv-asistente-panel {
+        display: none !important;
+    }
+
+    [data-asistente] .rv-panel-columna {
+        padding-right: 0 !important;
     }
 }

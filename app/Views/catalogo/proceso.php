@@ -92,7 +92,7 @@ $opcionesDominio = array_map(
         <div class="rounded-rv-lg border border-borde p-4">
             <p class="text-sm font-semibold text-texto">Relación con C-I-D</p>
             <p class="mt-1 text-xs text-texto-2">
-                Notación de COBIT 4.1 (Apéndice II): Primaria (P) o Secundaria (S).
+                Criterio de valoración de riesgo de ISO/IEC 27005: Primaria (P) o Secundaria (S).
                 Declarativo — no reemplaza lo que el auditor marca en cada evaluación.
             </p>
 

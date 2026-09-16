@@ -3,238 +3,224 @@
 declare(strict_types=1);
 
 /**
- * Comparación histórica: una tarjeta por organización auditada.
+ * Comparar histórico — la ANTESALA: elegir la empresa.
  *
- * Cada tarjeta responde tres preguntas distintas y por eso lleva tres piezas,
- * en orden de lo general a lo detallado:
+ * Esta pantalla no compara nada todavía: LISTA. Antes apilaba el histórico
+ * completo de cada empresa una debajo de otra, dos gráficos y una tabla por
+ * tarjeta, así que para mirar una había que pasar por todas. Ahora cada empresa
+ * es una tarjeta que cabe de un vistazo —zona, último índice, hacia dónde va— y
+ * el histórico entero vive en /evaluacion/comparar/{empresa}.
  *
- *   ¿va mejorando?      — columnas del índice general, una por auditoría.
- *   ¿en qué está floja? — perfil de madurez por dominio de la última auditoría.
- *   ¿cuánto, exactamente, y desde cuándo? — la tabla del desglose.
+ * La distribución —panel de facetas, recuento, orden y rejilla— es
+ * components/rejilla-facetas, la misma que la antesala del monitor. Aquí solo
+ * queda lo que es de ESTA pantalla: los rótulos de sus grupos y cómo se pinta la
+ * ficha de una empresa.
  *
  * @var \App\Core\Vista $vista
  * @var \App\Models\Entidades\Usuario $usuario
- * @var array<string, list<\App\Models\Entidades\Auditoria>> $porOrganizacion
- * @var array<string, list<array<string, mixed>>> $historicoPorOrganizacion
+ * @var int $total  Empresas de la cartera, sin filtrar.
+ * @var list<array<string, mixed>> $empresas  Las que pasan el filtro, ordenadas.
+ * @var array<string, array<string, int>> $facetas  Grupo → valor → cuántas.
+ * @var array<string, list<string>> $seleccion  Grupo → valores marcados.
+ * @var string|null $buscar
+ * @var string $orden
+ * @var list<string> $ordenes  El primero es el de por defecto.
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 
 /*
- * Los ids de <defs> de un SVG son globales al documento: dos gráficos con el
- * mismo id de filtro se pisan y el segundo se queda sin relieve. Cada tarjeta
- * numera los suyos con este contador en vez de con el nombre de la
- * organización, que trae acentos y espacios.
+ * Los rótulos viven en la VISTA y los valores en el controlador. Un filtro que
+ * viaja en la URL como «VERDE» no puede llamarse «Riesgo bajo» en el enlace: la
+ * dirección dejaría de valer al cambiar de idioma.
  */
-$nTarjeta = 0;
-?>
-<?php
+$titulosGrupo = [
+    'zona'      => $vista->t('eval.filtro_zona'),
+    'estado'    => $vista->t('eval.filtro_estado'),
+    'historico' => $vista->t('eval.filtro_historico'),
+    'area'      => $vista->t('eval.area_evaluada'),
+];
+
+$etiquetasValor = [
+    'zona' => [
+        'VERDE'    => $vista->t('eval.zona_baja'),
+        'AMARILLO' => $vista->t('eval.zona_media'),
+        'ROJO'     => $vista->t('eval.zona_alta'),
+        'SIN'      => $vista->t('eval.filtro_sin_indice'),
+    ],
+    'estado' => [
+        'EN_PROGRESO' => $vista->t('eval.filtro_con_progreso'),
+        'FINALIZADA'  => $vista->t('eval.filtro_finalizadas'),
+    ],
+    'historico' => [
+        'TENDENCIA' => $vista->t('eval.filtro_con_tendencia'),
+        'UNICA'     => $vista->t('eval.filtro_una_sola'),
+    ],
+];
+
+// 'area' no aparece arriba a propósito: sus valores SON el dato que escribió el
+// auditor, y traducirlos sería inventarle un nombre a su área evaluada.
+$etiquetaValor = static fn (string $grupo, string $valor): string
+    => $etiquetasValor[$grupo][$valor] ?? $valor;
+
+$etiquetasOrden = [
+    'reciente'   => $vista->t('eval.orden_empresa_reciente'),
+    'auditorias' => $vista->t('eval.orden_empresa_auditorias'),
+    'indice'     => $vista->t('eval.orden_empresa_indice'),
+    'nombre'     => $vista->t('eval.orden_empresa_nombre'),
+];
+
 /*
- * Sin encabezado propio ni enlace de vuelta: los dos los pone ya el marco del
- * módulo. La miga de pan de la barra superior dice «Auditorías / Comparar
- * histórico» —que es el título y el camino de regreso a la vez— y la barra
- * lateral tiene «Mis auditorías» iluminado. Repetirlos aquí gastaba el primer
- * tercio de la pantalla en decir tres veces dónde está uno, y empujaba hacia
- * abajo lo único que esta vista aporta, que son las tarjetas.
+ * Zona → tono de pill(). Es la misma correspondencia de evaluacion/resultados:
+ * la zona de fn_zona tiene UN color en todo el producto, y el color nunca viaja
+ * solo —pill() obliga a llevar ícono y etiqueta—.
  */
+$tonoZona = ['VERDE' => 'ok', 'AMARILLO' => 'warn', 'ROJO' => 'bad'];
+
+$etiquetaZona = [
+    'VERDE'    => $vista->t('eval.zona_baja'),
+    'AMARILLO' => $vista->t('eval.zona_media'),
+    'ROJO'     => $vista->t('eval.zona_alta'),
+];
+
+$cifra = static fn (?float $v): string => $v === null ? '—' : number_format($v, 2, ',', '');
+
+/*
+ * LA FICHA ES MINIMALISTA a propósito, y lo que deja fuera lo deja fuera por
+ * una razón: la variación, la miniatura de la serie y las áreas evaluadas son
+ * lectura de histórico, y el histórico está a un clic. Aquí solo se ELIGE, y
+ * para elegir bastan cuatro cosas: de quién es la carpeta, cuánta hay dentro,
+ * cuándo se tocó por última vez y en qué estado quedó.
+ *
+ * El parámetro NO se llama $empresa: ese nombre es el de la consultora —el marco
+ * del módulo recibe sus datos y los pinta en el encabezado y el pie—, y
+ * reutilizarlo lo dejaría pisado para el resto de la vista.
+ */
+$dibujarFicha = static function (array $ficha) use ($vista, $cifra, $tonoZona, $etiquetaZona): string {
+    $ultima = $ficha['ultima'];
+    $indice = $ficha['indice'];
+    $zona   = $ficha['zona'];
+
+    ob_start();
+    ?>
+    <?php
+    /*
+     * La tarjeta ENTERA es el enlace, y por eso no hay nada más que se pueda
+     * pulsar dentro: un enlace dentro de otro no es HTML válido y el navegador
+     * lo desarma por su cuenta. Sin un «ver histórico» al pie: lo que anuncia
+     * que se pulsa es el relieve de .rv-interactivo, y el nombre ya es el texto
+     * del enlace.
+     */
+    ?>
+    <a href="<?= e($vista->url('evaluacion/comparar/' . rawurlencode((string) $ficha['organizacion']))) ?>"
+       class="rv-extruido rv-interactivo flex h-full flex-col items-center gap-2 rounded-rv-lg border border-borde bg-superficie px-5 py-6 text-center">
+
+        <?php
+        /*
+         * El ícono es IDENTIDAD, no estado: va en el acento y es el mismo en las
+         * tres zonas. Si se tiñera de verde o de rojo sería un segundo canal de
+         * estado sin etiqueta al lado, que es justo lo que pill() existe para
+         * evitar.
+         */
+        ?>
+        <?= icono('expediente', 'h-12 w-12 shrink-0 text-primario') ?>
+
+        <h3 class="rv-titulo mt-1 text-base font-semibold leading-tight text-texto">
+            <?= e((string) $ficha['organizacion']) ?>
+        </h3>
+
+        <p class="text-xs text-texto-2">
+            <?= e($vista->t(
+                'eval.auditorias_de_organizacion',
+                (string) $ficha['total'],
+                $ultima->fecha,
+            )) ?>
+        </p>
+
+        <?php
+        /*
+         * El pie va anclado abajo (mt-auto) para que el estado quede a la misma
+         * altura en toda la fila: con nombres de una y de tres líneas, las
+         * pastillas bailaban.
+         *
+         * La cifra sola sería un número sin nombre, así que lleva su rótulo en
+         * sr-only: lo que se ahorra es TINTA, no el dato — quien no ve la ficha
+         * oye «último índice 0,70».
+         */
+        ?>
+        <div class="mt-auto flex flex-wrap items-center justify-center gap-2 pt-3">
+            <span class="tabular text-sm font-semibold <?= $indice === null ? 'text-na' : 'text-texto' ?>">
+                <span class="sr-only"><?= e($vista->t('eval.ultimo_indice')) ?>:</span>
+                <?= e($cifra($indice)) ?>
+            </span>
+            <?= pill(
+                $zona === null ? 'na' : ($tonoZona[$zona] ?? 'na'),
+                $zona === null
+                    ? $vista->t('eval.filtro_sin_indice')
+                    : ($etiquetaZona[$zona] ?? $zona),
+            ) ?>
+        </div>
+    </a>
+    <?php
+
+    return (string) ob_get_clean();
+};
 ?>
 <section class="mx-auto w-full max-w-6xl px-6 py-8 lg:px-8">
 
+    <?php
+    /*
+     * La pantalla no tiene encabezado VISIBLE: el distintivo de norma y la
+     * frase de entrada se retiraron por decisión de diseño. La miga de la barra
+     * superior ya dice «Auditorías / Comparar histórico», y qué hacer aquí lo
+     * dicen el panel de filtros y las fichas sin necesidad de anunciarlo.
+     *
+     * El <h1> NO desaparece: se queda en sr-only, igual que en «Mis
+     * auditorías». La miga es navegación, no encabezado, y sin el h1 quien no
+     * ve el diseño se queda sin saber en qué página entró —y se rompe el salto
+     * por encabezados—. No cuesta un píxel.
+     */
+    ?>
+    <h1 class="sr-only"><?= e($vista->t('eval.comparar_historico')) ?></h1>
+
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
-    <?php if ($porOrganizacion === []): ?>
+    <?php if ($total === 0): ?>
+        <?php
+        /*
+         * Sin cartera no se pinta el panel de filtros: filtrar una lista vacía
+         * no lleva a ninguna parte, y cuatro grupos de casillas en cero se leen
+         * como un error de carga. Lo que hace falta aquí es la primera
+         * auditoría.
+         */
+        ?>
         <div class="rv-hundido rounded-rv-lg border border-borde bg-superficie px-6 py-16 text-center">
             <p class="font-semibold text-texto"><?= e($vista->t('eval.sin_auditorias_comparar')) ?></p>
+            <a href="<?= e($vista->url('evaluacion/nueva')) ?>"
+               class="rv-extruido rv-interactivo mt-6 inline-block rounded-rv bg-primario px-4 py-2.5 text-sm font-semibold text-primario-texto">
+                <?= e($vista->t('eval.nueva_auditoria')) ?>
+            </a>
         </div>
     <?php else: ?>
-        <div class="space-y-8">
-            <?php foreach ($porOrganizacion as $organizacion => $grupo): ?>
-                <?php
-                $nTarjeta++;
-
-                $ultimaAuditoria = $grupo[count($grupo) - 1];
-
-                /*
-                 * Desglose por dominio, reagrupado por AUDITORÍA. El
-                 * procedimiento devuelve una fila por (auditoría, dominio) y ya
-                 * ordenada por fecha, así que el orden de aparición es el orden
-                 * cronológico: se conserva tal cual en vez de reordenar por la
-                 * cadena de la fecha, que según el formato con que la sirva
-                 * Oracle puede no ordenar como fecha.
-                 *
-                 * Los dominios se indexan por CLAVE y se ordenan por la columna
-                 * 'orden' del instrumento, no por la clave ni por el orden en
-                 * que aparezcan: los ejes del radar y las filas de la tabla
-                 * tienen que salir en la misma sucesión para todas las
-                 * organizaciones de la página, y alfabéticamente 'dato'
-                 * (Protección) caería entre Continuidad y Gobierno.
-                 */
-                $historico = $historicoPorOrganizacion[$organizacion] ?? [];
-                $columnas  = [];
-                $dominios  = [];
-
-                foreach ($historico as $fila) {
-                    $idAuditoria = (string) $fila['id_auditoria'];
-                    $clave       = (string) $fila['clave_dominio'];
-
-                    $dominios[$clave] = [
-                        'nombre' => (string) $fila['dominio'],
-                        // Con un procedimiento sin recargar la columna no llega
-                        // y todos empatan a cero; la ordenación es estable, así
-                        // que en ese caso se queda el orden del cursor.
-                        'orden'  => (int) ($fila['orden_dominio'] ?? 0),
-                    ];
-
-                    $columnas[$idAuditoria]['fecha']            = (string) $fila['fecha'];
-                    $columnas[$idAuditoria]['valores'][$clave]  = (float) $fila['madurez_promedio'];
-                }
-
-                uasort($dominios, static fn (array $a, array $b): int
-                    => [$a['orden'], $a['nombre']] <=> [$b['orden'], $b['nombre']]);
-
-                /*
-                 * Ejes del radar: los dominios que evaluó la ÚLTIMA auditoría
-                 * con desglose. Los que esa auditoría no tocó no entran —no
-                 * valen cero— y por eso el radar puede tener menos ejes que
-                 * filas la tabla.
-                 */
-                $ultimaColumna = $columnas === [] ? null : $columnas[array_key_last($columnas)];
-                $ejesRadar     = [];
-
-                foreach ($dominios as $clave => $dominio) {
-                    if ($ultimaColumna !== null && isset($ultimaColumna['valores'][$clave])) {
-                        $ejesRadar[] = [
-                            'dominio' => $dominio['nombre'],
-                            'madurez' => $ultimaColumna['valores'][$clave],
-                        ];
-                    }
-                }
-                ?>
-                <article class="rv-extruido rounded-rv-lg border border-borde bg-superficie p-5 sm:p-6">
-
-                    <header class="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                        <div class="min-w-0">
-                            <h2 class="rv-titulo text-xl font-semibold text-texto"><?= e($organizacion) ?></h2>
-                            <p class="mt-0.5 text-xs text-texto-2">
-                                <?= e($vista->t(
-                                    'eval.auditorias_de_organizacion',
-                                    (string) count($grupo),
-                                    $ultimaAuditoria->fecha,
-                                )) ?>
-                            </p>
-                        </div>
-
-                        <?php
-                        /*
-                         * Un solo enlace en la cabecera, a la auditoría más
-                         * reciente. Las anteriores se alcanzan desde su propia
-                         * columna del gráfico, que es donde el lector ya está
-                         * mirando cuando quiere abrir una.
-                         */
-                        ?>
-                        <a href="<?= e($vista->url('evaluacion/' . $ultimaAuditoria->id . '/resultados')) ?>"
-                           class="shrink-0 text-sm font-medium text-primario hover:underline">
-                            <?= e($vista->t('eval.ver_resultados')) ?> →
-                        </a>
-                    </header>
-
-                    <?php if (count($grupo) < 2): ?>
-                        <p class="rv-hundido rv-relieve-sutil mb-5 rounded-rv border border-borde bg-fondo px-4 py-3 text-sm text-texto-2">
-                            <?= e($vista->t('eval.solo_una_auditoria')) ?>
-                        </p>
-                    <?php endif; ?>
-
-                    <?php
-                    /*
-                     * El reparto 3/2 no es estético: la serie de tiempo
-                     * necesita anchura o las pendientes se exageran, mientras
-                     * que el radar es cuadrado y se lee entero de un vistazo.
-                     * Es el mismo criterio del tablero de entrada.
-                     */
-                    ?>
-                    <div class="grid gap-6 lg:grid-cols-5">
-
-                        <section class="lg:col-span-3">
-                            <h3 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.indice_por_auditoria')) ?></h3>
-                            <p class="mb-3 mt-0.5 text-xs text-texto-2"><?= e($vista->t('eval.indice_por_auditoria_texto')) ?></p>
-
-                            <?= $vista->componente('indice-historico', [
-                                'vista'      => $vista,
-                                'auditorias' => $grupo,
-                                'id'         => (string) $nTarjeta,
-                            ]) ?>
-                        </section>
-
-                        <section class="lg:col-span-2">
-                            <h3 class="text-sm font-semibold text-texto"><?= e($vista->t('eval.perfil_dominios')) ?></h3>
-                            <p class="mb-3 mt-0.5 text-xs text-texto-2">
-                                <?= e($ultimaColumna === null
-                                    ? $vista->t('eval.sin_desglose_dominio')
-                                    : $vista->t('eval.perfil_dominios_texto', $ultimaColumna['fecha'])) ?>
-                            </p>
-
-                            <?php if ($ultimaColumna !== null): ?>
-                                <?= $vista->componente('radar-dominios', [
-                                    'vista' => $vista,
-                                    'ejes'  => $ejesRadar,
-                                    'fecha' => $ultimaColumna['fecha'],
-                                    'id'    => (string) $nTarjeta,
-                                ]) ?>
-                            <?php endif; ?>
-                        </section>
-                    </div>
-
-                    <?php if ($columnas !== []): ?>
-                        <?php
-                        /*
-                         * El desglose completo. En tabla densa el relieve no
-                         * debe competir con la lectura del dato: va hundido y
-                         * en el nivel sutil, y las filas no llevan sombra
-                         * propia (.rv-tabla en rivendel.css).
-                         */
-                        ?>
-                        <section class="mt-6">
-                            <h3 class="mb-2 text-sm font-semibold text-texto">
-                                <?= e($vista->t('eval.madurez_por_dominio')) ?>
-                            </h3>
-
-                            <div class="rv-hundido rv-relieve-sutil overflow-x-auto rounded-rv border border-borde bg-fondo px-4 py-3">
-                                <table class="rv-tabla w-full text-left text-xs">
-                                    <thead class="text-texto-2">
-                                        <tr>
-                                            <th class="py-1.5 pr-3 font-semibold"><?= e($vista->t('eval.dominio')) ?></th>
-                                            <?php foreach ($columnas as $columna): ?>
-                                                <th class="px-2 py-1.5 text-center font-semibold tabular whitespace-nowrap">
-                                                    <?= e($columna['fecha']) ?>
-                                                </th>
-                                            <?php endforeach; ?>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-borde">
-                                        <?php foreach ($dominios as $clave => $dominio): ?>
-                                            <tr>
-                                                <td class="py-1.5 pr-3 font-medium text-texto whitespace-nowrap">
-                                                    <span class="inline-flex items-center gap-1.5">
-                                                        <?= iconoDominio((string) $clave, 'h-4 w-4 shrink-0') ?>
-                                                        <?= e($dominio['nombre']) ?>
-                                                    </span>
-                                                </td>
-                                                <?php foreach ($columnas as $columna): ?>
-                                                    <?php $valor = $columna['valores'][$clave] ?? null; ?>
-                                                    <td class="px-2 py-1.5 text-center tabular text-texto-2">
-                                                        <?= $valor === null ? '—' : e(number_format($valor, 2, ',', '')) ?>
-                                                    </td>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <p class="mt-2 text-xs text-texto-2"><?= e($vista->t('eval.madurez_por_dominio_pie')) ?></p>
-                        </section>
-                    <?php endif; ?>
-                </article>
-            <?php endforeach; ?>
-        </div>
+        <?= $vista->componente('rejilla-facetas', [
+            'vista'            => $vista,
+            'accion'           => 'evaluacion/comparar',
+            'buscar'           => $buscar,
+            'etiquetaBusqueda' => $vista->t('eval.buscar_etiqueta'),
+            'marcadorBusqueda' => $vista->t('eval.buscar_marcador'),
+            'facetas'          => $facetas,
+            'seleccion'        => $seleccion,
+            'titulosGrupo'     => $titulosGrupo,
+            'etiquetaValor'    => $etiquetaValor,
+            // Las áreas son el único grupo que crece con la cartera.
+            'gruposCerrados'   => ['area'],
+            'orden'            => $orden,
+            'ordenes'          => $ordenes,
+            'etiquetasOrden'   => $etiquetasOrden,
+            'recuento'         => $vista->t('eval.empresas_rango', (string) count($empresas), (string) $total),
+            'filas'            => $empresas,
+            'ficha'            => $dibujarFicha,
+            'vacioTitulo'      => $vista->t('eval.sin_empresas_filtro'),
+            'vacioTexto'       => $vista->t('eval.sin_empresas_filtro_texto'),
+        ]) ?>
     <?php endif; ?>
 </section>

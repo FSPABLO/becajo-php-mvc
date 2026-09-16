@@ -1,0 +1,23 @@
+{
+    "name": "grupo4/becajo-php-mvc",
+    "description": "Instrumento de auditoria de bases de datos y monitor de salud (EIF402, Universidad Nacional).",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Pruebas\\": "tests/"
+        }
+    },
+    "scripts": {
+        "pruebas": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

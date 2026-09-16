@@ -26,9 +26,82 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/01_esqu
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/02_datos_semilla.sql
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql
 
+# Base que YA existe y tiene datos: migración del entrevistado escrito a mano
+# (agrega dos columnas a AUDITORIA, crea la vista y la restricción). Es
+# re-ejecutable. Después hay que recargar 03, que ahora consulta la vista.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/10_administrador_manual.sql
+
+# Base que YA existe: adjunto de la evidencia (imagen o PDF). Crea la tabla
+# EVIDENCIA_ARCHIVO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
+# Hace falta ADEMÁS reconstruir la imagen web: docker/php.ini sube los topes de
+# subida de PHP, que de fábrica cortan en 2 MB.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evidencia_archivo.sql
+
+# Base que YA existe: perfil del usuario. Agrega usuario.descripcion y crea
+# USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
+
+# Multinorma (ISO/IEC 27002 + COBIT 2019). Obligatorio: la aplicación filtra el
+# catálogo por auditoria.codigo_estandar. Re-ejecutable; retira Essential Eight
+# si quedó de la versión anterior. EXIGE recargar 03 después, y 05 y 12
+# dependen de él.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql
+# Captura propia de COBIT (capacidad por objetivo, logro N/P/L/F). 03 la exige.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql
+
+# Monitor de salud (parte 2, frente 2): esquema, catálogo semilla y
+# procedimientos de pkg_monitor. instalar.sh ya los carga —detrás de un gate
+# que comprueba INSTANCIA, igual que hace con 01/02—, así que a mano solo
+# hacen falta en una base que ya tenía la parte 1 y le falta esto. NO son
+# re-ejecutables (CREATE TABLE sin guarda): correrlos dos veces falla.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/06_esquema_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/09_procedimientos_monitor.sql
+
+# Cuenta de solo lectura del agente de monitoreo (C##RIVENDEL_MONITOR). Es el
+# ÚNICO script que instalar.sh NO ejecuta: corre como SYS contra el servicio
+# FREE (no FREEPDB1, no becajo) porque crea un usuario común de nivel CDB, y
+# NO es re-ejecutable (CREATE USER sin guarda). Sin este paso el contenedor
+# "monitor" de docker-compose.yml no tiene con qué conectarse y bin/monitor.php
+# falla en cada ciclo — ver la nota en la sección "Monitor de salud" abajo.
+docker exec -i becajo-oracle sqlplus -s sys/oracle@FREE as sysdba < Scripts/00_usuario_monitor.sql
+
+# Base que YA existe: registro de consultas a Lembas (límites diarios y
+# trazabilidad). Crea ASISTENTE_CONSULTA. Re-ejecutable, no toca ninguna fila
+# y no exige recargar 03. Sin esta tabla, la primera pregunta a Lembas falla.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/16_asistente_consulta.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
+
+# Opcional: deja UNA auditoría con sus 75 controles respondidos, para que los
+# resultados, la matriz y el reporte tengan algo que enseñar. El id va en el
+# DEFINE de la cabecera. Re-ejecutable y NO pisa nada: solo toca los controles
+# que siguen sin responder. La semilla del generador es el id, así que la misma
+# auditoría da siempre las mismas respuestas, y dos auditorías distintas salen
+# con repartos distintos. No finaliza la auditoría.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/12_datos_demo_auditoria.sql
+
+# Y para apuntarlo a otra auditoría sin editar el archivo (el script entra por
+# la entrada estándar, así que «@script 161» no le llega):
+sed 's/^DEFINE id_auditoria = .*/DEFINE id_auditoria = 161/' Scripts/12_datos_demo_auditoria.sql \
+  | docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1
+
+# Su gemelo para COBIT 2019: una auditoría COBIT no se llena con el 12, porque
+# la nota no vive en la práctica (grado N/P/L/F) sino en el OBJETIVO (capacidad
+# 0-5, en evaluacion_objetivo, que es de donde salen los indicadores). La
+# capacidad se DERIVA de las prácticas de ese objetivo, no de un dado. Mismo
+# DEFINE, misma re-ejecutabilidad y tampoco finaliza nada; si se apunta a una
+# auditoría ISO, avisa y no toca nada.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/17_datos_demo_cobit.sql
+
+# Lembas: la clave de la API y sus límites viven en .env (fuera de git y de la
+# imagen). Compose lo lee al levantar y pasa las variables SOLO a "web"; PHP las
+# lee con getenv(). Tras editar .env hay que recrear el contenedor.
+cp .env.ejemplo .env
+docker compose up -d web
 
 # SQL interactivo
 docker exec -it becajo-oracle sqlplus becajo/becajo@FREEPDB1
@@ -44,11 +117,450 @@ Cuentas de prueba tras cargar `02_datos_semilla.sql`:
 `ana.alfaro@consultora.example / auditor2026` (AUDITOR) y
 `luis.rojas@empresa.example / adminbd2026` (ADMIN_BD).
 
-**No hay Composer, npm, PHPUnit ni linter.** El autoloader está escrito a mano
-(`app/Core/Autoloader.php`) y Tailwind se carga por CDN desde
-`app/Views/partials/head.php`. No introduzca dependencias externas sin
-acordarlo: la ausencia de `vendor/` es deliberada. Verificar un cambio
-significa abrirlo en el navegador.
+**No hay npm ni linter, y Composer entra con una sola excepción acordada.** El
+autoloader está escrito a mano (`app/Core/Autoloader.php`) y Tailwind se carga
+por CDN desde `app/Views/partials/head.php`. No introduzca dependencias
+externas sin acordarlo.
+
+La excepción, y su alcance exacto (frente 3 del plan de la parte 2):
+**Composer y PHPUnit solo como dependencia de desarrollo, solo para las pruebas
+del motor de cálculo.** `composer.json` declara PHPUnit en `require-dev` y nada
+en `require` salvo la versión de PHP. El autoloader propio sigue siendo el de la
+aplicación —`tests/bootstrap.php` lo registra a mano, y `App\` no aparece en el
+`autoload` de Composer— de modo que **`vendor/` no participa en ninguna petición
+web**, no viaja dentro de la imagen (`.dockerignore`) y no se versiona
+(`.gitignore`); `composer.json` y `composer.lock` sí se versionan.
+
+```bash
+composer install          # solo la primera vez, trae PHPUnit
+vendor/bin/phpunit        # las pruebas del motor de cálculo
+```
+
+Las pruebas cubren **únicamente `app/Models/Calculo`**, que es aritmética pura y
+no necesita Oracle ni Apache. Para todo lo demás —controladores, vistas,
+repositorios— verificar un cambio sigue significando abrirlo en el navegador.
+
+## Motor de cálculo del monitor (frente 3, parte 2)
+
+`app/Models/Calculo/` convierte lecturas crudas de Oracle en salud, estado y
+alertas. Es el único código del proyecto con pruebas automatizadas, porque es
+el único que es aritmética pura: no toca la base, no abre sesión y no pinta
+nada.
+
+| Clase | Responsabilidad |
+|---|---|
+| `Escala` | Las cinco bandas, la normalización por tramos y los topes del eslabón más débil. Sin estado: umbrales y techo entran por parámetro. |
+| `MotorCalculoSalud` | De muestra cruda a muestra evaluada: mediciones, cobertura, componentes e ISBD. |
+| `LineaBase` | Media y desviación sobre la ventana móvil, para el comportamiento anómalo de A.8.16. |
+| `MotorAlertas` | Decide qué alertas abrir, escalar y cerrar, y las agrupa en episodios. **No escribe**: devuelve decisiones. |
+| `MotorCalculoReal` | Raíz de composición. El único sitio donde se eligen piso, ventana e histéresis. Es la clase que busca `bin/monitor.php`. |
+
+Reglas que conviene no romper al tocar este código:
+
+- **Sin dato no es cero** (invariante 3). Una métrica no recolectada sale del
+  denominador y se anota en `fuera` con su motivo. Publicar un 0 convertiría
+  una falla de recolección en una falla de la base.
+- **Las compuertas no promedian.** Abierta no aporta un 100; cerrada manda el
+  componente a 0 y CRÍTICO sin promediar.
+- **El tope se aplica en los dos niveles** y lo que viaja hacia arriba es el
+  valor ya topado: el ISBD promedia publicados, nunca brutos.
+- **La banda se decide sobre la salud sin redondear.** En las fronteras, el
+  valor publicado y el exacto caen en bandas distintas.
+- **Los umbrales son dato, no código** (B-8). Igual que las precedencias: se
+  leen del repositorio, no de una constante.
+- Una tasa o una identidad que todavía no puede derivar **persiste igual su
+  valor de continuidad**, con `estado` nulo. Sin eso la métrica queda atascada
+  en su primera muestra para siempre.
+
+Dos huecos conocidos, ambos pendientes de decisión con el frente 2:
+`medicion.valor_acumulado` es una sola columna y `M-PRO-04` necesita dos, así
+que su tasa no sobrevive a la persistencia; y `medicion` no guarda el estado
+observado, por lo que la histéresis solo sostiene los empeoramientos y publica
+las mejoras de inmediato.
+
+## Monitor de salud (frente 4, parte 2) — HOY ES UNA MAQUETA
+
+`/monitoreo` ya se puede abrir desde la barra lateral («Monitoreo → Monitor»,
+ícono `corazon`), pero **todas sus cifras son sintéticas**: salen de
+`config/monitor-mockup.php` y no de ninguna instancia real. No consulta Oracle,
+no usa `RepositorioMonitorOracle` ni `RepositorioMonitorArreglo` (frente 2) y no
+invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el frente
+4 pudiera avanzar sin esperar a que los otros dos se fusionaran.
+
+- **La pantalla NO avisa de que es una maqueta.** El banner de arriba
+  (`components/monitor-aviso`, clave `mon.aviso_maqueta`) se retiró, se repuso
+  y se volvió a retirar por decisión del equipo (2026-09): el componente y sus
+  dos claves ya no existen, y está en el historial de git si hay que reponerlo.
+  Se quitó de la antesala Y de la consola a la vez, porque las dos compartían
+  la pieza justamente para no decir cosas distintas. Solo queda la nota al pie
+  del gráfico de memoria, que dice que esa lectura la genera el navegador.
+
+  **Tenga presente lo que eso implica**: el §12 del plan pide que ninguna cifra
+  de salud se muestre sin poder saber si viene de una toma real, y esa casilla
+  ya no se puede marcar mirando la pantalla. Cuatro instancias con nombres
+  verosímiles y cifras coherentes se leen como datos de verdad. **Antes de
+  enseñar esto como producto —defensa, demo a un tercero— hay que decirlo de
+  viva voz, reponer el aviso o conectar la fuente real.**
+- **La antigüedad del dato vuelve a estar visible en la consola.** El §9 la
+  pide SIEMPRE a la vista («última muestra hace 4 min»); la antesala ya la
+  llevaba por ficha, pero se había retirado de la consola junto con el
+  recuento de instancias conectadas y la cobertura (esos dos siguen fuera,
+  item 5 solo repuso la antigüedad). Va en la cabecera de la consola, junto a
+  clave · motor · entorno (`panel.php`, con el mismo `$antiguedad` que ya
+  usaba el bloque de «último valor conocido»): se pinta siempre, esté la
+  instancia caída, incompleta o publicando ISBD, porque `hace_min` describe
+  la TOMA y no el índice —se conoce incluso cuando no hay ISBD que mostrar.
+  El bloque de «último valor conocido» de una instancia caída sigue
+  mostrando la suya también, sobre el último dato bueno que tiene, que es
+  una antigüedad distinta de la de la cabecera.
+- **La costura está en `public/index.php`**, en el `require` de
+  `config/monitor-mockup.php` que entra al `Contenedor` como arreglo —igual que
+  `config/conexiones.php` y por la misma razón: hoy es configuración, no hay nada
+  que consultar. `Contenedor::hayMonitor()` es el interruptor: sin el archivo, la
+  entrada del menú no se pinta.
+
+  **Corrección (verificado, no es un cambio de una línea):** cambiar solo este
+  `require` por `RepositorioMonitorOracle`/`RepositorioMonitorArreglo` ROMPE
+  `MonitorController` de inmediato. El controlador lee claves del arreglo del
+  mockup (`$instancia['muestra']`, `$instancia['hace_min']`,
+  `$instancia['catalogo_procesos']`, `$medicion['s']`, `$medicion['compuerta']`…)
+  que no existen en las entidades reales (`Muestra`, `Medicion`, `Instancia` de
+  `RepositorioMonitor` tienen otros campos: `isbd`, `isbdBruto`, `estado`,
+  `valorCrudo`, `valorNormalizado`…). Peor aún, `procesosPorIndice()` depende de
+  `catalogo_procesos` —qué procesos evalúa cada índice IP/IM/IA, con descripción y
+  recomendación—, una estructura que **no existe en ningún lado del repositorio
+  real**: es una invención exclusiva del mockup. `Contenedor::monitor()` además
+  está tipado a `array`, no al contrato. Conectar esto de verdad es un rediseño
+  de `MonitorController` y las vistas, no un cambio de una línea — decisión
+  tomada explícitamente en 2026-09: por ahora se sigue trabajando con el mockup.
+- **El archivo guarda muestras YA EVALUADAS**, no lecturas crudas. Es la frontera
+  del contrato: el recolector no razona, el motor no consulta y **la vista no
+  calcula**. Si alguna vista del monitor empieza a normalizar, promediar o decidir
+  bandas, la separación se rompió.
+- La aritmética de la maqueta está comprobada contra el §5.4: `PRODCORE1` da
+  ISBD bruto 70,4 y publicado 40,0 · CRÍTICO. Las cuatro instancias existen para
+  demostrar un caso límite cada una (eslabón más débil, tope de SALUDABLE,
+  cobertura bajo el piso, instancia caída). **Si toca esos números, recompruebe
+  que siguen cuadrando** — es fácil dejar una maqueta que enseña aritmética falsa.
+- **El agente (`bin/monitor.php`, contenedor `becajo-monitor`) corre, pero no
+  produce nada.** Verificado contra un `docker compose up` real: lleva semanas en
+  pausa permanente, sin una sola muestra útil. Dos causas, ninguna relacionada con
+  la maqueta de arriba:
+  1. `Scripts/00_usuario_monitor.sql` (la cuenta `C##RIVENDEL_MONITOR` que
+     `docker-compose.yml` ya pide por variable de entorno) nunca se ejecuta en
+     ningún flujo automatizado — ver la sección Comandos.
+  2. El cortacircuitos de `enPausaPorFallosConsecutivos()` (§8.2 del plan) no
+     tiene reintento ni expiración: una vez que ve 3 muestras `FALLIDA`
+     seguidas en el historial, salta el ciclo para siempre, porque nunca vuelve
+     a intentar y por lo tanto nunca puede grabar el éxito que rompería la
+     racha. Las 3 fallidas que tiene hoy son de antes de que `MotorCalculoReal`
+     existiera («Motor de cálculo no disponible todavía»), así que quedó
+     bloqueado desde antes de que el frente 3 terminara su parte, sin que nada
+     lo haya notado.
+
+  Ninguno de los dos se corrigió: es trabajo de conectar el monitor de verdad,
+  que se decidió posponer.
+
+### La antesala: `/monitoreo`
+
+**El monitor son DOS pantallas, como el histórico de auditorías.** `/monitoreo`
+(`MonitorController::cartera()`, vista `monitoreo/cartera`) lista una FICHA por
+base de datos vigilada, y la consola de una sola vive en `/monitoreo/{clave}`.
+Antes `/monitoreo` abría la consola de la primera instancia y el único índice
+de la cartera era el desplegable de su cabecera: con cuatro bases alcanzaba, con
+veinte elegir a ciegas no es elegir.
+
+- **Misma distribución que `/evaluacion/comparar`, por construcción**: las dos
+  usan `components/rejilla-facetas`, `App\Core\Facetas` y `assets/js/facetas.js`
+  (ver «Comparar histórico» más abajo). Grupos: estado de salud (las cinco
+  bandas + «Sin índice», de mejor a peor), conexión (las tres palabras del
+  selector), entorno y motor — estos dos son datos y se ofrecen por frecuencia;
+  el motor nace plegado. El buscador mira clave, motor y entorno.
+- **La ficha**: ícono `base-datos` —tapa y tres anillos, exclusivo de esta
+  antesala igual que `expediente` lo es del histórico; no es `disco`, que tiene
+  dos y ya significa almacenamiento y catálogo—, clave, motor · entorno,
+  «Última muestra hace N min» y el estado: cifra del ISBD + `pill()` de su
+  banda, o guion + `pill('na')` con el motivo (muestra incompleta / sin
+  conexión). **La antigüedad vuelve a estar a la vista aquí** (§9), aunque la
+  consola la retirara.
+- **El orden por defecto es «Más urgente»** (`MonitorController::gravedad()`):
+  caída, luego sin índice, luego de CRÍTICO a ÓPTIMO. Es el mismo orden del
+  desplegable de la consola, que antes lo calculaba la vista — subió al
+  controlador para que rejilla y desplegable no pudieran poner primero bases
+  distintas.
+- **Una clave que no existe vuelve a `/monitoreo` con un destello** que no
+  repite la clave (es texto de la URL). Antes se pintaba la consola de la
+  primera instancia con un aviso encima, que es enseñar una base que nadie pidió.
+- Va en `max-w-6xl`, como el histórico: la excepción de ancho completo es de la
+  consola, que tiene una matriz que recortar; una rejilla de tres fichas no.
+
+### La pantalla: consola de operación
+
+`/monitoreo/{clave}` se ordena como un panel de guardia y no como un listado:
+primero el instrumento, después la evidencia. Lleva `migaPagina` con la clave
+(«Monitoreo / Monitor / PRODCORE1»), así que «Monitor» enlaza de vuelta a la
+antesala.
+
+0. **A todo el ancho, y sin rótulo.** La consola es la única pantalla del
+   módulo sin el `max-w-6xl` que centra a las demás: su tabla es una matriz de
+   seis columnas de métrica y con la caja centrada pedía barra horizontal
+   habiendo sitio de sobra a los lados. Lo que NO se estira es la prosa —los
+   párrafos llevan `max-w-[95ch]`—, porque una línea de doscientos caracteres
+   deja de leerse por mucho ancho que haya. El `<h1>` sigue existiendo en
+   `sr-only` aunque no haya título visible: sin él, quien no ve la pantalla se
+   queda sin saber en qué página está.
+1. **Selector de base de datos** (`monitor-selector`). Es el ATAJO para saltar
+   de una base a otra sin volver a la antesala, no el índice de la cartera. Es un `<details>` con
+   enlaces, no un `<select>`: elegir una instancia NAVEGA a `/monitoreo/{clave}`,
+   así que las opciones son enlaces de verdad —se abren en otra pestaña, se
+   comparten, funcionan sin JavaScript— y el navegador no permite marcado dentro
+   de `<option>`, que es donde van el punto y el estado. **El punto verde/gris
+   nunca va solo**: cada fila lleva además la palabra («Conectada», «Muestra
+   incompleta», «Sin conexión»). Verde es «la muestra se completó»; gris cubre a
+   la vez desconectada e incompleta, porque en los dos casos la respuesta a
+   «¿puedo fiarme de la cifra?» es la misma. A su derecha no queda nada: el
+   recuento de conectadas, la antigüedad y la cobertura se retiraron.
+2. **La consola**: medidor radial y las tres fichas arriba, y a todo su ancho la
+   tabla de procesos, la tendencia del ISBD y el gráfico de memoria. **No tiene
+   relleno propio**: se delimita
+   solo con `border-oro/45`, el mismo token con el que el plan destacado de la
+   portada se distingue del gratuito. Sus tarjetas quedan en `bg-superficie`
+   sobre el pergamino de la página, igual que las de fuera.
+
+   **DESVIACIÓN DECLARADA (§5.2)**, la misma que ya estaba anotada en
+   `home/secciones/planes.php`: el oro está reservado a la referencia normativa
+   y aquí el borde es ORNAMENTO. Dentro de la consola el oro sigue significando
+   lo que debe —los códigos de métrica en `.rv-id`—, y no compite con el borde
+   porque uno es contorno y el otro es tinta.
+
+   Sin relleno tampoco lleva relieve: el neumorfismo extruye una SUPERFICIE, y
+   una sombra alrededor de algo transparente se lee como un error de pintado.
+
+   Este bloque pasó por dos lienzos antes: región `.rv-oscuro` y después tinte
+   dorado (`bg-oro-tinte`). Los dos se retiraron por decisión de diseño del
+   frente 4, y en ninguno de los dos cambios hubo que tocar nada de dentro —
+   todo usa tokens, que era exactamente lo que el sistema prometía.
+**La ficha de CONSULTAS está de vuelta**, aparte de la rejilla de IP/IM/IA y no
+dentro de ella —`MonitorController`/`panel.php` extraen el componente
+`CONSULTAS` de `$sel['componentes']` por separado de `$indices` (que sigue
+filtrando por `en_isbd`), y la vista la pinta como una ficha propia debajo de
+las tres, con su cifra, su `pill()` de banda y una frase fija explicando por
+qué no cuenta: «se recolecta y se muestra, pero no suma en la fórmula del
+ISBD». No es un botón ni una pestaña —no hay tabla de procesos que desplegar,
+`catalogo_procesos` no tiene grupo CONSULTAS— para no leerse como un cuarto
+índice. Con esto el criterio del §12 «el componente CONSULTAS se recolecta, se
+muestra y alerta, y no aparece en la fórmula del ISBD» ya demuestra sus dos
+primeras partes mirando la pantalla; la tercera (alerta) sigue pendiente, es
+el episodio de alerta que se retiró aparte y no se toca en esta ronda.
+
+Las dos series de tiempo van **LADO A LADO** dentro de la consola: tendencia del
+ISBD a la izquierda, memoria de la base a la derecha. Son la misma instancia
+mirada en el tiempo, y en paralelo se comparan de un vistazo —¿el índice cae
+cuando la memoria sube?—, que es la pregunta con la que se abren las dos. Por
+debajo de `lg` se apilan, y **si no hay memoria la tendencia ocupa las dos
+columnas** (`lg:col-span-2`): media tarjeta con el otro medio en blanco se lee
+como algo que no cargó, y es justo el caso de una instancia caída.
+
+Estuvieron apiladas antes, y la memoria incluso fuera de la consola, porque en
+media columna salía espachurrada. Eso se arregló donde tocaba: **cada componente
+declara su propio `$ancho` de `viewBox`** —470×200 la tendencia, 480×250 la
+memoria— en vez de los 700×220 y 700×250 de cuando ocupaban el ancho entero. La
+proporción es lo que hay que tocar al cambiarlas de sitio: un lienzo de 3,2:1 en
+media columna se aplasta, y como **el texto de un SVG escala con el dibujo**, un
+rótulo de `font-size` 10 que a todo el ancho se veía a 15 px cae a 9 —de ahí que
+los rótulos de eje de los dos gráficos estén hoy en 11—. Si alguna vuelve al
+ancho completo, hay que devolver el `$ancho` largo; si no, se verá gigante.
+
+**El episodio de alerta se retiró** de la pantalla (vista y datos de maqueta).
+Era lo único que demostraba el §6.1 del plan —agrupar alertas concurrentes en un
+episodio y señalar la causa probable por precedencia— y uno de los criterios de
+aceptación del §12. Si hay que reponerlo, está en el historial de git; el modelo
+de datos del frente 2 y `MotorAlertas` del frente 3 siguen contemplándolo.
+
+**La tabla de mediciones se retiró.** Listaba las quince métricas en filas
+planas; ahora esa información vive por PROCESO dentro de cada índice, que es la
+unidad sobre la que un DBA actúa —una métrica no se arregla, un proceso sí—.
+
+**La ficha «Por qué vale eso» está de vuelta** (la que iba bajo el medidor
+cuando el ISBD publicado no era el promedio: dice cuánto daba el promedio
+ponderado y qué componente lo topaba, con `mon.causa` / `mon.tope_explicacion`).
+Se había retirado y con ella se perdía la única explicación en pantalla del
+eslabón más débil sobre la instancia mirada —**el invariante 5, «el ISBD nunca
+se muestra sin causa»**—; se repuso como un tercer `elseif` junto a los de
+instancia caída y cobertura bajo el piso (mismo bloque, misma columna bajo el
+medidor), condicionado a `$sel['tope'] !== null`: la maqueta solo pobla ese
+campo cuando el tope realmente actuó, así que si el ISBD ya era el promedio la
+ficha no se pinta, en vez de repetir la fórmula que ya cuenta `mon.formula` en
+la ayuda de la consola. El dato viajaba siempre en la muestra (`isbd_bruto` y
+`tope`) y `monitor-indices` sigue marcando el tope de cada componente; lo que
+faltaba era pintarlo. Bajo el medidor quedan entonces TRES casos mutuamente
+excluyentes: instancia caída, cobertura bajo el piso, o ISBD topado con causa.
+
+Sobre los gráficos:
+
+- **El medidor** (`monitor-medidor`) lleva muescas en 40, 60, 75 y 90 para que el
+  arco diga en qué banda cae y no solo «más o menos lleno». El carril va en gris
+  neutro y **no** en `--rv-border`: en la región oscura ese token es un verde
+  apagado y un carril verdoso detrás de un arco corto se lee como un segundo dato.
+  Sin índice publicado el anillo adelgaza a un punteado fino y pierde las muescas
+  — un anillo grueso a trazos parece un engranaje, y uno grueso lleno de gris
+  parece un valor bajo.
+
+  **El carril va HUNDIDO y el arco EXTRUIDO**: un canal labrado en el pergamino
+  con el índice apoyado dentro. Es la misma pareja de gestos que el producto usa
+  fuera del SVG —y un carril es, literalmente, la pista de una barra de progreso,
+  que es de lo que habla `.rv-hundido`—, así que separa escala y dato por una vía
+  más que el color. El nivel es `rv-relieve-pleno`, el mismo de la tarjeta y el
+  botón de «nueva auditoría»: en el nivel por defecto, calibrado para una tarjeta
+  de 18 px de desenfoque, un anillo de catorce de grueso apenas insinúa el surco.
+  El arco lleva algo MENOS de desplazamiento que el surco a propósito —se apoya
+  dentro del canal, no flota sobre él—, y subirlo más lo despega: en la región
+  oscura, donde el realce es blanco al 5 %, la sombra clara deja de leerse como
+  canto y pasa a leerse como halo. **Sin índice el anillo va PLANO**: el relieve
+  extruye una superficie, y labrar un canal donde no hay nada que alojar promete
+  una pieza que falta.
+- **La tendencia** (`monitor-tendencia`) son 40 lecturas. **Las mesetas planas
+  sobre 40, 60, 75 y 90 no son un fallo del dibujo**: son las lecturas en las que
+  mordió el eslabón más débil, y por eso caen clavadas en la frontera de la banda.
+  El rombo las marca, y es una FORMA además de un color, para que se distingan en
+  gris y con daltonismo. Un hueco (lectura sin índice) parte la línea y se señala
+  con una vertical punteada: unir por encima dibujaría una pendiente que nadie
+  midió.
+
+- **El gráfico de memoria** (`monitor-memoria`) añade una lectura cada treinta
+  segundos. Eje vertical: megabytes ocupados. Eje horizontal: **tiempo activo de
+  la instancia**, no la hora del reloj. Los dos umbrales se declaran en porcentaje
+  —así se pactan— pero se dibujan en MB contra el mismo techo que la serie: en su
+  propia escala habrían metido un segundo eje vertical por la puerta de atrás.
+  Van rotulados sobre el dibujo, no en una leyenda aparte.
+
+  El primer fotograma lo pinta el servidor, entero. `monitor.js` solo desplaza la
+  ventana: si el guion no carga, el gráfico se ve igual pero quieto. **La lectura
+  nueva la inventa el navegador** mientras esto sea una maqueta, y la tarjeta lo
+  dice; la geometría se la pasa PHP por `data-*` para que no haya dos copias de
+  los mismos números.
+
+### Fichas de índice, semáforo y tabla de procesos
+
+- **La tabla de procesos es una MATRIZ**: cada métrica del índice tiene su propia
+  columna y su código vive en la cabecera, no repetido en cada celda. Así
+  `M-PRO-03` se recorre de arriba abajo y se ve de un vistazo que vale 1,00 en
+  los cinco procesos de fondo. **Celda en blanco y celda con guion no son lo
+  mismo**: en blanco = esa métrica no evalúa a ese proceso; guion = sí lo evalúa
+  y no se pudo recolectar. Es el invariante 3 llevado a la cuadrícula.
+- **El ancho se reparte en dos mitades con necesidades opuestas.** A la
+  izquierda lo que se compara —proceso, una columna por métrica, resultado—, que
+  quiere estar junto para poder recorrerlo con la vista; a la derecha lo que se
+  lee. Solo las columnas de prosa llevan anchura declarada (`w-[30%]`), y por eso
+  las de métrica se ajustan a su contenido en vez de repartirse el sobrante.
+- **DESCRIPCIÓN y RECOMENDACIÓN son dos columnas**, y vienen ya separadas del
+  catálogo (`descripcion` / `recomendacion`), no partidas al pintar. Responden
+  preguntas distintas —qué es esto, qué hago con ello— y en un solo párrafo
+  obligaban a leerse la definición entera cada vez que uno venía a por la acción.
+  La recomendación va en tinta de cuerpo y la descripción en la secundaria: es la
+  única celda que pide actuar.
+- **Cada código de métrica lleva su ficha al pasar por encima**: nombre y qué
+  mide, de `catalogo_metricas` en la maqueta. El código identifica —remite a la
+  ficha del catálogo— pero no explica, y en la cabecera no cabe el nombre: seis
+  columnas de texto largo dejarían la matriz ilegible. El subrayado punteado es
+  lo que anuncia que hay algo que consultar. El disparador es un
+  `<span tabindex="0">` y no un botón: no ejecuta nada, y un botón anunciaría
+  una acción que no existe. Los `id` van con prefijo `metrica-` porque
+  `ficha-procesos` ya es la tarjeta IP — dos cosas llamadas «ficha» en la misma
+  página confunden a quien lea el DOM.
+
+  El panel se abre hacia ABAJO y centrado, no hacia arriba: el contenedor de la
+  tabla lleva `overflow-x-auto` y recorta lo que se salga por el borde superior.
+- **Los botones «?» son un componente: `monitor-ayuda`.** Hay cuatro —uno por
+  tabla de procesos y otro en la cabecera de la consola— y la mecánica no es
+  trivial, así que vive en un solo sitio: repetirla era garantizar que un día
+  uno se quedara sin `aria-describedby`, o con un `hidden` que lo saca del árbol
+  de accesibilidad sin que nadie lo note.
+
+  Se abre con cursor, con teclado (`group-focus-within`) y al tocarlo en un
+  móvil, **sin JavaScript**. El panel no se oculta con `hidden` ni con
+  `invisible`: se atenúa con opacidad y se le desactiva el puntero, y al abrirse
+  recupera `pointer-events` para poder pasar el cursor por encima sin que se
+  cierre — que es lo que pide WCAG 1.4.13.
+
+  **La ayuda de la consola** guarda los dos textos que antes vivían bajo las
+  fichas: la leyenda del semáforo y la fórmula del ISBD. Está en la cabecera del
+  panel y no junto a las tarjetas porque explican el panel entero —cómo se
+  colorea el medidor y cómo se compone su cifra—, y siempre visibles eran dos
+  párrafos de letra pequeña que se leen una vez y después solo empujan el resto
+  hacia abajo.
+- **Las fichas IP / IM / IA son pestañas** (`monitor-indices` + `monitor.js`):
+  al pulsar una se despliega debajo la tabla de los procesos que ese índice
+  evalúa (`monitor-procesos`). Nace abierta la PEOR de las tres, no la primera:
+  quien abre un monitor viene a ver qué está mal, y abrir siempre por PROCESOS
+  cobraría un clic extra justo cuando hay prisa. Sin JavaScript quedan las tres
+  tablas visibles, que es más largo pero no es un error.
+- **El semáforo NO es una segunda escala.** `semaforo()` AGRUPA las cinco bandas
+  del §5.2 conservando sus fronteras: rojo = Crítico o Degradado (≤60), ámbar =
+  Advertencia (60-75], verde = Saludable u Óptimo (>75). Por eso la franja de
+  color y la pill de la banda no pueden contradecirse. **No le ponga cortes
+  propios** (30/60, por ejemplo): un índice de 65 saldría verde en la ficha y
+  ADVERTENCIA en la alerta, sobre el mismo número y en la misma pantalla.
+- **El ISBD se tiñe por la regla del conjunto**, no por su propia banda:
+  `semaforoGeneral()` da rojo si algún índice está en rojo y verde solo si los
+  tres lo están. Hoy coincide siempre con la banda del ISBD —la regla del eslabón
+  más débil ya lo garantiza— y se calcula aparte a propósito: si mañana se tocaran
+  los topes, el color seguiría obedeciendo la regla sin depender de otra.
+- **La casilla de resultado tiene TRES estados**, no dos: correcto, con hallazgo
+  y **sin dato**. El tercero no es un adorno: un proceso cuyas métricas no se
+  pudieron recolectar no ha fallado. Marcarlo con aspa convertiría una falla del
+  agente en una falla de la base — invariante 3. Y cada casilla lleva su palabra
+  al lado, porque palomita y aspa se distinguen por forma pero también por color.
+- **Los valores de la tabla salen de las mediciones**, cruzados con
+  `catalogo_procesos` en `MonitorController::procesosPorIndice()`. El catálogo
+  solo declara la estructura (qué procesos, con qué métricas, qué hace cada uno);
+  duplicar los valores por instancia habría sido la vía rápida para que las dos
+  tablas dejaran de coincidir.
+- **Cada proceso lleva su trazabilidad COBIT** (`ancla_cobit` en
+  `catalogo_procesos`, con el nombre del objetivo en `catalogo_cobit`, ambos en
+  `config/monitor-mockup.php`): un código en oro junto al nombre del proceso
+  (`PMON DSS01`, por ejemplo), con el mismo mecanismo de consulta que el
+  código de métrica de la cabecera —cursor de ayuda, subrayado punteado y
+  panel `role="tooltip"`, no un `title` nativo— para que las dos referencias
+  normativas de la misma tabla se anuncien igual. Es la misma idea que
+  `ancla_iso` ya tenía para el catálogo real de métricas
+  (`config/monitor-catalogo.php`) pero que no existía para COBIT en ningún
+  catálogo del monitor — sin ella, el §12 «el monitor demuestra alineación con
+  el marco elegido» no se podía comprobar mirando la tabla de procesos.
+  **Es criterio propio del equipo** (COBIT 2019 no publica una tabla que ligue
+  procesos internos de Oracle a sus objetivos de gestión), asignado por el
+  riesgo que cada proceso vigila: DSS01 operación, DSS04 continuidad/recuperación,
+  APO14 integridad o pérdida del dato. Mismo criterio que el peso P/S del punto
+  7 de `entrega-multinorma-cobit.md`, aplicado aquí al monitor.
+- **Todo el texto de la tabla de procesos se traduce, no solo la cabecera.**
+  `nombre`, `descripcion` y `recomendacion` de `catalogo_procesos`, `nombre` y
+  `descripcion` de `catalogo_metricas`, y el nombre de cada objetivo en
+  `catalogo_cobit` son CLAVES de `config/idiomas/{es,en}.php` (prefijos
+  `mon.proceso_*`, `mon.metrica_*` y `mon.cobit_*`), no el texto en español
+  incrustado — `MonitorController::procesosPorIndice()` los pasa a la vista
+  sin traducir y `monitor-procesos.php` llama a `$vista->t()` al pintarlos, el
+  mismo reparto de responsabilidad que el resto del producto («casi todo el
+  texto se traduce en la vista»). Antes solo los rótulos de columna cambiaban
+  de idioma y el contenido de la maqueta se quedaba fijo en español. `metricas`
+  y `ancla_cobit` siguen siendo códigos, no prosa, y no llevan clave.
+
+Dos piezas del sistema visual que este frente añadió y que ya son del producto,
+no de la maqueta:
+
+- **`pill()` tiene el tono `opt`** (§9 del plan): comparte el color de `ok` y se
+  distingue por el ícono `escudo`, igual que `crit` comparte el de `bad` y se
+  distingue por el octógono. Cuatro niveles de color, cinco de significado. **No
+  agregue un quinto color ni un verde más claro.**
+- **El ícono `aspa`**, negativo de `check`, para la casilla de resultado. No es
+  un octógono ni un triángulo: ahí no se comunica severidad, solo «esta
+  comprobación no pasó».
+- **`tonoBanda()`** traduce banda → tono de `pill()` en un solo sitio. Repetir esa
+  correspondencia dentro de una vista es la «tabla de traducción» que el §5.2 del
+  plan existe para evitar. `null` va a `na`, nunca a un color de estado.
+
+Falta del frente 4, y no está empezado: `/monitoreo/alertas`,
+`/monitoreo/metricas`, exportación, `Scripts/08_datos_demo_monitor.sql`, manual
+de usuario y sección del manual técnico.
 
 ## Sistema visual (Rivendel)
 
@@ -68,11 +580,12 @@ utilidades de Tailwind siguen el cambio solas.
 - **Tres clases de región**, todas declaradas en `rivendel.css`:
 
   | Clase | Paleta | Dónde |
-  |---|---|---|
+    |---|---|---|
   | `:root` | «Imladris de noche» | El sitio público entero y todo lo que no diga otra cosa. |
   | `.rv-claro` | «Pergamino élfico» | El `<body>` del módulo interno (`layouts/panel`). |
   | `.rv-oscuro` | «Imladris de noche» | Vuelve a la noche dentro de una región clara. Hoy solo la barra lateral del módulo. |
   | `.rv-alterno` | «Pergamino élfico» | Estilo de sección: la cadencia oscuro-claro-oscuro de la portada (§3). Va en retos, stack, testimonios y planes; contacto cierra en oscuro. |
+  | `.rv-oro` | «Pergamino y oro» | **No es una paleta**: es `.rv-claro` con el acento repuntado a oro, y se escribe siempre junto a ella (`class="rv-claro rv-oro"`) porque sola no trae lienzo. El instrumento y `/evaluacion/{id}`. |
 
 - Cada paleta tiene **una sola definición**, compartida por selector: la oscura
   en `:root, .rv-oscuro` y la clara en `.rv-alterno, .rv-claro`. Si corrige un
@@ -89,9 +602,26 @@ utilidades de Tailwind siguen el cambio solas.
 - Fuera de esas clases, la paleta clara solo aparece en `@media print` (para
   que el reporte no gaste tinta de fondo).
 - **Cuatro voces excluyentes**: `.rv-marca` (Cinzel, solo logotipo y encabezado
-  de informe), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
+  de informe — y, como desviación declarada, el nombre de Lembas en la cabecera
+  de su panel; ver «Lembas»), `.rv-titulo` (EB Garamond, títulos y prosa, nunca < 16 px),
   `font-sans` (Inter, interfaz y datos), `.rv-id` (JetBrains Mono, códigos de
   control — va en oro porque el oro **solo** significa referencia normativa).
+- **Los dos destellos de `partials/mensajes` NO se presentan igual.** El
+  `error` se queda en su franja hundida, donde se incluya el parcial: dice
+  qué salió mal y hay que poder releerlo mientras se corrige. El `aviso` es
+  un **`.rv-aviso-flotante`** —verde relleno, abajo a la derecha, dos
+  segundos y se va—, porque confirma algo que ya pasó y, fijo, empujaba el
+  contenido hacia abajo en cada guardado. **No convierta el error en
+  flotante**: un mensaje de error que se desvanece es un mensaje que se
+  pierde sin forma de recuperarlo.
+
+  Es la ÚNICA pieza del producto que llena de color un mensaje —las pills
+  van con contorno y tinta (§5.5)— y puede porque flota sobre la página sin
+  competir con nada; el texto va en `text-primario-texto` y conserva el ícono
+  aunque el fondo ya diga «bien». Los tiempos y el movimiento viven en
+  `rivendel.css`, no en la vista, y la regla de `prefers-reduced-motion`
+  quita el DESPLAZAMIENTO pero devuelve la duración: el recorte general a
+  0,01 ms dejaría un parpadeo ilegible.
 - **Estado**: use `pill('ok'|'warn'|'bad'|'crit'|'na', $etiqueta)` de
   `funciones.php`. Nunca comunique un estado solo con color: el ayudante obliga
   a llevar ícono y etiqueta. Contorno y texto teñido, jamás relleno sólido.
@@ -107,18 +637,88 @@ utilidades de Tailwind siguen el cambio solas.
   Distinga las series por la FORMA de la marca: una columna y una línea no se
   confunden con ninguna visión ni impresas en gris (`components/evolucion-mensual`).
   Si de verdad hacen falta dos series iguales, son dos gráficos.
+- **La pantalla de resultados es un TABLERO**, no un informe en columna, y son
+  TRES bloques: cuatro losetas de cabecera; los tres instrumentos al mismo nivel
+  —columnas por dominio, matriz y exposición—; y el detalle por dominio en filas
+  que se abren. Va en `max-w-7xl` como la auditoría y el instrumento.
+
+  Antes eran siete secciones apiladas en `max-w-5xl`, **el cumplimiento por
+  dominio aparecía tres veces seguidas** —barras horizontales, mosaico de
+  tarjetas y tabla— y los controles señalados vivían en dos tarjetas al pie que
+  no decían a qué dominio pertenecían más que en una línea suelta. **No reponga
+  el mosaico ni las dos tarjetas**: el mosaico era el gráfico otra vez, y las
+  tarjetas están ahora dentro de la fila del dominio al que pertenecen.
+- **Las filas por dominio son `<details>` y no una tabla.** Se abren sin
+  JavaScript, el navegador las anuncia como lo que son y funcionan con el
+  teclado sin escribir un `keydown`. El precio es que dejan de ser un `<table>`,
+  así que **cada cifra lleva su rótulo en `sr-only`**: sin él un lector de
+  pantalla leería «Accesos y privilegios, 5, 6, 1» y las columnas no existirían
+  para quien no las ve. La cabecera de columnas va `aria-hidden`, porque esos
+  rótulos ya los dice cada celda.
+
+  Un dominio SIN controles señalados se pinta como fila plana, no como
+  desplegable vacío. Y si un control señalado trae un dominio que no está en la
+  lista, cae en la red de seguridad del pie en vez de desaparecer — es justo el
+  control que la pantalla existe para señalar.
+- **`components/cumplimiento-dominios`** son columnas verticales, una medida y
+  un solo eje. El color es ESTADO y no identidad —la zona de `fn_zona`, con los
+  mismos cortes—, así que un dominio que mejora cambia de color, que es lo que
+  debe pasar. Y el estado no viaja solo en el color: cada columna lleva su cifra
+  rotulada y **las dos líneas de corte (50 % y 80 %) están dibujadas a trazos**,
+  de modo que la zona se lee por la ALTURA respecto de ellas en gris o con
+  daltonismo. Rotular todas las cifras aquí sí procede —son siete magnitudes sin
+  orden, no una serie temporal—. El `viewBox` (560×236) y el corte de línea de
+  los nombres (13 caracteres) están calculados para UN TERCIO del ancho, que es
+  la columna donde vive: si vuelve a la fila entera hay que devolverle los dos,
+  porque el texto de un SVG escala con el dibujo.
 - **Nunca dos ejes verticales.** Si las medidas no comparten escala, van en
   gráficos distintos o normalizadas a una base común. Con dos escalas, quien
   elige los topes decide cuál línea va por encima, y eso no es un dato.
 - Sobre relleno lleno (celdas de la matriz, botones) el texto va en
   `text-primario-texto`: la tinta del cuerpo no alcanza el contraste mínimo
   sobre el verde, el oro ni el rojo en ninguno de los dos lienzos.
+- **`.rv-conmutador`**: dos radios eligen cuál de dos grupos de campos se
+  rellena (hoy, el entrevistado de una auditoría: cuenta registrada o nombre y
+  empresa a mano). Vive en `rivendel.css` y **no** en `peer-checked/nombre:` de
+  Tailwind a propósito — Tailwind entra por CDN y esa variante con nombre
+  depende de la versión que sirva ese día; si sirviera una anterior, los dos
+  paneles se verían a la vez y el formulario mandaría los dos lados sin que
+  nadie se enterase hasta leer la fila. Los radios van ANTES de los paneles y
+  como hermanos suyos (`~`), ocultos a la vista pero no al teclado. Sin CSS
+  ambos paneles quedan visibles y todo sigue funcionando: quien decide qué lado
+  se lee es el servidor.
+
+  El grupo es un **`<div role="group" aria-labelledby>`, no un `<fieldset>`**:
+  el rótulo y las dos pastillas comparten fila, y un `<legend>` no se deja
+  colocar —el navegador lo dibuja con reglas propias y no responde de forma
+  fiable a `display`—. No se pierde semántica: `<fieldset>` se expone
+  justamente como `role="group"`. Las pastillas quedan un nivel más adentro que
+  los radios, y por eso la regla de la pastilla activa usa `~ * [data-para]`
+  con combinador de descendiente; el de los paneles sigue siendo `> [data-panel]`.
 - **Cajas de texto de tamaño fijo**: `rivendel.css` aplica `resize: none` a todo
   `textarea`. El alto se declara con `rows`; no se devuelve el tirador en
   ninguna vista.
+
+  La regla se escribe **`html textarea`, y el `html` no sobra**: Preflight —la
+  base de Tailwind— trae su propio `textarea { resize: vertical }`, y el CDN
+  inyecta su `<style>` al ejecutarse, o sea DESPUÉS del `<link>` de
+  `rivendel.css`. A igual especificidad gana la última, así que durante un
+  tiempo la regla estuvo escrita y documentada sin llegar a aplicarse nunca: en
+  `/evaluacion/{id}` los campos se estiraban con el ratón hasta empujar los 75
+  controles fuera de la pantalla. **Cualquier regla de esta hoja que pise un
+  selector de tipo de Preflight tiene el mismo problema** y necesita el mismo
+  trato — no basta con escribirla.
 - **Neumorfismo**: `.rv-extruido` / `.rv-hundido` (+ `.rv-relieve-sutil` en
-  tablas densas). El hundido señala «aquí se recibe algo»: campos, franja de
-  mensajes, estados vacíos.
+  tablas densas y `.rv-relieve-pleno` en lo que manda en su pantalla). El hundido
+  señala «aquí se recibe algo»: campos, franja de mensajes, estados vacíos.
+  **Dentro de un SVG el relieve no es `box-shadow`, son filtros**: los mismos
+  valores llegan como `flood-color` / `flood-opacity` desde `.rv-nm-sombra` y
+  `.rv-nm-realce` (sección «Relieve dentro de un SVG» de `rivendel.css`), de modo
+  que cambiar la paleta o el nivel sigue siendo tocar un solo sitio y los
+  gráficos acompañan. Los desplazamientos, en cambio, viven en cada componente
+  y en unidades de SU viewBox: **los 7 px de una tarjeta sobre una marca de
+  gráfico no son relieve, son un borrón**. Ya lo usan `evolucion-mensual`,
+  `radar-dominios`, `indice-historico` y `monitor-medidor`.
 
 ## Arquitectura
 
@@ -161,9 +761,26 @@ sistema sin decir de dónde salen:
 | `RepositorioAuditorias` | solo `RepositorioAuditoriasOracle` |
 
 `RepositorioInstrumentoOracle` **decora** a `RepositorioInstrumentoArreglo`: lee
-dominios, procesos y controles de las tablas, pero delega `meta()`, `escala()`,
+dominios, procesos, controles y escala de las tablas, pero delega `meta()`,
 `marco()` y `referencias()` al arreglo, porque el esquema no tiene tablas para
-esas cuatro secciones. Al tocar ese archivo, respete la delegación.
+esas tres secciones. Al tocar ese archivo, respete la delegación.
+
+**Multinorma.** `dominios()`, `procesos()`, `controles()` y `escala()` reciben
+el código de norma (`Estandar::ISO` por omisión). Todo lo que ocurre dentro de
+una auditoría pasa `$auditoria->codigoEstandar`; el sitio público, la
+herramienta y el catálogo administrable usan el valor por omisión y solo ven
+ISO. Normas cargadas: `ISO27002` y `COBIT2019` (`Scripts/14_multinorma.sql`).
+La norma se fija al crear la auditoría y no se edita.
+
+`estandar.modo_evaluacion` decide la captura. `CONTROL` (ISO): Sí/No/No
+aplica, madurez y C/I/D por control. `OBJETIVO` (COBIT): el auditor declara la
+capacidad 0–5 de cada objetivo (`evaluacion_objetivo`, con justificación) y
+califica cada práctica con N/P/L/F (`evaluacion_control.grado_logro`); el
+estado se deriva (L/F → SI, N/P → NO) para que cumplimiento y remediaciones
+sigan funcionando. El riesgo C/I/D de COBIT pondera la capacidad por la
+relación P/S del objetivo (P=2, S=1) en `pkg_indicadores`. La página
+individual del control redirige al panel en COBIT: sus campos son de ISO. El catálogo
+administrable todavía no permite elegir norma: los dominios que crea son ISO.
 
 `RepositorioCatalogo` es la "otra cara" del mismo objeto que devuelve
 `instrumento()`: `Contenedor::catalogo()` comprueba el tipo con `instanceof` en
@@ -188,6 +805,19 @@ Reglas que ya están codificadas ahí y conviene no romper:
   el parámetro `:cursor`. Una cifra nueva en pantalla es un procedimiento nuevo
   en ese archivo, no un SELECT en PHP — y tras editarlo hay que recargarlo:
   `docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_*.sql`.
+- **El entrevistado de una auditoría tiene DOS orígenes y UNA sola lectura.**
+  `auditoria` guarda o `id_administrador_bd` (cuenta ADMIN_BD registrada) o
+  `administrador_nombre` + `administrador_organizacion` escritos a mano, nunca
+  los dos: lo obliga `ck_auditoria_administrador`, que sustituyó al `NOT NULL`
+  del id. Quien LEE no elige: la vista **`v_auditoria_entrevistado`** resuelve
+  el `NVL` de los dos lados y devuelve nombre, organización y `es_manual` por
+  `id_auditoria`. La consultan la consulta base del repositorio y los tres
+  procedimientos que filtran por empresa (`sp_historico_dominio`,
+  `sp_evolucion_auditor`, `sp_remediaciones_vencidas`). **No vuelva a unir
+  `usuario` por `id_administrador_bd`**: ese JOIN deja fuera, en silencio, a
+  toda auditoría con el entrevistado escrito a mano. Es la única vista del
+  esquema, y es una vista y no un procedimiento porque no calcula un
+  indicador: solo dice de dónde sale un dato guardado en dos columnas.
 - Al agregar en la aplicación, **agregue en SQL**. `sp_evolucion_auditor` mete
   las auditorías del mes en una razón única (`SUM(si) / SUM(si+no)`) en vez de
   promediar los cumplimientos de cada una: promediar razones le da el mismo peso
@@ -206,9 +836,11 @@ en cada petición para que desactivar una cuenta surta efecto de inmediato.
 - `Autenticacion::registrar()` fuerza el rol AUDITOR; el rol nunca viene del
   formulario.
 - **CSRF**: todo formulario POST imprime `<?= $vista->campoToken() ?>` y el
-  controlador llama a su `exigirToken($destino)` antes de tocar nada. Ese helper
-  está duplicado en `AuditoriaController` y `CatalogoController` — si añade un
-  tercer controlador con escritura, repítalo o súbalo a `Controlador`.
+  controlador llama a `exigirToken($destino)` antes de tocar nada. **Vive en
+  `Controlador`**, una sola vez: estaba copiado en `AuditoriaController` y
+  `CatalogoController`, y al llegar el tercero que escribe (`PerfilController`)
+  se subió en vez de hacer la tercera copia. Un control de seguridad repetido
+  es un control que un día se arregla en dos sitios de tres.
 - `Sesion` es perezosa: no envía cookie mientras nadie lea ni escriba. Por eso
   `Controlador::mensajesPendientes()` consulta `existePrevia()` antes de leer
   destellos, y el idioma vive en su propia cookie y no en la sesión.
@@ -232,25 +864,148 @@ fácil al añadir una pantalla:
 - El elemento activo gana por **ruta declarada más larga** que sea prefijo de la
   actual. Por eso `/evaluacion/9/resultados`, que no tiene entrada propia,
   ilumina «Mis auditorías», y `/evaluacion/nueva` no enciende las dos.
+- **La miga de pan ES la vuelta atrás**, y por eso el layout le pasa también la
+  ruta del elemento activo (`migaRuta`). Ese nivel enlaza cuando la pantalla
+  CUELGA de esa entrada —en `/evaluacion/152` «Mis auditorías» lleva a
+  `/evaluacion`— y queda como texto con `aria-current` cuando es la página
+  misma. El primer nivel es el grupo del menú, que no es una página: no enlaza.
+  Va en un chip `bg-primario/10 rounded-rv` para que no se lea como una acción
+  de la pantalla. **No devuelva a las vistas su propio «← Mis auditorías»**: eso
+  se retiró de `/evaluacion/{id}` justamente por duplicarla. Los «← Auditoría N»
+  de resultados, remediaciones y control sí se quedan — apuntan a la auditoría
+  padre, que no es a donde va la miga.
+- **Por debajo de la entrada del menú, la miga la pone el CONTROLADOR**, en
+  `migaPagina`: una lista de `['etiqueta' => …, 'ruta' => …|null]`, con ruta los
+  que son ancestros y sin ella el último, que es la pantalla actual. El menú no
+  puede saberlo —«Auditoría 152» no es una sección, es un registro— y sin eso
+  las cuatro pantallas de una auditoría (ficha, resultados, remediaciones y cada
+  uno de los 75 controles) decían todas «Mis auditorías». Hoy lo usan esas
+  cuatro y `/monitoreo/{clave}`; `/catalogo` puede hacerlo pasando la misma clave.
+  **El rótulo se traduce en el controlador** con `Controlador::t()` —el gemelo
+  de `Vista::t()`— porque solo él tiene el dato con el que armarlo; sin eso, en
+  inglés saldría «Audits / My audits / Auditoría 152».
+- **A la derecha de la barra superior solo va el idioma.** La organización del
+  auditor se pintaba ahí y se retiró: ya está en la ficha de la barra lateral, y
+  arriba solo competía con la miga en una barra que existe para decir dónde
+  estoy.
 - El grupo «Administración» solo existe si `$usuarioActual->esAdministrador()`,
   igual que las rutas que enlaza.
 - La barra superior del panel es **pegajosa, no fija**: por eso las vistas del
   módulo llevan `py-8` y no el `pt-24` que reservaba el alto de la barra fija
   del sitio público. Una vista nueva en `panel` no debe compensar nada arriba.
-- La ficha «Bases de datos conectadas» lee `config/conexiones.php`, que llega al
-  `Contenedor` desde `public/index.php` como arreglo y **no detrás de un
-  contrato**: hoy no hay nada que consultar y es configuración, como las rutas.
-  Su forma —una fila por instancia, con su motor— sí es la que tendrá la tabla
-  del monitoreo; cuando exista se cambia quién lee la lista y la vista no se
-  entera. El conteo de la ficha es el largo de `instancias`, nunca una cifra
-  escrita al lado.
-- El tablero del panel (matriz de la última auditoría + evolución mensual) se
-  filtra por **empresa auditada**, que es la del administrador de BD
-  entrevistado. La lista de empresas sale de las auditorías que ya están en
-  memoria, y **lo que llega en `?organizacion=` se comprueba contra esa lista**
-  antes de tocar el repositorio: sin eso, la URL sería una forma de preguntar
-  por la cartera de otra consultora — el mismo razonamiento de
-  `auditoriaPropia()` frente a `/evaluacion/9`.
+- **La ficha «Bases de datos conectadas» se retiró del panel**, y con ella las
+  pestañas «Mis auditorías» / «Resumen». `/evaluacion` es hoy una sola columna:
+  las cuatro casillas del resumen, el tablero (matriz + evolución) y debajo la
+  tabla con sus filtros y su paginación — primero lo que se lee de un vistazo,
+  después lo que se recorre. **El componente `conexiones-bd` sigue en el árbol
+  pero ya no lo pinta nadie**, igual que `config/conexiones.php` y
+  `Contenedor::conexiones()`: se conservan porque su forma —una fila por
+  instancia, con su motor— es la que tendrá la tabla del monitoreo, no porque
+  se rendericen. Si el monitoreo acaba trayendo su propia lista, son tres
+  archivos que borrar.
+- **El tablero del panel es UNA ficha**, no dos: matriz de riesgo a la
+  izquierda y evolución mensual a la derecha, separadas por una línea y bajo
+  una cabecera compartida. Son dos lecturas del mismo sujeto —cómo quedó la
+  última auditoría de esa empresa y si va mejorando—, no dos temas.
+- Se filtra por **empresa auditada**, que es la del administrador de BD
+  entrevistado, y el buscador vive en esa cabecera compartida. La lista de
+  empresas sale de las auditorías que ya están en memoria, y **lo que llega en
+  `?organizacion=` se comprueba contra esa lista** antes de tocar el
+  repositorio: sin eso, la URL sería una forma de preguntar por la cartera de
+  otra consultora — el mismo razonamiento de `auditoriaPropia()` frente a
+  `/evaluacion/9`.
+
+  **El filtro gobierna las DOS mitades.** Antes solo movía el gráfico y la
+  matriz enseñaba siempre la auditoría más reciente de todas, viniera de la
+  empresa que viniera; con el buscador en la cabecera de una ficha única eso
+  pasaba a ser una mentira. Hoy `panel()` elige la última auditoría DE ESA
+  empresa recorriendo la lista, que ya viene de más reciente a más antigua.
+- **El campo de empresa tiene tres capas, y cada una funciona sin la siguiente**:
+  el GET normal (cada empresa con su URL, compartible), el `<datalist>` nativo,
+  y encima el buscador de coincidencias de `principal.js` — filtra mientras se
+  escribe **sin tildes y por subcadena** («ejemplo» encuentra «Cooperativa de
+  Ejemplo R.L.»), se recorre con las flechas y envía al elegir. Al arrancar
+  **quita el atributo `list`**: con los dos activos se dibujan los dos
+  desplegables sobre el mismo campo. La lista sale del propio `<datalist>`, así
+  que no hay una segunda copia de los nombres ni una consulta por tecla.
+- **Comparar histórico son DOS pantallas, y `/evaluacion/comparar` es la de
+  elegir.** Antes esa ruta apilaba el histórico completo de cada empresa —dos
+  gráficos y una tabla por tarjeta—, así que para mirar una había que cargarlas
+  todas, con una llamada a `sp_historico_dominio` por organización. Hoy lista
+  una FICHA por empresa y el histórico entero vive en
+  **`/evaluacion/comparar/{empresa}`**, que es la única que pide el desglose, y
+  una sola vez.
+
+  **La ficha es minimalista, y lo que deja fuera lo deja fuera por una razón**:
+  ícono `expediente` centrado, nombre, una línea de contexto y el estado (cifra
+  del último índice + `pill()` de la zona). La variación, la serie y las áreas
+  evaluadas son lectura de histórico, y el histórico está a un clic; aquí solo
+  se ELIGE. El ícono es IDENTIDAD y no estado: va en el acento y es el mismo en
+  las tres zonas — teñirlo de verde o de rojo sería un segundo canal de estado
+  sin etiqueta al lado, que es lo que `pill()` existe para evitar. Tampoco hay
+  «ver histórico» al pie: lo que anuncia que se pulsa es el relieve de
+  `.rv-interactivo`, y el nombre ya es el texto del enlace.
+
+  **La pantalla tampoco tiene encabezado visible**: el distintivo de norma y la
+  frase de entrada se retiraron por decisión de diseño, y empieza directamente
+  en el panel de filtros. El `<h1>` sigue existiendo en `sr-only` —la miga es
+  navegación, no encabezado— igual que en `/evaluacion` y `/monitoreo`.
+
+  El nombre viaja en la URL con `rawurlencode()` y el controlador lo resuelve
+  contra las empresas que ESE auditor evaluó (`organizacionPropia()`): es texto
+  de quien teclea la dirección, igual que el id de `/evaluacion/9`, y nunca se
+  pasa tal cual al repositorio. Lo que no casa vuelve al selector con un
+  destello, no con un 404. La ruta se declara **antes** que los patrones con
+  `{id}`, para que una empresa llamada «resultados» no se la quede
+  `/evaluacion/{id}/resultados`.
+
+  El panel de la izquierda es de **facetas**: dentro de un grupo las casillas
+  suman y entre grupos se cruzan. La cifra de cada casilla se cuenta con los
+  DEMÁS grupos aplicados pero **sin el suyo** —si se contara a sí mismo, marcar
+  «Riesgo bajo» dejaría las otras tres zonas en cero y el panel se vaciaría con
+  el primer clic—, y una opción marcada se sigue ofreciendo aunque cuente cero:
+  un filtro que desaparece del panel es un filtro que no hay forma de quitar.
+  Los VALORES viajan en la URL sin traducir (`zona[]=VERDE`), y solo el rótulo
+  se traduce: una dirección compartida tiene que valer en los dos idiomas.
+  Todo funciona sin JavaScript —formulario GET con su botón, `<details>`
+  nativos, el orden en enlaces—, y cada combinación deja su propia URL.
+
+  **Esa distribución ES un componente, y lo comparte con `/monitoreo`**: panel
+  de facetas, recuento, orden, pastillas de lo aplicado y rejilla viven en
+  `components/rejilla-facetas`; filtrar y contar, en `App\Core\Facetas`; el
+  filtrado vivo, en `assets/js/facetas.js`. Cada pantalla solo aporta sus
+  grupos (cierres que dicen qué valores tiene una fila), sus rótulos y el cierre
+  `$ficha` que dibuja una tarjeta. Vivían dentro de `comparar` —el guion como
+  `<script>` en línea— y salieron al llegar la segunda antesala. **No vuelva a
+  copiar ninguna de las tres a una pantalla nueva**: las dos antesalas se
+  recorren igual porque no hay dos copias que puedan separarse.
+
+  **Encima de eso, el filtro es VIVO: se refiltra al escribir.** Y el guion no
+  filtra: pide la misma ruta con la cabecera `X-Becajo-Asincrona` y recibe ESTA
+  MISMA VISTA ya dibujada por PHP —sin el marco del módulo, y por tanto sin el
+  guion, que el controlador pasa en `guiones`—, de la que copia cuatro regiones
+  (`data-facetas-limpiar`, `-grupos`, `-orden`, `-resultados`) más el texto del
+  recuento. Es la decisión de
+  `guardarControl()` otra vez: **el HTML lo arma el servidor y el guion solo
+  sustituye**, porque contar una faceta, ordenar la rejilla y pintar una ficha
+  son reglas del producto y una copia en JavaScript es una copia que un día dirá
+  otra cosa. Filtrar en el navegador además no podría: la ficha minimalista no
+  lleva las áreas evaluadas —y se busca por ellas— y los recuentos del panel
+  quedarían mintiendo.
+
+  Cuatro detalles de esa pieza que no son adorno: el campo de búsqueda queda
+  FUERA de las regiones que se sustituyen (es donde está el cursor); se manda el
+  formulario entero y no solo lo tocado, así que una casilla también aplica sola
+  —media panel vivo y media no sería peor que ninguno—; se restauran el
+  `<details>` que el auditor abriera y el foco de la casilla que acabara de
+  marcar, porque las dos cosas se sustituyen enteras; y la respuesta vieja no
+  puede pisar a la nueva (un contador de petición), ni los destellos se leen en
+  esa rama, porque leerlos los CONSUME y una tecla no puede gastarse un aviso.
+
+  **La ficha de una empresa NO se llama `$empresa` en la vista**: ese nombre lo
+  ocupa la consultora, que el marco del módulo pinta en el encabezado y el pie.
+  Pisarlo deja la barra lateral sin nombre y el pie sin año, con sus avisos
+  impresos encima de la página.
 - **El lienzo se invierte**: `<body class="rv-claro">` y la barra lateral con
   `.rv-oscuro`. Navegación de noche, trabajo sobre pergamino. No es un tema
   (ver «Sistema visual»); es cómo se separan las dos cosas sin gastar un borde.
@@ -261,15 +1016,414 @@ fácil al añadir una pantalla:
   alterna el atributo y reescribe la cookie. Por debajo de `lg` eso no aplica:
   ahí la barra es un cajón y lo gobierna `-translate-x-full`. Los dos
   mecanismos viven en anchos distintos y no se cruzan.
+- **`/evaluacion/{id}` y el instrumento se ven IGUAL, y es deliberado.** Los
+  dos recorren la misma batería de 75 controles —uno como referencia, el otro
+  como captura—, así que comparten forma: `tabs-dominios` arriba, cabecera de
+  dominio, los procesos como subtítulos y una tarjeta por control. Antes la
+  auditoría era una tabla de cinco columnas con el enunciado recortado a 110
+  caracteres, y el mismo C-014 cambiaba de sitio y de aspecto según desde
+  dónde se mirara. Por eso también comparten ancho (`max-w-7xl`).
+
+  **Los 75 controles se responden en esa misma pantalla**: cada tarjeta es un
+  `<form>` con su token que hace POST a `/evaluacion/{id}/controles/{codigo}`
+  —el mismo endpoint que usa `evaluacion/control`, para no tener dos copias de
+  la validación de ISO/IEC 27007—. Los `name=` los lee
+  `AuditoriaController::leerRespuesta()` y los comparten los tres archivos: no
+  los cambie en uno solo.
+
+  `guardarControl()` responde de dos maneras según **quién** pregunte, y esa
+  es la única diferencia entre las dos:
+
+  | Quién | Cómo se reconoce | Respuesta |
+  |---|---|---|
+  | El guion, por `fetch` | cabecera `X-Becajo-Asincrona: 1` (`Peticion::esAsincrona()`) | JSON con la tarjeta **ya dibujada por el servidor** y el avance recalculado |
+  | El navegador, con el formulario | sin esa cabecera | PRG de siempre: al panel con el ancla de la tarjeta si el POST trae `origen=panel`, y a la página del control si no |
+
+  **El HTML de la tarjeta lo arma PHP también en la respuesta JSON**
+  (`AuditoriaController::tarjetaControl()`), y el guion solo la sustituye. El
+  borde teñido por estado, la pastilla y los mensajes de error son reglas del
+  producto: tenerlas además en JavaScript sería garantizar que un día las dos
+  copias dijeran cosas distintas. Lo mismo con el avance, que viaja calculado
+  en el JSON porque sale de contar TODAS las evaluaciones y no solo la que se
+  acaba de guardar.
+
+  Sin JavaScript no se pierde nada: el formulario se envía solo, el
+  controlador redirige a `/evaluacion/{id}#control-{codigo}` y el intento
+  fallido vuelve por la sesión marcado `control.{idAuditoria}` —con el código
+  DENTRO de los valores, porque quien llega al panel no sabe todavía cuál de
+  los 75 falló—. La vista abre la pestaña del dominio de esa tarjeta: devolver
+  el error con otra pestaña abierta deja el mensaje hablando de un control que
+  no está a la vista.
+
+  **Comparten también la PALETA: `/evaluacion/{id}` va en la región del
+  instrumento**, `<div class="rv-claro rv-oro bg-elevado">` alrededor de todo
+  su contenido. Es la última cosa que las separaba —ya compartían forma y
+  ancho— y era lo primero que se notaba al saltar de una a la otra.
+
+  `rv-oro` no es una paleta nueva: es `.rv-claro` con el acento repuntado a
+  oro, y las dos clases se escriben juntas porque sola no trae lienzo. Aquí
+  resuelve lo mismo que en el instrumento, que es para lo que se creó: en el
+  módulo la barra lateral ya es verde de noche, y esta pantalla repetía el
+  verde de marca RELLENO en el botón de guardar, la cubeta de las tres
+  respuestas, el carril del avance y la caja de evidencia. Dos verdes
+  distintos a un palmo compiten sin decir nada. Con el acento en oro **el
+  único verde que queda es el de la escala de estado** —la pastilla del
+  control, el borde izquierdo teñido, la tecla «Sí»—, que sí significa algo.
+
+  **Ninguna vista de dentro cambió**: `bg-primario`, `ring-primario` y
+  compañía siguen diciendo «acento», y en esta región ese acento es oro sin
+  que se enteren. Es la misma propiedad que permitió invertir el lienzo del
+  módulo en su día, y la razón por la que la regla de abajo importa.
+
+  La franja de color va a TODO EL ANCHO con la caja centrada dentro; si
+  estuviera en el `<section>`, el lienzo del módulo asomaría por los lados.
+
+  **`bg-elevado` marca lo que se RELLENA**: la zona de captura de cada tarjeta
+  va sobre él y los campos dentro invierten a `bg-superficie`, de modo que
+  claro = campo y tono = zona de trabajo. En esta región vale `#F0EBDE` —el
+  pergamino elevado, sin el tinte de menta que tiene en el resto del módulo— y
+  coincide con el lienzo de la página, igual que en el instrumento: lo que
+  separa la banda del fondo es el contorno de la tarjeta, y lo que la separa
+  del enunciado es el `bg-superficie` de arriba, que es el corte que esa franja
+  existe para marcar. El pie con el botón «Guardar» vuelve a `bg-superficie` y
+  sale a sangre (`-mx-5 -mb-5` contra el `p-5` de su fieldset), así que cada
+  tarjeta se lee en tres franjas: enunciado, captura, acción. Los acentos más
+  saturados salen del primario con opacidad —`bg-primario/15` el carril del
+  avance, `bg-primario/10` la cubeta de las tres respuestas, `bg-primario/5` la
+  caja de evidencia—, que es el mecanismo que los tokens RGB existen para dar.
+  **No introduzca un color literal**: la paleta se toca en un solo archivo, y
+  un valor fijado a mano aquí se habría quedado verde al cambiar la región.
+
+  **`/evaluacion/{id}/resultados` va en la MISMA región**, por lo mismo: las
+  tres pantallas son el mismo recorrido —la referencia, la captura y el
+  resultado— y saltar entre ellas cambiando de color las hacía parecer tres
+  productos.
+
+  Ahí hay una colisión que conviene tener presente: en el pergamino,
+  **`--rv-warn` y el `--rv-primary` de `rv-oro` valen el mismo `#7A5D00`**
+  (y `--rv-gold-text` también). En resultados es donde más se nota — con la
+  auditoría 152, cinco de las siete columnas y casi todas las pastillas de
+  exposición caen en zona media, o sea en warn—, así que el acento de acción y
+  el estado «advertencia» se ven iguales. No rompe ninguna lectura, porque el
+  estado nunca viaja solo en el color: las pastillas llevan ícono y etiqueta, y
+  las columnas su cifra y las dos líneas de corte. Pero el oro deja de separar
+  «esto se pulsa» de «esto avisa». **Si algún día molesta se arregla en
+  `rv-oro`**, moviendo `--rv-primary` a otro paso del oro — no en las vistas.
+
+  `/evaluacion/{id}/controles/{codigo}` sigue en el pergamino del módulo, sin
+  `rv-oro`. Ponerle la región es envolver su `<section>` igual que aquí.
+
+  La portadilla es la misma pieza que `encabezado-instrumento`: distintivo de
+  norma en oro, título, subtítulo y losetas `rv-extruido-sm` con las cifras.
+  Las losetas van en verde y no en blanco —al revés que en el instrumento—
+  porque allá el fondo es el lienzo y aquí ya es una tarjeta blanca; en
+  blanco sobre blanco desaparecerían. El avance vive DENTRO de esa fila, como
+  una loseta ancha más, y no en una caja propia que empujaba los controles
+  media pantalla hacia abajo.
+
+  **El orden de la captura es el orden en que se AUDITA**, y es el mismo en las
+  dos pantallas —cambiarlo en una sola las vuelve a separar, que es justo lo que
+  esta pareja de vistas existe para evitar—:
+
+  1. **La respuesta y su nota**: Sí/No/No aplica, madurez, criterio. La
+     respuesta va PRIMERA porque manda sobre el resto — un «No aplica» deja sin
+     sentido la nota, un «Sí» obliga a la evidencia.
+  2. **El riesgo**, sus tres entradas juntas: dimensiones C/I/D, impacto y
+     probabilidad. Las tres alimentan la misma matriz, y estaban repartidas en
+     los dos extremos de la ficha.
+  3. **El hallazgo** y la recomendación.
+  4. **La evidencia**, al final: es lo que respalda todo lo anterior, así que se
+     llena cuando ya se sabe qué se está respaldando. Antes partía la ficha por
+     la mitad, entre la nota y el hallazgo, siendo además el bloque más alto.
+     Dentro va **descripción → calidad → adjunto**: la calidad califica la
+     descripción y por eso la sigue; el adjunto es lo opcional y cierra.
+
+  **La evidencia tiene DOS campos y ninguno sustituye al otro**: la descripción
+  escrita (`evidencia_verificada`, CLOB) y un archivo adjunto opcional —imagen
+  o PDF— en la tabla `evidencia_archivo`. Lo que ISO/IEC 27007 y
+  `ck_evalctrl_evidencia_si` exigen para un «Sí» es la DESCRIPCIÓN; el archivo
+  es respaldo y es opcional siempre, porque hay evidencia que es una entrevista
+  o una observación en sitio y no tiene archivo que adjuntar. La línea de
+  estado («Sin archivo adjunto» / nombre y tamaño) se imprime **siempre**: un
+  `<input type="file">` vacío no distingue «no hay ninguno» de «hay uno y el
+  navegador no puede repoblarlo», y de ahí también la casilla `quitar_archivo`
+  — sin ella, o cualquier guardado posterior borraría el adjunto, o no habría
+  forma de quitarlo nunca.
+
+  Cinco decisiones de esa pieza que conviene no deshacer:
+
+  - **Tabla aparte, no una columna BLOB en `evaluacion_control`.** El
+    repositorio lee esa tabla con `SELECT *` (las 75 de una auditoría a la vez)
+    y el driver materializa los LOB (`OCI_RETURN_LOBS`), así que abrir el panel
+    se traería los 75 binarios. La ficha y los bytes son dos lecturas
+    distintas: `archivosEvidencia()` / `archivoEvidencia()` nunca tocan
+    `contenido`, y solo `contenidoArchivoEvidencia()` lo pide.
+  - **El tipo se decide por el CONTENIDO** (`finfo`), no por la extensión ni
+    por el `Content-Type` que manda el navegador — los dos los escribe el
+    cliente. El `accept` del campo es una comodidad del diálogo de archivos, no
+    una comprobación. La extensión se REESCRIBE a la del tipo real al guardar.
+  - **El archivo se sirve por una ruta propia**
+    (`/evaluacion/{id}/controles/{codigo}/evidencia`) y no desde `public/`:
+    vive en Oracle y su lectura pasa por `auditoriaPropia()` como todo lo demás.
+    Va `inline` con `nosniff` y `Content-Security-Policy: default-src 'none';
+    sandbox` — es contenido que sube un usuario servido desde nuestro dominio.
+  - **La zona de soltar es un `<label>` que envuelve al campo**
+    (`components/campo-archivo-evidencia` + `.rv-soltar`), y de ahí sale casi
+    todo gratis: pulsar en cualquier punto abre el diálogo porque eso hace un
+    label sobre su campo, el campo va en `.sr-only` —oculto a la vista, no al
+    teclado ni al lector de pantalla— y el foco se dibuja en la zona con
+    `:focus-within`, que es lo que se ve. **Lo único que necesita guion es
+    arrastrar**: soltar un archivo sobre un elemento y que acabe dentro del
+    input no tiene equivalente en HTML. Sin guion la zona queda como un botón
+    grande que abre el diálogo; se pierde una comodidad, no una función.
+
+    El guion va por **delegación en el documento**, en `principal.js`, y no con
+    un oyente por zona: las 75 tarjetas del panel se SUSTITUYEN enteras al
+    guardarse, y con oyentes propios la primera tarjeta guardada se quedaría sin
+    poder recibir archivos sin que nadie lo notara. También corta el arrastre
+    que cae FUERA de una zona, que si no hace que el navegador abra el archivo y
+    se lleve por delante el formulario a medio llenar.
+
+    El intercambio «invitación ↔ nombre del archivo» lo hace **el CSS a partir
+    de un solo atributo** (`data-elegido`) y no JavaScript ocultando trozos: así
+    el estado de partida es el correcto sin que nadie lo ponga, y no hay forma
+    de dejar los dos textos a la vez. **Es un componente y no dos copias**
+    porque lo pintan las dos pantallas que capturan y las dos mandan al mismo
+    endpoint con los mismos `name`.
+  - **`enctype="multipart/form-data"` en los dos formularios.** Sin él el
+    navegador manda solo el nombre y `$_FILES` llega vacío, sin ningún error.
+    El `fetch` no lo necesita (`FormData` ya elige multipart), pero el envío sin
+    guion sí, y las dos vías tienen que guardar lo mismo.
+  - **`docker/php.ini` no es opcional.** Sube los topes de fábrica (2 MB) hasta
+    por encima del tope de la aplicación (5 MB, `ArchivoEvidencia::MAXIMO_BYTES`
+    y `ck_evidarch_tamano`), y activa `output_buffering`. Esto último es lo que
+    permite avisar cuando el cuerpo se pasa de `post_max_size`: PHP emite ese
+    aviso ANTES de `public/index.php`, y con `display_errors` en on —que es lo
+    que hace el entorno de desarrollo— se imprime, la respuesta queda
+    comprometida y ningún `header()` surte efecto. El auditor recibiría una
+    página de warnings en vez de «el envío pesa demasiado». Sin reconstruir la
+    imagen el tope real baja a 2 MB, y la pantalla lo dice: el rótulo sale de
+    `limiteArchivoEvidencia()`, que cruza el máximo de la aplicación con el de
+    este PHP y se queda con el menor.
+
+  El instrumento, en cambio, sigue guardando en `localStorage`: es una
+  herramienta pública sin sesión y sus campos no tienen `name`. **No lleve
+  ese modelo a la auditoría** — aquí cada respuesta es una fila de
+  `evaluacion_control`.
+
+  El borde izquierdo teñido por estado lo pinta el SERVIDOR (en el instrumento
+  lo pone un guion, porque allí el dato está en el navegador). Igual que las
+  secciones de los dominios inactivos, que nacen con `hidden` puesto: sin
+  JavaScript se ven los siete dominios seguidos, que es más largo pero no es
+  un error. Lo único que aparece por guion es la pareja anterior/siguiente.
+- **La ficha de sesión de la barra lateral ES el acceso a `/perfil`.** Era un
+  `<div>` que solo informaba y no había por dónde entrar a la propia ficha.
+  Conserva exactamente la misma pinta —retrato, nombre y rol— y solo añade la
+  flecha de la derecha, que es lo que anuncia que se pulsa: sin ella, un bloque
+  que reacciona al pasar por encima parece un fallo de estilo. Lleva
+  `rv-lateral-enlace` como las entradas del menú y `aria-current` cuando el
+  perfil es la pantalla actual, porque el relieve nunca es el único canal.
+- **`/perfil` es SIEMPRE el usuario de la sesión.** No hay `/perfil/{id}` y no
+  es un olvido: la única razón para mirar la ficha de otro sería administrar
+  cuentas, que hoy no existe. Mientras no exista, una ruta con id sería una URL
+  adivinable que enseña el nombre y la foto de cualquiera — el mismo problema
+  que resuelve `auditoriaPropia()`, pero resuelto quitando el parámetro en vez
+  de comprobándolo.
+- **La foto va en `usuario_foto`, tabla aparte; la descripción, en `usuario`.**
+  No es asimetría gratuita: `usuario` se consulta en CADA petición
+  —`Autenticacion` reconsulta la cuenta para que desactivarla surta efecto de
+  inmediato— y el driver materializa los LOB de la lista de columnas, así que un
+  BLOB ahí sería la foto viajando en cada clic. La descripción es un
+  `VARCHAR2(500)` y no tiene ese problema. Es el mismo criterio que separó
+  `evidencia_archivo` de `evaluacion_control`.
+- **El retrato es `components/avatar-usuario`**, compartido por la barra lateral
+  y la ficha. Las iniciales NO son un respaldo de emergencia: son el estado
+  normal, porque la foto es opcional y casi ninguna cuenta la tiene. La URL
+  lleva el sello de la carga (`?v=`) porque, aunque se sirva con `no-cache`, un
+  navegador que ya la tuviera enseñaría la anterior justo después de cambiarla
+  — el único momento en que alguien mira su propio avatar con atención.
+- **El calendario de `/perfil` no comunica con color solo**: un día con trabajo
+  lleva el fondo teñido, el número en negrita y el recuento debajo, así que en
+  gris o con daltonismo sigue diciendo lo mismo. Los meses vecinos son enlaces
+  —cada mes con su URL— y el detalle de un día es el emergente nativo, sin
+  JavaScript. El agrupado por día se hace en PHP sobre la lista que ya está en
+  memoria: pedirle a Oracle lo que se acaba de traer sería un viaje de más, y
+  la tabla de al lado necesita esa misma lista entera.
+- **La miga de pan se pinta si hay algo que decir, venga del menú o del
+  controlador.** Antes exigía un elemento de menú, así que `/perfil` —que no
+  está en él— se quedaba sin miga y sus niveles se descartaban en silencio.
 - No repita en la vista lo que ya está en la barra lateral (salir, sesión,
   saltos a otra sección). La cabecera de cada pantalla es para las acciones de
   esa pantalla.
 
+### Lembas, el asistente del módulo
+
+| Pieza | Dónde |
+|---|---|
+| Frontera de privacidad: qué viaja a la API | `app/Models/Asistente/Lembas.php` |
+| Cliente HTTP (curl, sin SDK) | `app/Models/Asistente/ClienteClaude.php` |
+| Puerta: sesión, token, límites, registro | `app/Controllers/AsistenteController.php` (`POST /asistente`, `POST /asistente/olvidar`) |
+| Panel, turno y fichas | `partials/panel/asistente` y `partials/panel/asistente/` |
+| Lanzador, panel y envío | `assets/js/asistente.js` + sección «Asistente» de `rivendel.css` |
+| Límites y trazabilidad | tabla `asistente_consulta` (`Scripts/16_asistente_consulta.sql`) |
+| Clave, modelo y topes | `.env` → `public/index.php` → `Contenedor::asistente()` |
+
+**REGLA QUE MANDA SOBRE TODO: ningún dato de auditoría sale hacia Anthropic.**
+Por eso Lembas es un ENRUTADOR para las auditorías, no un redactor:
+
+- **Herramientas privadas** (`listar_mis_auditorias`,
+  `mostrar_resumen_auditoria`, `mostrar_controles_mayor_riesgo`,
+  `abrir_control_para_llenar`, y `mostrar_remediaciones_vencidas` solo para
+  ADMIN_BD): el modelo elige cuál y con qué número, PHP la ejecuta con la
+  comprobación de propiedad de siempre y el resultado se pinta como FICHA. Al
+  modelo le vuelve una frase fija («se mostró en pantalla»), nunca el contenido,
+  y si todo lo pedido fueron privadas no se le vuelve a llamar.
+- **Herramienta pública** (`buscar_controles_catalogo`): el catálogo de 75
+  controles ya es público (`/herramientas/instrumento-bd`), así que su resultado
+  sí vuelve al modelo, que redacta la explicación.
+- **Qué SÍ viaja**: la pregunta con los nombres de las empresas del usuario
+  sustituidos por `[empresa]` (sin tildes ni mayúsculas en los dos lados), el
+  TIPO de pantalla y el número de la auditoría abierta **solo si es suya**, y
+  códigos de control. Lo que la frontera no puede filtrar es un hallazgo escrito
+  a mano en el chat: la bienvenida pide que no se haga y el prompt ordena no
+  repetirlo.
+- **Todo lo que viaja se arma en `Lembas`**. Para comprobar la regla hay que leer
+  UN archivo; si alguna vez un controlador o una vista empieza a construir
+  mensajes para la API, la frontera se rompió.
+- **«Llenar una auditoría» no escribe ninguna respuesta.** Abre una ficha con lo
+  que pide el control (del catálogo) y un botón a
+  `/evaluacion/{id}/controles/{codigo}` — y no a la tarjeta dentro de
+  `/evaluacion/{id}`, que no abre la pestaña del dominio a partir del ancla.
+
+El permiso se comprueba **dos veces**: al ofrecer las herramientas (un auditor
+ni ve la de remediaciones) y al ejecutarlas. Un id que no es del usuario da el
+mismo aviso que uno que no existe, igual que `auditoriaPropia()` responde 404.
+
+Decisiones de la llamada a la API (`ClienteClaude`):
+
+- **Claude Opus 5 con esfuerzo `low`**, configurable en `.env`: elegir una
+  consulta no necesita razonar mucho.
+- **`fallbacks: "default"`** (cabecera `server-side-fallback-2026-07-01`): si
+  los filtros de seguridad rechazan una pregunta —privilegios o vulnerabilidades
+  de una base caen en «cyber»—, la API la reintenta con otro modelo. Lo anterior
+  al último bloque `fallback` solo vale por su texto: ni se ejecuta ni se
+  reenvía.
+- **Reintenta** 408/409/429/5xx/529 y fallos de conexión, respetando
+  `retry-after` con tope de 8 s. **No reintenta un tiempo límite agotado**: pudo
+  haberse cobrado.
+- **Caché**: prompt de sistema y herramientas son FIJOS por rol —nada de fecha,
+  nombre ni pantalla dentro— y llevan su marca; la conversación lleva la caché
+  automática. Lo variable viaja en el mensaje del usuario.
+- **El contenido se reenvía como OBJETOS** (`contenido_original`): con arreglos
+  asociativos un `input: {}` vuelve como `[]` y la API rechaza la petición.
+- **Entre preguntas solo se reenvía texto**: la pregunta tal como se envió y el
+  texto de la respuesta con una marca de lo mostrado («resumen de la auditoría
+  1»), nunca resultados de herramientas ni bloques de razonamiento. Así el
+  historial es solo-añadir y ninguna edición invalida razonamiento de modelos
+  que lo exigen.
+
+La puerta (`AsistenteController`):
+
+- Solo responde a su guion y **siempre JSON con `html`, también en los
+  errores**: el globo de error lo dibuja PHP. No usa `exigirUsuario()` ni
+  `exigirToken()` porque REDIRIGEN, y un `fetch` que sigue la redirección
+  recibiría la página de ingreso.
+- **Límites diarios antes de llamar** (`LEMBAS_LIMITE_DIARIO_USUARIO` y
+  `_TOTAL`), contados en Oracle y no en la sesión. Son la segunda línea: el tope
+  de gasto de verdad se fija en la consola de Anthropic.
+- **`Sesion::liberar()` antes de esperar a la API**: PHP bloquea la sesión
+  durante la petición, y sin soltarla el auditor no podría ni cambiar de
+  pantalla mientras Lembas piensa. Después se relee antes de escribir.
+- **`asistente_consulta` NO guarda la pregunta ni la respuesta**, solo
+  metadatos (usuario, pantalla, herramientas, tokens, resultado): guardar el
+  texto sería una copia de datos de auditoría fuera de su sitio.
+- La conversación vive en sesión en dos listas: el **historial** (lo que se
+  reenvía al modelo) y la **transcripción** (pregunta original + HTML de la
+  respuesta, que `verPanel()` pasa al marco para repintarla al cambiar de
+  pantalla). Se recortan por el principio, de turno en turno completo.
+
+Dos tropiezos al probarlo desde Git Bash, que no son fallos de la aplicación:
+Git Bash convierte `/evaluacion/1` en una ruta de Windows al pasárselo a
+`curl.exe`, y las tildes de un argumento llegan mal codificadas. Mande la ruta y
+la pregunta desde archivos (`--data-urlencode "ruta@ruta.txt"`). El controlador
+rechaza con un mensaje propio lo que no sea UTF-8 válido.
+
+**Se llama Lembas, y el nombre es TEXTO, no código**: vive en la clave
+`asistente.nombre` de los dos archivos de idioma y el resto de textos lo reciben
+como `%s` (`asistente.abrir`, `asistente.bienvenida`…). Clases, atributos
+`data-*`, la cookie y los archivos siguen diciendo «asistente» a propósito,
+porque nombran la función: rebautizarlo es cambiar esa clave, no renombrar
+selectores. En la cabecera el nombre va siempre con su función debajo
+(«LEMBAS» / «Asistente de auditoría»), porque «Lembas» a secas no dice qué es.
+
+- **El nombre va en Cinzel (`.rv-marca`) en la cabecera del panel, y SOLO
+  ahí.** DESVIACIÓN DECLARADA de las cuatro voces, anotada también junto a
+  `.rv-marca` en `rivendel.css`: se trata como marca de producto, al nivel de
+  «Rivendel» en la barra lateral y con su mismo cuerpo (15 px). En la
+  bienvenida, los globos y los rótulos accesibles «Lembas» es texto corrido y
+  va en Inter. No la extienda a otros sitios.
+- **El ícono `asistente` es una hoja de mallorn** (hoja, nervio y tallo): la
+  hoja en la que va envuelto el lembas. Sustituyó a un globo de conversación, y
+  lo que se perdió es la señal «aquí se conversa»; la recupera el contexto —el
+  botón se llama «Abrir Lembas» y abre una conversación—, y el tallo sale abajo
+  a la izquierda, donde un globo lleva la cola. Exclusivo de Lembas.
+
+Lo pinta `layouts/panel` **solo con sesión abierta Y con clave de API**
+(`Contenedor::hayAsistente()`): responde con los permisos de quien pregunta, y
+sin clave sería un chat que no contesta.
+
+- **El lanzador vive escondido** abajo a la derecha y aparece cuando el cursor
+  se ACERCA (140 px para aparecer, 200 para irse: dos radios para que no
+  parpadee), dibujando su anillo con `stroke-dashoffset` en 1,8 s. La cercanía
+  se MIDE en el guion; no es `:hover` sobre una zona invisible, que se tragaría
+  los clics de lo que haya debajo. Con teclado aparece al recibir el foco
+  (`opacity: 0`, nunca `hidden`), y en táctil (`hover: none`) está siempre a la
+  vista. Sin JavaScript no existe: nace con `hidden` y lo descubre el guion.
+- **El panel parte la ventana con el mismo reparto que la barra lateral, en
+  espejo**: desde `lg`, `data-asistente="abierto"` en `<html>` lo escribe el
+  SERVIDOR desde la cookie `becajo_asistente` (`Controlador::verPanel()`) y la
+  columna se aparta con `padding-right`, así que todo lo centrado con
+  `mx-auto max-w-*` se recentra solo. Por debajo, `data-asistente-cajon` lo pone
+  solo el guion, cubre la pantalla y no se recuerda. Ancho del panel y hueco de
+  la columna salen del MISMO token, `--rv-asistente-ancho`.
+- Va en `.rv-oscuro`, como la barra lateral: pergamino enmarcado por las dos
+  herramientas. Cerrado queda en `visibility: hidden` para salir del orden de
+  tabulación.
+- **Las sugerencias dependen del rol** (el administrador tiene una más), son una
+  por herramienta —nunca algo que Lembas no sepa hacer— y solo rellenan el campo.
+- **Ningún globo tiene copia en JavaScript.** Pregunta, turno y fichas son
+  parciales de `partials/panel/asistente/`, y los usan igual la respuesta JSON,
+  la transcripción repintada y las tres `<template>` (pregunta, espera y el
+  turno vacío donde el guion escribe un fallo de red con `textContent`). El
+  guion inserta el HTML del servidor y se desplaza al PRINCIPIO del turno nuevo:
+  una ficha de resumen es más alta que el panel.
+- **El texto del modelo y las fichas se ven distintos a propósito**: el texto va
+  en un globo y lo escribió un modelo que no vio los datos; cada ficha va en su
+  tarjeta y salió de Oracle con los permisos de la sesión.
+- La ficha de resumen **no lleva color de zona** por dominio: esa regla vive en
+  la vista de resultados con los cortes de `fn_zona`, y una tercera copia es la
+  que un día dirá otra cosa. El detalle con color está en «Ver resultados».
+- `ruta` es una PISTA del cliente, no una autorización: `Lembas` solo menciona el
+  número de una auditoría si es de la sesión, igual que el id de `/evaluacion/9`.
+
 ### Convenciones de controlador y vista
 
 - Todo POST que modifica termina en `redirigir()` (patrón PRG). Al fallar la
-  validación se guarda el intento con `guardarIntento($errores, $valores)` y se
-  redirige al GET, que los recupera con `erroresGuardados()` / `valoresGuardados()`.
+  validación se guarda el intento con `guardarIntento($errores, $valores,
+  $formulario)` y se redirige al GET, que lo recupera con
+  `erroresGuardados($formulario)` / `valoresGuardados($formulario)`.
+  **Vive en `Controlador`**, junto a `exigirToken` y por lo mismo: estaba
+  copiado, y la copia de `CatalogoController` se había quedado SIN la marca del
+  formulario —o sea, con el error que la marca existe para evitar—. Ese
+  controlador conserva tres envoltorios privados que solo le ponen su marca,
+  para no tocar sus llamadas.
+
+  **El tercer argumento no es decorativo**: los formularios comparten un único
+  par de destellos en la sesión, y sin la marca el intento fallido de uno se
+  pinta en otro. Con valores de texto libre en juego (el entrevistado
+  escrito a mano) eso llegaba a rellenar el encabezado de una auditoría con los
+  datos de otra, a un clic de guardarse. Una marca que no casa se descarta y el
+  destello se consume igual.
 - Los datos comunes del layout se difunden con `[...$this->contexto(), ...]`.
 - La validación se escribe en PHP aunque el `CHECK` exista en la base: las
   restricciones son la última línea de defensa, no la primera (un ORA-02290 en
@@ -294,4 +1448,5 @@ vez en `public/index.php` según la cookie, con respaldo al español.
    clases. Linux distingue mayúsculas y Windows no.
 3. Rutas siempre con `/`. UTF-8 sin BOM. `declare(strict_types=1)` en todo PHP.
 4. Un commit por cambio con sentido propio, mensaje en imperativo y en español.
-5. Nunca versione `config/base_datos.php` ni credenciales reales.
+5. Nunca versione `config/base_datos.php`, `.env` ni credenciales reales.
+   `.env.ejemplo` sí se versiona, y por eso nunca lleva un valor real.

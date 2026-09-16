@@ -210,6 +210,47 @@ DELETE FROM evaluacion_control WHERE codigo_control = 'C-046' AND id_auditoria =
 
 
 PROMPT
+PROMPT ############################################################
+PROMPT #  BLOQUE 3 — entrevistado escrito a mano (tests 22-24)
+PROMPT ############################################################
+PROMPT (ck_auditoria_administrador: o la cuenta registrada, o el nombre y la
+PROMPT  empresa a mano. Exactamente uno de los dos lados, nunca los dos ni
+PROMPT  ninguno — si no, «¿a quién se entrevistó?» tiene dos respuestas.)
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 22 — auditoría sin entrevistado de ninguna de las dos formas
+PROMPT (se espera ORA-02290, ck_auditoria_administrador)
+PROMPT ============================================================
+INSERT INTO auditoria (id_auditor, id_administrador_bd,
+                       administrador_nombre, administrador_organizacion,
+                       area_evaluada, fecha, estado)
+VALUES (1, NULL, NULL, NULL, 'Prueba de integridad', SYSDATE, 'EN_PROGRESO');
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 23 — cuenta registrada Y nombre a mano a la vez
+PROMPT (se espera ORA-02290, ck_auditoria_administrador)
+PROMPT ============================================================
+INSERT INTO auditoria (id_auditor, id_administrador_bd,
+                       administrador_nombre, administrador_organizacion,
+                       area_evaluada, fecha, estado)
+VALUES (1, 2, 'Marta Jiménez', 'Panadería del Bosque S.A.',
+        'Prueba de integridad', SYSDATE, 'EN_PROGRESO');
+
+PROMPT
+PROMPT ============================================================
+PROMPT TEST 24 — a mano con nombre pero sin empresa
+PROMPT (se espera ORA-02290: sin empresa no hay organización auditada, que es
+PROMPT  por donde se filtran el tablero y el histórico)
+PROMPT ============================================================
+INSERT INTO auditoria (id_auditor, id_administrador_bd,
+                       administrador_nombre, administrador_organizacion,
+                       area_evaluada, fecha, estado)
+VALUES (1, NULL, 'Marta Jiménez', NULL,
+        'Prueba de integridad', SYSDATE, 'EN_PROGRESO');
+
+PROMPT
 PROMPT ============================================================
 PROMPT CONTROL DE SANIDAD — nada de lo anterior debió modificar datos reales.
 PROMPT Corre cada SELECT por separado si tu cliente pega varias líneas a la vez.
