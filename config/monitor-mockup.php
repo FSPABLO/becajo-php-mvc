@@ -78,102 +78,110 @@ return [
      * Donde una métrica es MAYOR ES MEJOR se dice con todas las letras: son
      * tres de las quince y, sin el aviso, un 18,8 se lee como bueno cuando es
      * lo contrario.
+     *
+     * **`nombre` y `descripcion` son CLAVES de `config/idiomas/{es,en}.php`,
+     * no el texto en sí** — es la única prosa de la maqueta que se pinta en la
+     * tabla de procesos (`monitor-procesos.php`), así que sigue el mismo
+     * mecanismo que el resto de la pantalla en vez de quedarse fija en
+     * español mientras las cabeceras cambian de idioma a su alrededor.
      */
     'catalogo_metricas' => [
 
         'M-PRO-01' => [
-            'nombre'      => 'Utilización de sesiones',
-            'descripcion' => 'Qué proporción de las sesiones que la instancia admite está en uso. '
-                           . 'Al llegar al techo, las conexiones nuevas se rechazan con ORA-00018 '
-                           . 'aunque la base esté sana por dentro.',
+            'nombre'      => 'mon.metrica_mpro01_nombre',
+            'descripcion' => 'mon.metrica_mpro01_descripcion',
         ],
         'M-PRO-02' => [
-            'nombre'      => 'Utilización de procesos',
-            'descripcion' => 'Cuánto del arreglo de procesos del sistema operativo está ocupado. '
-                           . 'Se agota antes que el de sesiones en instancias con servidor '
-                           . 'dedicado, y su falla (ORA-00020) es igual de abrupta.',
+            'nombre'      => 'mon.metrica_mpro02_nombre',
+            'descripcion' => 'mon.metrica_mpro02_descripcion',
         ],
         'M-PRO-03' => [
-            'nombre'      => 'Procesos de fondo obligatorios presentes',
-            'descripcion' => 'Compuerta: comprueba que los cinco procesos de fondo —CKPT, DBW0, '
-                           . 'LGWR, PMON y SMON— están vivos en esta muestra. No tiene término '
-                           . 'medio: vale 1 o 0.',
+            'nombre'      => 'mon.metrica_mpro03_nombre',
+            'descripcion' => 'mon.metrica_mpro03_descripcion',
         ],
         'M-PRO-04' => [
-            'nombre'      => 'Espera media de escritura de redo',
-            'descripcion' => 'Milisegundos que tarda de media una escritura del registro de '
-                           . 'rehacer. Es la latencia que siente la aplicación al confirmar, así '
-                           . 'que se lee como experiencia de usuario y no como infraestructura.',
+            'nombre'      => 'mon.metrica_mpro04_nombre',
+            'descripcion' => 'mon.metrica_mpro04_descripcion',
         ],
         'M-PRO-05' => [
-            'nombre'      => 'Reinicio de proceso de fondo detectado',
-            'descripcion' => 'Compuerta: compara la huella de cada proceso de fondo con la de la '
-                           . 'muestra anterior. Ve lo que M-PRO-03 no puede ver — un proceso que '
-                           . 'cayó y volvió a levantarse entre dos muestras.',
+            'nombre'      => 'mon.metrica_mpro05_nombre',
+            'descripcion' => 'mon.metrica_mpro05_descripcion',
         ],
         'M-PRO-06' => [
-            'nombre'      => 'Antigüedad del punto de control',
-            'descripcion' => 'Cuánto se ha atrasado el punto de control frente al objetivo de '
-                           . 'MTTR. Dice cuánto tardaría la recuperación si la instancia cayera '
-                           . 'ahora mismo.',
+            'nombre'      => 'mon.metrica_mpro06_nombre',
+            'descripcion' => 'mon.metrica_mpro06_descripcion',
         ],
 
         'M-MEM-01' => [
-            'nombre'      => 'Aciertos de caché de PGA',
-            'descripcion' => 'Proporción del trabajo de PGA que se resolvió íntegramente en '
-                           . 'memoria, sin pasar por disco. MAYOR ES MEJOR: es la medida de '
-                           . 'resultado de la PGA, mientras que M-MEM-02 es la de consumo.',
+            'nombre'      => 'mon.metrica_mmem01_nombre',
+            'descripcion' => 'mon.metrica_mmem01_descripcion',
         ],
         'M-MEM-02' => [
-            'nombre'      => 'PGA asignada sobre el objetivo',
-            'descripcion' => 'Cuánta memoria privada de sesión se ha asignado frente al objetivo '
-                           . 'configurado. Al pasarse, el trabajo no falla: se traslada al '
-                           . 'tablespace temporal y todo se vuelve más lento en silencio.',
+            'nombre'      => 'mon.metrica_mmem02_nombre',
+            'descripcion' => 'mon.metrica_mmem02_descripcion',
         ],
         'M-MEM-03' => [
-            'nombre'      => 'Memoria libre de la shared pool',
-            'descripcion' => 'Cuánto espacio libre queda en la zona de la SGA donde viven los '
-                           . 'planes de ejecución y el diccionario en caché. MAYOR ES MEJOR: aquí '
-                           . 'el espacio libre es el margen de maniobra.',
+            'nombre'      => 'mon.metrica_mmem03_nombre',
+            'descripcion' => 'mon.metrica_mmem03_descripcion',
         ],
 
         'M-ARC-01' => [
-            'nombre'      => 'Utilización del peor tablespace',
-            'descripcion' => 'Ocupación del tablespace permanente peor situado, nunca el '
-                           . 'promedio: un promedio sano esconde el archivo que está a punto de '
-                           . 'reventar. Al llenarse, la escritura falla con ORA-01653.',
+            'nombre'      => 'mon.metrica_marc01_nombre',
+            'descripcion' => 'mon.metrica_marc01_descripcion',
         ],
         'M-ARC-02' => [
-            'nombre'      => 'Datafiles en estado válido',
-            'descripcion' => 'Compuerta: comprueba que todos los archivos de datos están en '
-                           . 'línea. Uno fuera de línea deja inaccesible su parte de los datos '
-                           . 'aunque el resto de la instancia responda con normalidad.',
+            'nombre'      => 'mon.metrica_marc02_nombre',
+            'descripcion' => 'mon.metrica_marc02_descripcion',
         ],
         'M-ARC-03' => [
-            'nombre'      => 'Grupos de redo sin miembros inválidos',
-            'descripcion' => 'Compuerta sobre los miembros inutilizables de los grupos del '
-                           . 'registro de rehacer. Con todos los grupos inservibles la base se '
-                           . 'detiene, porque no puede rotar el registro.',
+            'nombre'      => 'mon.metrica_marc03_nombre',
+            'descripcion' => 'mon.metrica_marc03_descripcion',
         ],
         'M-ARC-04' => [
-            'nombre'      => 'Utilización del peor tablespace temporal',
-            'descripcion' => 'Ocupación del tablespace temporal peor situado: el espacio de '
-                           . 'trabajo de lo que no cupo en PGA. Al agotarse, la consulta en curso '
-                           . 'falla con ORA-01652, pero no se pierden datos permanentes.',
+            'nombre'      => 'mon.metrica_marc04_nombre',
+            'descripcion' => 'mon.metrica_marc04_descripcion',
         ],
         'M-ARC-05' => [
-            'nombre'      => 'Utilización del peor tablespace sin crecimiento automático',
-            'descripcion' => 'Ocupación del peor tablespace que NO puede autoextenderse. Cubre el '
-                           . 'punto ciego de M-ARC-01: con crecimiento automático el porcentaje '
-                           . 'se mide contra el máximo alcanzable y casi nunca alarma.',
+            'nombre'      => 'mon.metrica_marc05_nombre',
+            'descripcion' => 'mon.metrica_marc05_descripcion',
         ],
 
         'M-CON-01' => [
-            'nombre'      => 'Sentencias sobre el umbral de tiempo por ejecución',
-            'descripcion' => 'Cuántas sentencias del top-20 superan el tiempo por ejecución '
-                           . 'pactado. Es un conteo, no una proporción, y mide el trabajo que se '
-                           . 'le pide a la base, no su salud.',
+            'nombre'      => 'mon.metrica_mcon01_nombre',
+            'descripcion' => 'mon.metrica_mcon01_descripcion',
         ],
+    ],
+
+    /*
+     * ── TRAZABILIDAD COBIT DE `catalogo_procesos` ───────────────────────────
+     *
+     * Nombre de cada objetivo de gestión de COBIT 2019 que ya tiene el
+     * instrumento (`Scripts/14_multinorma.sql`), para que el código que se
+     * cita en `ancla_cobit` no cuelgue solo: se puede consultar qué significa
+     * sin salir del monitor. Solo se listan los que este catálogo usa; el
+     * instrumento tiene los 12.
+     *
+     * **Es la misma clase de anotación que `config/monitor-catalogo.php` ya
+     * hace con `ancla_iso`** (columna real de la tabla `metrica`, exclusiva de
+     * ISO/IEC 27002) — aquí no existía su equivalente para COBIT, y por eso el
+     * criterio del §12 «el monitor demuestra alineación con el marco elegido»
+     * no se podía comprobar mirando el catálogo de procesos.
+     *
+     * **Es criterio propio del equipo, no una tabla oficial de ISACA**: COBIT
+     * 2019 no publica una correspondencia entre procesos internos de un motor
+     * Oracle (PMON, LGWR, tablespaces…) y sus objetivos de gestión, igual que
+     * pasó con el peso P/S del punto 7 de `entrega-multinorma-cobit.md`. La
+     * asignación de abajo se hizo por el RIESGO que cada proceso vigila:
+     * continuidad del servicio (DSS01), recuperación tras una caída (DSS04) o
+     * pérdida/integridad del dato (APO14).
+     *
+     * El nombre de cada objetivo es, otra vez, una CLAVE de idioma y no el
+     * texto: se pinta junto al del proceso en la misma tabla.
+     */
+    'catalogo_cobit' => [
+        'DSS01' => 'mon.cobit_dss01',
+        'DSS04' => 'mon.cobit_dss04',
+        'APO14' => 'mon.cobit_apo14',
     ],
 
     /*
@@ -196,207 +204,127 @@ return [
      * prosa: son dos columnas de la tabla y responden dos preguntas distintas
      * —qué es esto, y qué hago con ello—. Juntas, quien buscaba la acción tenía
      * que leerse la definición entera cada vez.
+     *
+     * `ancla_cobit` es el objetivo de `catalogo_cobit` (arriba) al que responde
+     * ese proceso. Ver ese bloque para el criterio de asignación.
+     *
+     * `nombre`, `descripcion` y `recomendacion` son CLAVES de idioma, igual
+     * que en `catalogo_metricas`: `metricas` y `ancla_cobit` siguen siendo
+     * códigos, no prosa, y por eso no llevan clave.
      */
     'catalogo_procesos' => [
 
         'PROCESOS' => [
             [
-                'nombre'        => 'PMON',
+                'nombre'        => 'mon.proceso_pmon_nombre',
                 'metricas'      => ['M-PRO-03', 'M-PRO-05'],
-                'descripcion'   => 'Monitor de procesos. Limpia lo que dejan '
-                                   . 'las sesiones que terminan de forma '
-                                   . 'anormal: deshace su transacción, libera '
-                                   . 'los bloqueos que retenían y devuelve su '
-                                   . 'hueco al arreglo de procesos. Si PMON no '
-                                   . 'está, la instancia no está.',
-                'recomendacion' => 'Se recomienda alertar a la primera '
-                                   . 'muestra en que falte, sin esperar '
-                                   . 'confirmación: no hay degradación parcial '
-                                   . 'de este proceso.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_pmon_descripcion',
+                'recomendacion' => 'mon.proceso_pmon_recomendacion',
             ],
             [
-                'nombre'        => 'SMON',
+                'nombre'        => 'mon.proceso_smon_nombre',
                 'metricas'      => ['M-PRO-03', 'M-PRO-05'],
-                'descripcion'   => 'Monitor del sistema. Recupera la '
-                                   . 'instancia al arrancar tras una caída, '
-                                   . 'fusiona los extents libres contiguos y '
-                                   . 'limpia los segmentos temporales que '
-                                   . 'quedaron huérfanos.',
-                'recomendacion' => 'Se recomienda mirarlo junto a M-ARC-04: '
-                                   . 'cuando SMON se atrasa, el tablespace '
-                                   . 'temporal es el primero en notarlo.',
+                'ancla_cobit'   => 'DSS04',
+                'descripcion'   => 'mon.proceso_smon_descripcion',
+                'recomendacion' => 'mon.proceso_smon_recomendacion',
             ],
             [
-                'nombre'        => 'DBW0',
+                'nombre'        => 'mon.proceso_dbw0_nombre',
                 'metricas'      => ['M-PRO-03', 'M-PRO-05'],
-                'descripcion'   => 'Escritor de base de datos. Baja a los '
-                                   . 'datafiles los bloques sucios del buffer '
-                                   . 'cache para que haya sitio libre donde '
-                                   . 'leer los siguientes.',
-                'recomendacion' => 'Se recomienda no leerlo solo: si DBW0 '
-                                   . 'está vivo pero el punto de control se '
-                                   . 'atrasa (M-PRO-06), el cuello de botella '
-                                   . 'es la E/S de disco y no el proceso.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_dbw0_descripcion',
+                'recomendacion' => 'mon.proceso_dbw0_recomendacion',
             ],
             [
-                'nombre'        => 'LGWR',
+                'nombre'        => 'mon.proceso_lgwr_nombre',
                 'metricas'      => ['M-PRO-03', 'M-PRO-04'],
-                'descripcion'   => 'Escritor del registro de rehacer. Vuelca '
-                                   . 'el búfer de redo a los archivos de log en '
-                                   . 'cada COMMIT, y por eso su latencia es la '
-                                   . 'latencia que siente la aplicación al '
-                                   . 'confirmar.',
-                'recomendacion' => 'Se recomienda tratar M-PRO-04 como '
-                                   . 'métrica de experiencia de usuario, no de '
-                                   . 'infraestructura: por encima de 20 ms los '
-                                   . 'COMMIT se notan desde fuera.',
+                'ancla_cobit'   => 'APO14',
+                'descripcion'   => 'mon.proceso_lgwr_descripcion',
+                'recomendacion' => 'mon.proceso_lgwr_recomendacion',
             ],
             [
-                'nombre'        => 'CKPT',
+                'nombre'        => 'mon.proceso_ckpt_nombre',
                 'metricas'      => ['M-PRO-03', 'M-PRO-06'],
-                'descripcion'   => 'Proceso de punto de control. Marca hasta '
-                                   . 'dónde está garantizado el contenido en '
-                                   . 'disco y actualiza las cabeceras de los '
-                                   . 'datafiles. Cuanto más atrasado va, más '
-                                   . 'tarda la recuperación tras una caída.',
-                'recomendacion' => 'Se recomienda comparar M-PRO-06 con el '
-                                   . 'objetivo de MTTR pactado con el negocio, '
-                                   . 'no con un número absoluto.',
+                'ancla_cobit'   => 'DSS04',
+                'descripcion'   => 'mon.proceso_ckpt_descripcion',
+                'recomendacion' => 'mon.proceso_ckpt_recomendacion',
             ],
             [
-                'nombre'        => 'Cupo de sesiones',
+                'nombre'        => 'mon.proceso_cupo_sesiones_nombre',
                 'metricas'      => ['M-PRO-01'],
-                'descripcion'   => 'No es un proceso de fondo: es el techo de '
-                                   . 'sesiones concurrentes que la instancia '
-                                   . 'admite. Al agotarse, las conexiones '
-                                   . 'nuevas se rechazan con ORA-00018 aunque '
-                                   . 'la base esté perfectamente sana por '
-                                   . 'dentro.',
-                'recomendacion' => 'Se recomienda medirlo contra el límite '
-                                   . 'efectivo de V$RESOURCE_LIMIT y nunca '
-                                   . 'contra una cifra supuesta.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_cupo_sesiones_descripcion',
+                'recomendacion' => 'mon.proceso_cupo_sesiones_recomendacion',
             ],
             [
-                'nombre'        => 'Cupo de procesos',
+                'nombre'        => 'mon.proceso_cupo_procesos_nombre',
                 'metricas'      => ['M-PRO-02'],
-                'descripcion'   => 'Techo del arreglo de procesos del sistema '
-                                   . 'operativo. Se agota antes que el de '
-                                   . 'sesiones en instancias con servidor '
-                                   . 'dedicado, y su falla (ORA-00020) es igual '
-                                   . 'de abrupta.',
-                'recomendacion' => 'Se recomienda vigilarlo junto al cupo de '
-                                   . 'sesiones: suben juntos y quien avisa '
-                                   . 'primero depende de la configuración, no '
-                                   . 'de la carga.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_cupo_procesos_descripcion',
+                'recomendacion' => 'mon.proceso_cupo_procesos_recomendacion',
             ],
         ],
 
         'MEMORIA' => [
             [
-                'nombre'        => 'Shared pool',
+                'nombre'        => 'mon.proceso_shared_pool_nombre',
                 'metricas'      => ['M-MEM-03'],
-                'descripcion'   => 'Zona de la SGA donde viven los planes de '
-                                   . 'ejecución y el diccionario de datos en '
-                                   . 'caché. Cuando se queda sin espacio libre, '
-                                   . 'Oracle empieza a expulsar planes y a '
-                                   . 'recompilar sentencias que ya tenía '
-                                   . 'resueltas, y el coste aparece como CPU, '
-                                   . 'no como memoria.',
-                'recomendacion' => 'Se recomienda no perseguir el 100 % de '
-                                   . 'ocupación: aquí el espacio libre es el '
-                                   . 'margen de maniobra.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_shared_pool_descripcion',
+                'recomendacion' => 'mon.proceso_shared_pool_recomendacion',
             ],
             [
-                'nombre'        => 'PGA',
+                'nombre'        => 'mon.proceso_pga_nombre',
                 'metricas'      => ['M-MEM-02'],
-                'descripcion'   => 'Área global de programa: la memoria '
-                                   . 'privada de cada sesión para '
-                                   . 'ordenamientos, agrupaciones y uniones por '
-                                   . 'hash. Al pasarse del objetivo, el trabajo '
-                                   . 'no falla: se traslada al tablespace '
-                                   . 'temporal y todo se vuelve más lento en '
-                                   . 'silencio.',
-                'recomendacion' => 'Se recomienda leerla junto a M-ARC-04, '
-                                   . 'que es donde aterriza lo que no cupo.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_pga_descripcion',
+                'recomendacion' => 'mon.proceso_pga_recomendacion',
             ],
             [
-                'nombre'        => 'Caché de PGA',
+                'nombre'        => 'mon.proceso_cache_pga_nombre',
                 'metricas'      => ['M-MEM-01'],
-                'descripcion'   => 'Proporción del trabajo de PGA que se '
-                                   . 'resolvió íntegramente en memoria, sin '
-                                   . 'pasar por disco. Es la medida de '
-                                   . 'resultado de la PGA, mientras que '
-                                   . 'M-MEM-02 es la de consumo.',
-                'recomendacion' => 'Se recomienda actuar cuando esta baja '
-                                   . 'aunque la asignada esté dentro del '
-                                   . 'objetivo: significa que el objetivo se '
-                                   . 'quedó corto para la carga real.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_cache_pga_descripcion',
+                'recomendacion' => 'mon.proceso_cache_pga_recomendacion',
             ],
         ],
 
         'ARCHIVOS' => [
             [
-                'nombre'        => 'Tablespaces permanentes',
+                'nombre'        => 'mon.proceso_tablespaces_permanentes_nombre',
                 'metricas'      => ['M-ARC-01'],
-                'descripcion'   => 'Espacio ocupado en el tablespace peor '
-                                   . 'situado, nunca el promedio: un promedio '
-                                   . 'sano esconde el archivo que está a punto '
-                                   . 'de reventar. Al llenarse, la escritura '
-                                   . 'falla con ORA-01653 y la transacción se '
-                                   . 'pierde.',
-                'recomendacion' => 'Se recomienda revisar el crecimiento '
-                                   . 'semanal además del porcentaje: el '
-                                   . 'porcentaje dice dónde está, la pendiente '
-                                   . 'dice cuándo llega.',
+                'ancla_cobit'   => 'APO14',
+                'descripcion'   => 'mon.proceso_tablespaces_permanentes_descripcion',
+                'recomendacion' => 'mon.proceso_tablespaces_permanentes_recomendacion',
             ],
             [
-                'nombre'        => 'Datafiles',
+                'nombre'        => 'mon.proceso_datafiles_nombre',
                 'metricas'      => ['M-ARC-02'],
-                'descripcion'   => 'Compuerta: o todos los archivos de datos '
-                                   . 'están en línea, o no lo están. Un '
-                                   . 'datafile fuera de línea deja inaccesible '
-                                   . 'su parte de los datos aunque el resto de '
-                                   . 'la instancia responda con normalidad.',
-                'recomendacion' => 'Se recomienda no promediarla con nada: '
-                                   . 'cerrada manda el índice de archivos a '
-                                   . 'crítico sin discusión.',
+                'ancla_cobit'   => 'APO14',
+                'descripcion'   => 'mon.proceso_datafiles_descripcion',
+                'recomendacion' => 'mon.proceso_datafiles_recomendacion',
             ],
             [
-                'nombre'        => 'Grupos de redo',
+                'nombre'        => 'mon.proceso_grupos_redo_nombre',
                 'metricas'      => ['M-ARC-03'],
-                'descripcion'   => 'Compuerta sobre los miembros inválidos de '
-                                   . 'los grupos de redo. Con todos los grupos '
-                                   . 'inutilizables la base se detiene, porque '
-                                   . 'no puede rotar el registro.',
-                'recomendacion' => 'Se recomienda mantener al menos dos '
-                                   . 'miembros por grupo en discos distintos: '
-                                   . 'la métrica mide validez, no redundancia.',
+                'ancla_cobit'   => 'DSS04',
+                'descripcion'   => 'mon.proceso_grupos_redo_descripcion',
+                'recomendacion' => 'mon.proceso_grupos_redo_recomendacion',
             ],
             [
-                'nombre'        => 'Tablespace temporal',
+                'nombre'        => 'mon.proceso_tablespace_temporal_nombre',
                 'metricas'      => ['M-ARC-04'],
-                'descripcion'   => 'Espacio de trabajo para lo que no cupo en '
-                                   . 'PGA. Al agotarse, la consulta o el índice '
-                                   . 'que se estaba construyendo falla con '
-                                   . 'ORA-01652, pero no se pierden datos '
-                                   . 'permanentes.',
-                'recomendacion' => 'Se recomienda dimensionarlo a partir del '
-                                   . 'pico observado y no del promedio: lo '
-                                   . 'consume una sola consulta grande, no el '
-                                   . 'uso diario.',
+                'ancla_cobit'   => 'DSS01',
+                'descripcion'   => 'mon.proceso_tablespace_temporal_descripcion',
+                'recomendacion' => 'mon.proceso_tablespace_temporal_recomendacion',
             ],
             [
-                'nombre'        => 'Tablespace sin autoextend',
+                'nombre'        => 'mon.proceso_tablespace_sin_autoextend_nombre',
                 'metricas'      => ['M-ARC-05'],
-                'descripcion'   => 'Cubre el punto ciego de M-ARC-01: con '
-                                   . 'crecimiento automático activo, el '
-                                   . 'porcentaje se mide contra el máximo '
-                                   . 'alcanzable y se queda en óptimo por mucho '
-                                   . 'que crezca el archivo. Sin autoextend, '
-                                   . 'ese mismo porcentaje sí significa «qué '
-                                   . 'tan lleno está».',
-                'recomendacion' => 'Se recomienda tratarlo como el aviso '
-                                   . 'temprano de los dos.',
+                'ancla_cobit'   => 'APO14',
+                'descripcion'   => 'mon.proceso_tablespace_sin_autoextend_descripcion',
+                'recomendacion' => 'mon.proceso_tablespace_sin_autoextend_recomendacion',
             ],
         ],
     ],

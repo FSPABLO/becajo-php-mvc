@@ -46,6 +46,28 @@ declare(strict_types=1);
  * palomita y aspa se distinguen por forma pero también por color, y en gris se
  * parecen más de lo que conviene.
  *
+ * ── Trazabilidad COBIT junto al nombre del proceso ───────────────────────────
+ *
+ * El código en oro (`ancla_cobit` del catálogo, vía `MonitorController::
+ * procesosPorIndice()`) es al objetivo de gestión de COBIT 2019 al que
+ * responde el proceso, no un estado ni una métrica más: por eso va pegado al
+ * nombre y no en su propia columna, que habría sugerido que se mide o se
+ * compara entre filas. Usa el MISMO mecanismo de consulta que el código de
+ * métrica de la cabecera —cursor de ayuda, subrayado punteado y panel con
+ * `role="tooltip"`— y no un `title` nativo: dos maneras de anunciar «esto se
+ * puede consultar» en la misma tabla se leerían como que una de ellas es
+ * menos importante.
+ *
+ * ── Todo el texto de esta tabla se traduce ───────────────────────────────────
+ *
+ * `$fila['nombre']`, `descripcion`, `recomendacion`, `$ficha['nombre']` /
+ * `descripcion` y el nombre del objetivo COBIT NO son el texto: son claves de
+ * `config/idiomas/{es,en}.php` (ver el comentario de `catalogo_procesos` y
+ * `catalogo_metricas` en `config/monitor-mockup.php`). Antes solo las
+ * cabeceras de la tabla cambiaban de idioma y el contenido se quedaba fijo en
+ * español; se resuelve aquí, con `$vista->t()`, igual que el resto de la
+ * pantalla.
+ *
  * @var \App\Core\Vista $vista
  * @var list<string> $columnas   Códigos de métrica, ya ordenados.
  * @var array<string, array<string, string>> $fichas  Nombre y qué mide, por código.
@@ -185,9 +207,9 @@ $idAyuda = 'ayuda-procesos-' . strtolower($indice);
                                                  group-hover:pointer-events-auto group-hover:opacity-100
                                                  group-focus-within:pointer-events-auto group-focus-within:opacity-100">
                                         <span class="mb-1 block font-semibold text-texto">
-                                            <?= e((string) $ficha['nombre']) ?>
+                                            <?= e($vista->t((string) $ficha['nombre'])) ?>
                                         </span>
-                                        <?= e((string) $ficha['descripcion']) ?>
+                                        <?= e($vista->t((string) $ficha['descripcion'])) ?>
                                     </span>
                                 </span>
                             <?php endif; ?>
@@ -197,7 +219,7 @@ $idAyuda = 'ayuda-procesos-' . strtolower($indice);
             </thead>
 
             <tbody>
-                <?php foreach ($filas as $fila): ?>
+                <?php foreach ($filas as $indiceFila => $fila): ?>
                     <?php
                     $exitoso = $fila['exitoso'];
 
@@ -206,11 +228,63 @@ $idAyuda = 'ayuda-procesos-' . strtolower($indice);
                         : ($exitoso
                             ? ['ok',  'circle-check', $vista->t('mon.res_correcto')]
                             : ['bad', 'aspa',         $vista->t('mon.res_hallazgo')]);
+
+                    /*
+                     * Trazabilidad COBIT (§12): a qué objetivo de gestión
+                     * responde este proceso. Mismo mecanismo que el código de
+                     * métrica de la cabecera (span con tabindex + panel
+                     * role="tooltip"), no un `title` nativo: son la misma
+                     * clase de referencia consultable en la misma tabla, y
+                     * dos maneras distintas de anunciarlo se leerían como que
+                     * una pesa menos que la otra. El id lleva el índice de
+                     * fila porque el mismo código COBIT se repite en varios
+                     * procesos del mismo panel.
+                     */
+                    $idCobit = 'cobit-' . strtolower($indice) . '-' . $indiceFila;
                     ?>
                     <tr class="border-b border-borde/60 align-top last:border-0">
 
                         <th scope="row" class="whitespace-nowrap py-3 pr-4 font-semibold text-texto">
-                            <?= e((string) $fila['nombre']) ?>
+                            <?= e($vista->t((string) $fila['nombre'])) ?>
+                            <?php if ($fila['anclaCobit'] !== null): ?>
+                                <span class="group relative inline-block align-middle">
+                                    <span tabindex="0"
+                                          aria-describedby="<?= e($idCobit) ?>"
+                                          class="rv-id cursor-help ml-1.5 whitespace-nowrap border-b
+                                                 border-dashed border-oro/60 text-[10px] font-normal
+                                                 text-oro-texto">
+                                        <?= e((string) $fila['anclaCobit']) ?>
+                                    </span>
+
+                                    <?php
+                                    /*
+                                     * Anclado a la IZQUIERDA del disparador y
+                                     * no centrado: esta columna es la primera
+                                     * de la tabla, así que un panel centrado
+                                     * (`left-1/2 -translate-x-1/2`, como el
+                                     * de la cabecera) sobresale por la
+                                     * izquierda y `overflow-x-auto` lo recorta
+                                     * contra el borde de la tabla. Abriendo
+                                     * hacia la derecha cae siempre dentro.
+                                     */
+                                    ?>
+                                    <span id="<?= e($idCobit) ?>" role="tooltip"
+                                          class="rv-extruido-lg pointer-events-none absolute left-0 top-full z-30 mt-2
+                                                 block w-64 rounded-rv border border-borde
+                                                 bg-superficie p-3 text-left text-xs font-normal normal-case
+                                                 leading-relaxed tracking-normal text-texto-2 opacity-0
+                                                 transition-opacity
+                                                 group-hover:pointer-events-auto group-hover:opacity-100
+                                                 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                                        <span class="mb-1 block font-semibold text-texto">
+                                            COBIT 2019 <?= e((string) $fila['anclaCobit']) ?>
+                                        </span>
+                                        <?= $fila['anclaCobitNombre'] !== null
+                                            ? e($vista->t((string) $fila['anclaCobitNombre']))
+                                            : '' ?>
+                                    </span>
+                                </span>
+                            <?php endif; ?>
                         </th>
 
                         <?php foreach ($columnas as $codigo): ?>
@@ -254,7 +328,7 @@ $idAyuda = 'ayuda-procesos-' . strtolower($indice);
                         </td>
 
                         <td class="px-4 py-3 text-xs leading-relaxed text-texto-2">
-                            <?= e((string) $fila['descripcion']) ?>
+                            <?= e($vista->t((string) $fila['descripcion'])) ?>
                         </td>
 
                         <?php
@@ -266,7 +340,7 @@ $idAyuda = 'ayuda-procesos-' . strtolower($indice);
                          */
                         ?>
                         <td class="py-3 pl-4 text-xs leading-relaxed text-texto">
-                            <?= e((string) $fila['recomendacion']) ?>
+                            <?= e($vista->t((string) $fila['recomendacion'])) ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -529,12 +529,184 @@ return [
     'mon.res_correcto'       => 'Pass',
     'mon.res_hallazgo'       => 'Finding',
     'mon.res_sin_dato'       => 'No data',
+
     'mon.procesos_nota'      => 'Every metric has its own column and is normalised to 0-1, so they '
                               . 'measure the same thing even though they observe different ones. A BLANK '
                               . 'cell means that metric does not assess that process; a dash means it '
                               . 'does but could not be collected. A process passes when none of its '
                               . 'metrics trips the traffic light, and "no data" is not a failure of its '
-                              . 'own: that is why it carries no cross.',
+                              . 'own: that is why it carries no cross. The gold code next to the process '
+                              . 'name is the COBIT 2019 management objective whose risk it watches.',
+
+    /*
+     * COBIT 2019 traceability for the process table (see `catalogo_cobit` in
+     * config/monitor-mockup.php). Official English name of the objective.
+     */
+    'mon.cobit_dss01' => 'Managed Operations',
+    'mon.cobit_dss04' => 'Managed Continuity',
+    'mon.cobit_apo14' => 'Managed Data',
+
+    /*
+     * Metric ficha (catalogo_metricas in config/monitor-mockup.php): name and
+     * what it measures, for the popover on the code in the process table's
+     * header.
+     */
+    'mon.metrica_mpro01_nombre'      => 'Session utilization',
+    'mon.metrica_mpro01_descripcion' => 'What share of the sessions the instance allows is in use. On hitting '
+        . 'the ceiling, new connections are rejected with ORA-00018 even though the database is healthy '
+        . 'underneath.',
+    'mon.metrica_mpro02_nombre'      => 'Process utilization',
+    'mon.metrica_mpro02_descripcion' => "How much of the operating system's process array is occupied. It runs "
+        . 'out before the session quota on dedicated-server instances, and its failure (ORA-00020) is just as '
+        . 'abrupt.',
+    'mon.metrica_mpro03_nombre'      => 'Mandatory background processes present',
+    'mon.metrica_mpro03_descripcion' => 'Gate: checks that the five background processes — CKPT, DBW0, LGWR, '
+        . "PMON and SMON — are alive in this sample. There's no middle ground: it's 1 or 0.",
+    'mon.metrica_mpro04_nombre'      => 'Average redo write wait',
+    'mon.metrica_mpro04_descripcion' => "Average milliseconds a redo log write takes. It's the latency the "
+        . 'application feels on commit, so it reads as user experience, not infrastructure.',
+    'mon.metrica_mpro05_nombre'      => 'Background process restart detected',
+    'mon.metrica_mpro05_descripcion' => "Gate: compares each background process's fingerprint against the "
+        . 'previous sample. It sees what M-PRO-03 cannot — a process that died and came back up between two '
+        . 'samples.',
+    'mon.metrica_mpro06_nombre'      => 'Checkpoint age',
+    'mon.metrica_mpro06_descripcion' => 'How far the checkpoint has fallen behind the MTTR target. It says how '
+        . 'long recovery would take if the instance crashed right now.',
+    'mon.metrica_mmem01_nombre'      => 'PGA cache hit ratio',
+    'mon.metrica_mmem01_descripcion' => "Share of PGA work resolved entirely in memory, without touching disk. "
+        . "HIGHER IS BETTER: it's the PGA's outcome measure, while M-MEM-02 is its consumption measure.",
+    'mon.metrica_mmem02_nombre'      => 'PGA allocated against target',
+    'mon.metrica_mmem02_descripcion' => "How much private session memory has been allocated against the "
+        . "configured target. Going over doesn't fail the work: it spills to the temporary tablespace and "
+        . 'everything quietly gets slower.',
+    'mon.metrica_mmem03_nombre'      => 'Shared pool free memory',
+    'mon.metrica_mmem03_descripcion' => 'How much free space is left in the SGA area where execution plans and '
+        . 'the cached dictionary live. HIGHER IS BETTER: here, free space is the room to maneuver.',
+    'mon.metrica_marc01_nombre'      => 'Worst tablespace utilization',
+    'mon.metrica_marc01_descripcion' => "Usage of the worst-off permanent tablespace, never the average: a "
+        . "healthy average hides the file that's about to burst. When it fills up, writing fails with "
+        . 'ORA-01653.',
+    'mon.metrica_marc02_nombre'      => 'Datafiles in a valid state',
+    'mon.metrica_marc02_descripcion' => "Gate: checks that every data file is online. One offline leaves its "
+        . 'share of the data inaccessible even if the rest of the instance responds normally.',
+    'mon.metrica_marc03_nombre'      => 'Redo groups with no invalid members',
+    'mon.metrica_marc03_descripcion' => "Gate over the unusable members of the redo log groups. With every "
+        . "group unusable, the database halts, because it can't rotate the log.",
+    'mon.metrica_marc04_nombre'      => 'Worst temporary tablespace utilization',
+    'mon.metrica_marc04_descripcion' => "Usage of the worst-off temporary tablespace: the workspace for what "
+        . "didn't fit in PGA. When it runs out, the running query fails with ORA-01652, but no permanent data "
+        . 'is lost.',
+    'mon.metrica_marc05_nombre'      => 'Worst non-autoextending tablespace utilization',
+    'mon.metrica_marc05_descripcion' => "Usage of the worst tablespace that CANNOT auto-extend. It covers "
+        . 'M-ARC-01\'s blind spot: with autoextend on, the percentage is measured against the reachable '
+        . 'maximum and almost never alarms.',
+    'mon.metrica_mcon01_nombre'      => 'Statements over the per-execution time threshold',
+    'mon.metrica_mcon01_descripcion' => 'How many of the top-20 statements exceed the agreed time per '
+        . "execution. It's a count, not a ratio, and it measures the work asked of the database, not its "
+        . 'health.',
+
+    /*
+     * Process catalog (catalogo_procesos in config/monitor-mockup.php): name,
+     * description and recommendation per process, grouped by index.
+     */
+    'mon.proceso_pmon_nombre'        => 'PMON',
+    'mon.proceso_pmon_descripcion'   => 'Process monitor. Cleans up after sessions that end abnormally: rolls '
+        . 'back their transaction, releases the locks they held, and returns their slot to the process array. '
+        . "If PMON is gone, the instance is gone.",
+    'mon.proceso_pmon_recomendacion' => 'Alerting on the very first sample where it is missing is recommended, '
+        . 'with no confirmation wait: this process has no partial degradation.',
+
+    'mon.proceso_smon_nombre'        => 'SMON',
+    'mon.proceso_smon_descripcion'   => 'System monitor. Recovers the instance on startup after a crash, '
+        . 'coalesces contiguous free extents, and cleans up orphaned temporary segments.',
+    'mon.proceso_smon_recomendacion' => 'Watching it alongside M-ARC-04 is recommended: when SMON falls '
+        . 'behind, the temporary tablespace is the first to notice.',
+
+    'mon.proceso_dbw0_nombre'        => 'DBW0',
+    'mon.proceso_dbw0_descripcion'   => "Database writer. Flushes dirty buffer cache blocks down to the "
+        . "datafiles so there's free room to read the next ones.",
+    'mon.proceso_dbw0_recomendacion' => 'Reading it in isolation is not recommended: if DBW0 is alive but the '
+        . 'checkpoint falls behind (M-PRO-06), the bottleneck is disk I/O, not the process.',
+
+    'mon.proceso_lgwr_nombre'        => 'LGWR',
+    'mon.proceso_lgwr_descripcion'   => 'Redo log writer. Flushes the redo buffer to the log files on every '
+        . 'COMMIT, which is why its latency is the latency the application feels on commit.',
+    'mon.proceso_lgwr_recomendacion' => 'Treating M-PRO-04 as a user-experience metric, not an infrastructure '
+        . 'one, is recommended: above 20 ms, COMMITs are noticeable from outside.',
+
+    'mon.proceso_ckpt_nombre'        => 'CKPT',
+    'mon.proceso_ckpt_descripcion'   => 'Checkpoint process. Marks how far the on-disk content is guaranteed '
+        . 'and updates the datafile headers. The further behind it runs, the longer recovery takes after a '
+        . 'crash.',
+    'mon.proceso_ckpt_recomendacion' => 'Comparing M-PRO-06 against the MTTR target agreed with the business, '
+        . 'not against an absolute number, is recommended.',
+
+    'mon.proceso_cupo_sesiones_nombre'        => 'Session quota',
+    'mon.proceso_cupo_sesiones_descripcion'   => "Not a background process: it's the ceiling of concurrent "
+        . 'sessions the instance allows. Once exhausted, new connections are rejected with ORA-00018 even '
+        . 'though the database is perfectly healthy underneath.',
+    'mon.proceso_cupo_sesiones_recomendacion' => "Measuring it against V\$RESOURCE_LIMIT's effective limit, "
+        . 'never against an assumed figure, is recommended.',
+
+    'mon.proceso_cupo_procesos_nombre'        => 'Process quota',
+    'mon.proceso_cupo_procesos_descripcion'   => "Ceiling of the operating system's process array. It runs out "
+        . 'before the session quota on dedicated-server instances, and its failure (ORA-00020) is just as '
+        . 'abrupt.',
+    'mon.proceso_cupo_procesos_recomendacion' => 'Watching it alongside the session quota is recommended: they '
+        . 'rise together, and which one warns first depends on configuration, not load.',
+
+    'mon.proceso_shared_pool_nombre'        => 'Shared pool',
+    'mon.proceso_shared_pool_descripcion'   => 'SGA area where execution plans and the cached data dictionary '
+        . 'live. Once it runs out of free space, Oracle starts evicting plans and recompiling statements it '
+        . 'had already solved, and the cost shows up as CPU, not memory.',
+    'mon.proceso_shared_pool_recomendacion' => 'Chasing 100% occupancy is not recommended here: free space is '
+        . 'the room to maneuver.',
+
+    'mon.proceso_pga_nombre'        => 'PGA',
+    'mon.proceso_pga_descripcion'   => "Program Global Area: each session's private memory for sorts, "
+        . "aggregations and hash joins. Going over target doesn't fail the work: it spills to the temporary "
+        . 'tablespace and everything quietly gets slower.',
+    'mon.proceso_pga_recomendacion' => 'Reading it alongside M-ARC-04, where whatever did not fit lands, is '
+        . 'recommended.',
+
+    'mon.proceso_cache_pga_nombre'        => 'PGA cache',
+    'mon.proceso_cache_pga_descripcion'   => "Share of PGA work resolved entirely in memory, without touching "
+        . "disk. It's the PGA's outcome measure, while M-MEM-02 is its consumption measure.",
+    'mon.proceso_cache_pga_recomendacion' => 'Acting when this drops even while the allocated figure stays '
+        . 'within target is recommended: it means the target fell short of the real load.',
+
+    'mon.proceso_tablespaces_permanentes_nombre'        => 'Permanent tablespaces',
+    'mon.proceso_tablespaces_permanentes_descripcion'   => "Space used in the worst-off tablespace, never the "
+        . "average: a healthy average hides the file that's about to burst. When it fills up, writing fails "
+        . 'with ORA-01653 and the transaction is lost.',
+    'mon.proceso_tablespaces_permanentes_recomendacion' => 'Reviewing weekly growth alongside the percentage '
+        . 'is recommended: the percentage says where it stands, the slope says when it arrives.',
+
+    'mon.proceso_datafiles_nombre'        => 'Datafiles',
+    'mon.proceso_datafiles_descripcion'   => "Gate: either every data file is online, or it isn't. One offline "
+        . 'datafile leaves its share of the data inaccessible even if the rest of the instance responds '
+        . 'normally.',
+    'mon.proceso_datafiles_recomendacion' => 'Averaging it with anything is not recommended: offline sends the '
+        . 'files index to critical without discussion.',
+
+    'mon.proceso_grupos_redo_nombre'        => 'Redo log groups',
+    'mon.proceso_grupos_redo_descripcion'   => "Gate over the invalid members of the redo log groups. With "
+        . "every group unusable, the database halts, because it can't rotate the log.",
+    'mon.proceso_grupos_redo_recomendacion' => 'Keeping at least two members per group on separate disks is '
+        . 'recommended: the metric measures validity, not redundancy.',
+
+    'mon.proceso_tablespace_temporal_nombre'        => 'Temporary tablespace',
+    'mon.proceso_tablespace_temporal_descripcion'   => "Workspace for whatever didn't fit in PGA. Once it runs "
+        . 'out, the query or index being built fails with ORA-01652, but no permanent data is lost.',
+    'mon.proceso_tablespace_temporal_recomendacion' => 'Sizing it from the observed peak, not the average, is '
+        . 'recommended: a single large query consumes it, not everyday use.',
+
+    'mon.proceso_tablespace_sin_autoextend_nombre'        => 'Non-autoextending tablespace',
+    'mon.proceso_tablespace_sin_autoextend_descripcion'   => "Covers M-ARC-01's blind spot: with autoextend on, "
+        . 'the percentage is measured against the reachable maximum and stays optimal no matter how much the '
+        . "file grows. Without autoextend, that same percentage really does mean 'how full it is'.",
+    'mon.proceso_tablespace_sin_autoextend_recomendacion' => 'Treating it as the early warning of the two is '
+        . 'recommended.',
 
     // Memory chart
     'mon.memoria_titulo'     => 'Database memory',
