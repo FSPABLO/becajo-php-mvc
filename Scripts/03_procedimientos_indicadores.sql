@@ -136,7 +136,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
     -- Promedio de una dimensión en una auditoría COBIT.
     --
     -- Capacidad declarada por objetivo, ponderada por la relación del
-    -- objetivo con la dimensión (notación P/S de COBIT 4.1, Apéndice II):
+    -- objetivo con la dimensión (P = primaria, S = secundaria; criterio
+    -- propio del equipo por proceso, no una tabla oficial de COBIT 2019 —
+    -- ver Scripts/14_multinorma.sql y el punto 7 de entrega-multinorma-cobit.md):
     -- P pesa 2, S pesa 1 y sin relación no entra. Normalizado a 0..1.
     -- ------------------------------------------------------------------
     FUNCTION fn_promedio_objetivos(

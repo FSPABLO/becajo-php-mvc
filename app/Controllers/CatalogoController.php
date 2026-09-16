@@ -49,9 +49,9 @@ final class CatalogoController extends Controlador
     }
 
     /**
-     * Mapa de procesos vs C-I-D — la misma idea del Apéndice II
-     * de COBIT 4.1: cada proceso, con su relación Primaria/Secundaria/ninguna
-     * declarada frente a Confidencialidad, Integridad y Disponibilidad.
+     * Mapa de procesos vs C-I-D, según el criterio de valoración de riesgo
+     * de ISO/IEC 27005: cada proceso, con su relación Primaria/Secundaria/
+     * ninguna declarada frente a Confidencialidad, Integridad y Disponibilidad.
      */
     public function matriz(): void
     {
@@ -448,8 +448,8 @@ final class CatalogoController extends Controlador
 
         $errores += $this->validarOrden($datos['orden']);
 
-        // Notación de COBIT 4.1 (Apéndice II): 'P' relación primaria,
-        // 'S' relación secundaria, vacío = sin relación relevante.
+        // Criterio de valoración de riesgo de ISO/IEC 27005: 'P' relación
+        // primaria, 'S' relación secundaria, vacío = sin relación relevante.
         foreach ([
             'relacion_confidencialidad' => 'La relación con Confidencialidad',
             'relacion_integridad'       => 'La relación con Integridad',
@@ -500,7 +500,7 @@ final class CatalogoController extends Controlador
             }
         }
 
-        // Importancia relativa (COBIT 4.1, Apéndice II): Alta, Media o Baja.
+        // Importancia relativa (criterio de valoración de riesgo de ISO/IEC 27005): Alta, Media o Baja.
         if (!in_array($datos['peso'], [Control::PESO_ALTA, Control::PESO_MEDIA, Control::PESO_BAJA], true)) {
             $errores['peso'] = 'La importancia debe ser Alta, Media o Baja.';
         }

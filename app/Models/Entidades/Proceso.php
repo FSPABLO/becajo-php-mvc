@@ -12,9 +12,10 @@ namespace App\Models\Entidades;
  * temática, no al final. Se conserva su número original para poder rastrear
  * cada proceso hasta la tabla del marco de referencia.
  *
- * relacionConfidencialidad/Integridad/Disponibilidad usan la notación de
- * COBIT 4.1 (Apéndice II): 'P' cuando el proceso tiene una relación primaria
- * con esa dimensión, 'S' cuando es solo secundaria, null cuando no aplica.
+ * relacionConfidencialidad/Integridad/Disponibilidad siguen el criterio de
+ * valoración de riesgo de ISO/IEC 27005: 'P' cuando el proceso tiene una
+ * relación primaria con esa dimensión, 'S' cuando es solo secundaria, null
+ * cuando no aplica.
  * Es la relación DECLARADA del proceso en el catálogo — no reemplaza lo que
  * el auditor marca en cada evaluación puntual (afecta_confidencialidad, etc.
  * en EvaluacionControl), que sigue siendo lo que se usa para calcular riesgo.

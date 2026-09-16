@@ -129,7 +129,7 @@ $opcionesProceso = array_map(
                 ['valor' => 'BAJA',  'texto' => 'Baja'],
             ],
             'obligatorio' => true,
-            'ayuda'       => 'Importancia relativa del control (COBIT 4.1): pesa más en el cálculo ponderado del riesgo.',
+            'ayuda'       => 'Importancia relativa del control (ISO/IEC 27005): pesa más en el cálculo ponderado del riesgo.',
         ]) ?>
 
         <button type="submit"
