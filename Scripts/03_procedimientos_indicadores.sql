@@ -214,6 +214,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
         v_nombres  t_texto := t_texto('CONFIDENCIALIDAD', 'INTEGRIDAD', 'DISPONIBILIDAD');
         v_modo     estandar.modo_evaluacion%TYPE;
         v_promedio NUMBER(4,3);
+        v_zona     VARCHAR2(10);
         v_indice   NUMBER(5,2);
     BEGIN
         BEGIN
@@ -237,8 +238,13 @@ CREATE OR REPLACE PACKAGE BODY pkg_indicadores AS
             END IF;
 
             IF v_promedio IS NOT NULL THEN
+                -- fn_zona es privada del cuerpo del paquete: Oracle no permite
+                -- llamarla directamente dentro de un INSERT ... VALUES (PLS-00231,
+                -- "function may not be used in SQL"). Se resuelve en PL/SQL puro
+                -- antes de la sentencia SQL y se pasa ya calculada.
+                v_zona := fn_zona(v_promedio);
                 INSERT INTO resultado_riesgo (id_auditoria, tipo_riesgo, promedio_madurez, zona)
-                VALUES (p_id_auditoria, v_nombres(i), v_promedio, fn_zona(v_promedio));
+                VALUES (p_id_auditoria, v_nombres(i), v_promedio, v_zona);
             END IF;
         END LOOP;
 
