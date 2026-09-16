@@ -116,15 +116,15 @@ $clasesCampo = 'rv-hundido mt-1.5 w-full rounded-rv border border-borde bg-super
                 <p class="text-[11px] uppercase tracking-[0.14em] text-texto-2">
                     <?= e($vista->t('eval.nueva_modelos_proximos')) ?>
                 </p>
-                <?php /* Badges de norma: el oro solo puede significar referencia
-                         normativa, y esto lo es. No dice «plan de pago». */ ?>
-                <ul class="mt-2 flex flex-wrap gap-2">
-                    <?php foreach ($tipos as $tipo): ?>
-                        <?php if (!$tipo['disponible']): ?>
-                            <li><span class="rv-badge-norma"><?= e($tipo['etiqueta']) ?></span></li>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </ul>
+                <?php
+                /*
+                 * Aquí iba una lista de distintivos con las normas TODAVÍA no
+                 * disponibles, que salía de un $tipos que el controlador ya no
+                 * pasa: con multinorma, toda norma que devuelve estandares() se
+                 * puede elegir arriba, y no queda ninguna «por llegar» que
+                 * enumerar. El texto de abajo sigue anunciando que vendrán más.
+                 */
+                ?>
                 <p class="mt-2 text-[13px] leading-[1.55] text-texto-2">
                     <?= e($vista->t('eval.nueva_modelos_texto')) ?>
                 </p>

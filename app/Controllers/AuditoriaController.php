@@ -1724,6 +1724,11 @@ final class AuditoriaController extends Controlador
         // leer "va de 0 a 5", no "indique la madurez", que sugiere que la dejó
         // en blanco cuando en realidad la puso mal.
         if (!isset($errores['madurez'])
+            // En una norma POR OBJETIVO la nota no vive en la práctica sino en
+            // el objetivo (su capacidad, 0-5), y el formulario ni siquiera
+            // pregunta la madurez: sin esta exención, ninguna práctica de COBIT
+            // se podía guardar — pedía un campo que no existe en esa pantalla.
+            && !$porObjetivo
             && in_array($estado, [EvaluacionControl::SI, EvaluacionControl::NO], true)
             && $madurez === null
         ) {

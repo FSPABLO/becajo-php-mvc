@@ -89,6 +89,14 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/12_dato
 sed 's/^DEFINE id_auditoria = .*/DEFINE id_auditoria = 161/' Scripts/12_datos_demo_auditoria.sql \
   | docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1
 
+# Su gemelo para COBIT 2019: una auditoría COBIT no se llena con el 12, porque
+# la nota no vive en la práctica (grado N/P/L/F) sino en el OBJETIVO (capacidad
+# 0-5, en evaluacion_objetivo, que es de donde salen los indicadores). La
+# capacidad se DERIVA de las prácticas de ese objetivo, no de un dado. Mismo
+# DEFINE, misma re-ejecutabilidad y tampoco finaliza nada; si se apunta a una
+# auditoría ISO, avisa y no toca nada.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/17_datos_demo_cobit.sql
+
 # Lembas: la clave de la API y sus límites viven en .env (fuera de git y de la
 # imagen). Compose lo lee al levantar y pasa las variables SOLO a "web"; PHP las
 # lee con getenv(). Tras editar .env hay que recrear el contenedor.
