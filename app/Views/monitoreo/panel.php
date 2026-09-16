@@ -249,6 +249,18 @@ $luzGeneral = semaforoGeneral(array_map(
                     <span class="rv-id text-oro-texto"><?= e((string) $sel['clave']) ?></span>
                     · <?= e((string) $sel['motor']) ?>
                     · <?= e((string) $sel['entorno']) ?>
+                    <?php
+                    /*
+                     * Antigüedad SIEMPRE visible (§9): «un tablero que muestra
+                     * un número de hace dos horas como si fuera de ahora es
+                     * peligroso». Va aquí y no solo en el bloque de instancia
+                     * caída porque `hace_min` describe la TOMA, no el ISBD —se
+                     * conoce incluso cuando la muestra no publicó índice. La
+                     * antesala ya la lleva por ficha; a la consola se le había
+                     * retirado del todo.
+                     */
+                    ?>
+                    · <?= e($vista->t('mon.ultima_muestra', $antiguedad((int) $sel['hace_min']))) ?>
                 </p>
 
                 <?php
