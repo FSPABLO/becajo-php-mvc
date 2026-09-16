@@ -323,6 +323,33 @@ $luzGeneral = semaforoGeneral(array_map(
                             )) ?>
                         </p>
                     </div>
+                <?php elseif ($sel['tope'] !== null): ?>
+                    <?php
+                    /*
+                     * INVARIANTE 5 — el ISBD nunca se muestra sin causa. Solo
+                     * aparece cuando el eslabón más débil realmente actuó
+                     * (`tope` viene poblado únicamente cuando el publicado no
+                     * es el promedio ponderado, `isbd_bruto`): si el ISBD ya
+                     * era el promedio, no hay nada que explicar y el bloque no
+                     * se pinta —esta ficha existe para la diferencia, no para
+                     * repetir la fórmula que ya cuenta `mon.formula` en la
+                     * ayuda de la consola.
+                     */
+                    ?>
+                    <div class="rv-hundido mt-5 rounded-rv border border-borde bg-superficie px-4 py-3">
+                        <p class="text-xs font-medium uppercase tracking-wider text-texto-2">
+                            <?= e($vista->t('mon.causa')) ?>
+                        </p>
+                        <p class="mt-1.5 text-sm leading-relaxed text-texto-2">
+                            <?= e($vista->t(
+                                'mon.tope_explicacion',
+                                $cifra((float) $sel['isbd_bruto']),
+                                $vista->t('mon.comp_' . strtolower((string) $sel['tope']['por'])),
+                                $etiquetaBanda((string) $sel['tope']['estado']),
+                                $cifra((float) $sel['tope']['valor']),
+                            )) ?>
+                        </p>
+                    </div>
                 <?php endif; ?>
 
             </div>

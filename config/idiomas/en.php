@@ -473,6 +473,12 @@ return [
                               . 'published. An index computed over half the evidence is worse than no '
                               . 'index at all, because it looks like a good one.',
 
+    // "Why it's worth that" card: only shown when the weakest link capped the ISBD.
+    'mon.causa'              => 'Why it is worth that',
+    'mon.tope_explicacion'   => 'The weighted average of the three components would be %s, but %s is in '
+                              . 'band %s and caps the ISBD at %s: the published index never exceeds what '
+                              . 'its weakest component allows.',
+
     'mon.componentes'        => 'Components',
     'mon.componentes_vacio'  => 'There is nothing to compute: the instance did not answer this collection, so no metric was ever measured.',
     'mon.comp_procesos'      => 'Processes',

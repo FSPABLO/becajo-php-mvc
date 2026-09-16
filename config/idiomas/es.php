@@ -490,6 +490,12 @@ return [
                               . 'publica índice. Un índice calculado sobre la mitad de la evidencia es '
                               . 'peor que ningún índice, porque parece uno bueno.',
 
+    // Ficha «Por qué vale eso»: solo aparece cuando el eslabón más débil topó el ISBD.
+    'mon.causa'              => 'Por qué vale eso',
+    'mon.tope_explicacion'   => 'El promedio ponderado de los tres componentes daría %s, pero %s está en '
+                              . 'banda %s y topa el ISBD en %s: el índice publicado nunca supera lo que '
+                              . 'permite su componente más débil.',
+
     'mon.componentes'        => 'Componentes',
     'mon.componentes_vacio'  => 'No hay componentes que calcular: la instancia no respondió a esta toma, así que ninguna métrica llegó a medirse.',
     'mon.comp_procesos'      => 'Procesos',
