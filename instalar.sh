@@ -94,9 +94,21 @@ else
     verde "Esquema y datos de prueba cargados."
 fi
 
-# Multinorma va fuera del gate: es re-ejecutable y una base ya cargada también
-# lo necesita. 03 se carga después porque sp_evolucion_auditor lee
-# auditoria.codigo_estandar.
+# Migraciones sobre el esquema base, fuera del gate: son re-ejecutables y una
+# base ya cargada de una instalación anterior también las necesita. Van antes
+# de multinorma porque 03 depende de la vista v_auditoria_entrevistado que
+# crea el 10 (sp_historico_dominio, sp_evolucion_auditor y
+# sp_remediaciones_vencidas la consultan); sin este paso, pkg_indicadores
+# queda con errores de compilación y ningún indicador funciona.
+echo "Cargando migraciones del esquema (entrevistado manual, evidencia, perfil)..."
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/10_administrador_manual.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evidencia_archivo.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql > /dev/null
+verde "Migraciones del esquema cargadas."
+
+# Multinorma va fuera del gate por la misma razón. 03 se carga después porque
+# sp_evolucion_auditor lee auditoria.codigo_estandar (y, como ya se dijo,
+# porque depende de la vista que crea el 10).
 echo "Cargando multinorma (ISO/IEC 27002 + COBIT 2019)..."
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql > /dev/null
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql > /dev/null
