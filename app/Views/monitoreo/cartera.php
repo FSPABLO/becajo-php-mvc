@@ -185,8 +185,6 @@ $dibujarFicha = static function (array $ins) use ($vista, $cifra, $antiguedad, $
     ?>
     <h1 class="sr-only"><?= e($vista->t('mon.titulo')) ?></h1>
 
-    <?= $vista->componente('monitor-aviso', ['vista' => $vista]) ?>
-
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <?= $vista->componente('rejilla-facetas', [

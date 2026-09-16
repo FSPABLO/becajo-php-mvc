@@ -475,9 +475,6 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Database health monitor',
 
-    'mon.aviso_maqueta'      => 'Mock-up: the figures on this screen are synthetic. They do not come from '
-        . 'any real database or from an actual collection agent sample — do not use them as evidence.',
-
     'mon.instancia_no_encontrada' => 'There is no monitored database with that key.',
 
     // Lobby: one card per monitored database

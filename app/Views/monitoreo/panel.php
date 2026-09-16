@@ -183,8 +183,6 @@ $luzGeneral = semaforoGeneral(array_map(
     ?>
     <h1 class="sr-only"><?= e($vista->t('mon.titulo')) ?></h1>
 
-    <?= $vista->componente('monitor-aviso', ['vista' => $vista]) ?>
-
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <?php /* ── Qué base se está mirando ── */ ?>

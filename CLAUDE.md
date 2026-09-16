@@ -187,20 +187,20 @@ no usa `RepositorioMonitorOracle` ni `RepositorioMonitorArreglo` (frente 2) y no
 invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el frente
 4 pudiera avanzar sin esperar a que los otros dos se fusionaran.
 
-- **La pantalla vuelve a avisar de que es una maqueta.** Había un banner arriba
-  que lo decía; se retiró por decisión de diseño del frente 4 y se repuso
-  después (`components/monitor-aviso`, clave `mon.aviso_maqueta`), porque el
-  §12 del plan pide que ninguna cifra de salud se muestre sin poder saber si
-  viene de una toma real, y esa casilla no se podía marcar mirando la pantalla.
-  Va arriba de TODO, antes de los destellos, en la antesala y en la consola —
-  las dos pantallas comparten la misma pieza para no arriesgarse a que digan
-  cosas distintas. Sigue quedando además la advertencia de la nota al pie del
-  gráfico de memoria, que dice que esa lectura la genera el navegador.
+- **La pantalla NO avisa de que es una maqueta.** El banner de arriba
+  (`components/monitor-aviso`, clave `mon.aviso_maqueta`) se retiró, se repuso
+  y se volvió a retirar por decisión del equipo (2026-09): el componente y sus
+  dos claves ya no existen, y está en el historial de git si hay que reponerlo.
+  Se quitó de la antesala Y de la consola a la vez, porque las dos compartían
+  la pieza justamente para no decir cosas distintas. Solo queda la nota al pie
+  del gráfico de memoria, que dice que esa lectura la genera el navegador.
 
-  Repuesto el aviso, sigue siendo cierto que una conexión real es la otra
-  mitad de esa misma casilla: mientras esto sea una maqueta, cuatro instancias
-  con nombres verosímiles y cifras coherentes solo se leen como lo que son
-  gracias a este texto, no porque la pantalla lo demuestre por sí sola.
+  **Tenga presente lo que eso implica**: el §12 del plan pide que ninguna cifra
+  de salud se muestre sin poder saber si viene de una toma real, y esa casilla
+  ya no se puede marcar mirando la pantalla. Cuatro instancias con nombres
+  verosímiles y cifras coherentes se leen como datos de verdad. **Antes de
+  enseñar esto como producto —defensa, demo a un tercero— hay que decirlo de
+  viva voz, reponer el aviso o conectar la fuente real.**
 - **La antigüedad del dato vuelve a estar visible en la consola.** El §9 la
   pide SIEMPRE a la vista («última muestra hace 4 min»); la antesala ya la
   llevaba por ficha, pero se había retirado de la consola junto con el

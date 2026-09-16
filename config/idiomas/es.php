@@ -492,9 +492,6 @@ return [
     'mon.monitor'            => 'Monitor',
     'mon.titulo'             => 'Monitor de salud de bases de datos',
 
-    'mon.aviso_maqueta'      => 'Maqueta: las cifras de esta pantalla son sintéticas. No provienen de '
-        . 'ninguna base de datos real ni de una toma del agente de recolección — no las use como evidencia.',
-
     'mon.instancia_no_encontrada' => 'No hay ninguna base de datos vigilada con esa clave.',
 
     // Antesala: una ficha por base de datos vigilada
