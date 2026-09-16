@@ -50,6 +50,23 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_mult
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql
 
+# Monitor de salud (parte 2, frente 2): esquema, catálogo semilla y
+# procedimientos de pkg_monitor. instalar.sh ya los carga —detrás de un gate
+# que comprueba INSTANCIA, igual que hace con 01/02—, así que a mano solo
+# hacen falta en una base que ya tenía la parte 1 y le falta esto. NO son
+# re-ejecutables (CREATE TABLE sin guarda): correrlos dos veces falla.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/06_esquema_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/09_procedimientos_monitor.sql
+
+# Cuenta de solo lectura del agente de monitoreo (C##RIVENDEL_MONITOR). Es el
+# ÚNICO script que instalar.sh NO ejecuta: corre como SYS contra el servicio
+# FREE (no FREEPDB1, no becajo) porque crea un usuario común de nivel CDB, y
+# NO es re-ejecutable (CREATE USER sin guarda). Sin este paso el contenedor
+# "monitor" de docker-compose.yml no tiene con qué conectarse y bin/monitor.php
+# falla en cada ciclo — ver la nota en la sección "Monitor de salud" abajo.
+docker exec -i becajo-oracle sqlplus -s sys/oracle@FREE as sysdba < Scripts/00_usuario_monitor.sql
+
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/05_datos_demo_evolucion.sql
@@ -169,10 +186,23 @@ invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el fre
 - **La costura está en `public/index.php`**, en el `require` de
   `config/monitor-mockup.php` que entra al `Contenedor` como arreglo —igual que
   `config/conexiones.php` y por la misma razón: hoy es configuración, no hay nada
-  que consultar. Cuando el monitoreo se conecte, se cambia ese `require` por el
-  repositorio y **ni `MonitorController` ni las vistas cambian**.
-  `Contenedor::hayMonitor()` es el interruptor: sin el archivo, la entrada del
-  menú no se pinta.
+  que consultar. `Contenedor::hayMonitor()` es el interruptor: sin el archivo, la
+  entrada del menú no se pinta.
+
+  **Corrección (verificado, no es un cambio de una línea):** cambiar solo este
+  `require` por `RepositorioMonitorOracle`/`RepositorioMonitorArreglo` ROMPE
+  `MonitorController` de inmediato. El controlador lee claves del arreglo del
+  mockup (`$instancia['muestra']`, `$instancia['hace_min']`,
+  `$instancia['catalogo_procesos']`, `$medicion['s']`, `$medicion['compuerta']`…)
+  que no existen en las entidades reales (`Muestra`, `Medicion`, `Instancia` de
+  `RepositorioMonitor` tienen otros campos: `isbd`, `isbdBruto`, `estado`,
+  `valorCrudo`, `valorNormalizado`…). Peor aún, `procesosPorIndice()` depende de
+  `catalogo_procesos` —qué procesos evalúa cada índice IP/IM/IA, con descripción y
+  recomendación—, una estructura que **no existe en ningún lado del repositorio
+  real**: es una invención exclusiva del mockup. `Contenedor::monitor()` además
+  está tipado a `array`, no al contrato. Conectar esto de verdad es un rediseño
+  de `MonitorController` y las vistas, no un cambio de una línea — decisión
+  tomada explícitamente en 2026-09: por ahora se sigue trabajando con el mockup.
 - **El archivo guarda muestras YA EVALUADAS**, no lecturas crudas. Es la frontera
   del contrato: el recolector no razona, el motor no consulta y **la vista no
   calcula**. Si alguna vista del monitor empieza a normalizar, promediar o decidir
@@ -182,6 +212,24 @@ invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el fre
   demostrar un caso límite cada una (eslabón más débil, tope de SALUDABLE,
   cobertura bajo el piso, instancia caída). **Si toca esos números, recompruebe
   que siguen cuadrando** — es fácil dejar una maqueta que enseña aritmética falsa.
+- **El agente (`bin/monitor.php`, contenedor `becajo-monitor`) corre, pero no
+  produce nada.** Verificado contra un `docker compose up` real: lleva semanas en
+  pausa permanente, sin una sola muestra útil. Dos causas, ninguna relacionada con
+  la maqueta de arriba:
+  1. `Scripts/00_usuario_monitor.sql` (la cuenta `C##RIVENDEL_MONITOR` que
+     `docker-compose.yml` ya pide por variable de entorno) nunca se ejecuta en
+     ningún flujo automatizado — ver la sección Comandos.
+  2. El cortacircuitos de `enPausaPorFallosConsecutivos()` (§8.2 del plan) no
+     tiene reintento ni expiración: una vez que ve 3 muestras `FALLIDA`
+     seguidas en el historial, salta el ciclo para siempre, porque nunca vuelve
+     a intentar y por lo tanto nunca puede grabar el éxito que rompería la
+     racha. Las 3 fallidas que tiene hoy son de antes de que `MotorCalculoReal`
+     existiera («Motor de cálculo no disponible todavía»), así que quedó
+     bloqueado desde antes de que el frente 3 terminara su parte, sin que nada
+     lo haya notado.
+
+  Ninguno de los dos se corrigió: es trabajo de conectar el monitor de verdad,
+  que se decidió posponer.
 
 ### La antesala: `/monitoreo`
 
