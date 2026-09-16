@@ -23,6 +23,12 @@ final class EvaluacionControl
     public const NO = 'NO';
     public const NO_APLICA = 'NA';
 
+    /**
+     * Grado de logro de una práctica COBIT (escala de ISO/IEC 33020), de
+     * menor a mayor. L y F cuentan como logrado: de ahí sale el estado.
+     */
+    public const GRADOS_LOGRO = ['N', 'P', 'L', 'F'];
+
     public const CALIDAD_BIEN_IMPLEMENTADO = 'BIEN_IMPLEMENTADO';
     public const CALIDAD_REQUIERE_MEJORA = 'REQUIERE_MEJORA';
     public const CALIDAD_DECLARATIVO = 'DECLARATIVO';
@@ -52,6 +58,7 @@ final class EvaluacionControl
         /** BIEN_IMPLEMENTADO / REQUIERE_MEJORA / DECLARATIVO. Obligatoria junto con evidenciaVerificada cuando estado = 'SI'. */
         public readonly ?string $calidadEvidencia = null,
         public readonly int $id = 0,
+        public readonly ?string $gradoLogro = null,
     ) {
     }
 
@@ -76,10 +83,21 @@ final class EvaluacionControl
             evidenciaVerificada:     self::textoONulo($fila['evidencia_verificada'] ?? null),
             calidadEvidencia:        self::textoONulo($fila['calidad_evidencia'] ?? null),
             id:                      (int) ($fila['id_evaluacion_control'] ?? 0),
+            gradoLogro:              self::textoONulo($fila['grado_logro'] ?? null),
         );
     }
 
     /** ¿El auditor ya se pronunció sobre este control? */
+    /** Estado que corresponde a un grado de logro; 'NA' pasa tal cual. */
+    public static function estadoDeGrado(string $grado): string
+    {
+        return match ($grado) {
+            'L', 'F' => self::SI,
+            'N', 'P' => self::NO,
+            default  => self::NO_APLICA,
+        };
+    }
+
     public function estaEvaluado(): bool
     {
         return $this->estado !== null;

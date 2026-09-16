@@ -46,6 +46,7 @@ declare(strict_types=1);
  * @var \App\Models\Entidades\ArchivoEvidencia|null $archivo
  *      El adjunto YA GUARDADO de este control, si lo hay. Solo la ficha: el
  *      binario se pide aparte, al abrirlo.
+ * @var bool $porObjetivo  Norma por objetivo (COBIT): grado N/P/L/F, sin madurez ni C/I/D.
  * @var int|null $limiteArchivo  Tope real de subida en bytes, ya cruzado con php.ini.
  */
 $evaluacion = $evaluacion ?? null;
@@ -54,6 +55,7 @@ $errores    = $errores ?? [];
 $valores    = $valores ?? [];
 $escala     = $escala ?? [];
 $claveDominio = $claveDominio ?? null;
+$porObjetivo = $porObjetivo ?? false;
 
 /*
  * De dónde sale lo que se pinta en cada campo: del intento fallido si lo hubo,
@@ -68,6 +70,9 @@ $valor = static function (string $campo, mixed $guardado) use ($valores, $hayInt
 };
 
 $vEstado       = $valor('estado', $evaluacion?->estado);
+// «No aplica» no tiene grado guardado: se reconoce por el estado.
+$vGrado        = $valor('grado', $evaluacion?->gradoLogro
+    ?? ($evaluacion?->estado === 'NA' ? 'NA' : null));
 $vMadurez      = $valor('madurez', $evaluacion?->madurez);
 $vCriterio     = $valor('criterio', $evaluacion?->criterio);
 $vImpacto      = $valor('impacto', $evaluacion?->impacto);
@@ -92,6 +97,22 @@ $tonos = [
 ];
 
 $tono = $tonos[$evaluacion?->estado ?? ''] ?? null;
+
+/*
+ * En una práctica la pastilla nombra el grado y no el Sí/No derivado: el
+ * auditor calificó «Parcial», no «No». El tono sí sale del estado.
+ */
+$grados = [
+    'N'  => $vista->t('eval.grado_n'),
+    'P'  => $vista->t('eval.grado_p'),
+    'L'  => $vista->t('eval.grado_l'),
+    'F'  => $vista->t('eval.grado_f'),
+    'NA' => $vista->t('eval.estado_na'),
+];
+
+if ($porObjetivo && $tono !== null && $evaluacion?->gradoLogro !== null) {
+    $tono = [$tono[0], $grados[$evaluacion->gradoLogro] ?? $tono[1]];
+}
 
 $bordeIzquierdo = match ($evaluacion?->estado) {
     'SI'    => 'border-l-ok',
@@ -252,6 +273,34 @@ $limiteArchivoMb = number_format(($limiteArchivo ?? \App\Models\Entidades\Archiv
                      derecha, que es el último sitio donde se mira. */ ?>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
+                <?php if ($porObjetivo): ?>
+                <fieldset class="sm:col-span-2">
+                    <legend class="text-xs font-medium text-texto-2"><?= e($vista->t('eval.grado_logro')) ?></legend>
+                    <div class="rv-hundido mt-1.5 grid grid-cols-5 gap-1.5 rounded-rv bg-primario/10 p-1.5">
+                        <?php foreach ($grados as $clave => $etiqueta): ?>
+                            <?php
+                            $resalte = match ($clave) {
+                                'L', 'F' => 'peer-checked:border-ok peer-checked:text-ok',
+                                'N', 'P' => 'peer-checked:border-bad peer-checked:text-bad',
+                                default  => 'peer-checked:border-na peer-checked:text-na',
+                            };
+                            ?>
+                            <label class="cursor-pointer" title="<?= e($etiqueta) ?>">
+                                <input type="radio"
+                                       class="peer sr-only"
+                                       name="grado"
+                                       value="<?= e($clave) ?>"
+                                       <?= $vGrado === $clave ? 'checked' : '' ?>>
+                                <span class="rv-opcion block rounded-md border border-transparent bg-superficie px-1 py-1.5 text-center text-xs font-semibold text-texto-2 <?= e($resalte) ?> peer-focus-visible:ring-2 peer-focus-visible:ring-primario">
+                                    <?= e($clave === 'NA' ? $etiqueta : $clave) ?>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p class="mt-1 text-[11px] text-texto-2"><?= e($vista->t('eval.grado_ayuda')) ?></p>
+                    <?= $error('grado') ?>
+                </fieldset>
+                <?php else: ?>
                 <fieldset>
                     <legend class="text-xs font-medium text-texto-2"><?= e($vista->t('eval.respuesta')) ?></legend>
                     <?php /* Cubeta hundida con las tres teclas dentro: el hundido
@@ -300,6 +349,7 @@ $limiteArchivoMb = number_format(($limiteArchivo ?? \App\Models\Entidades\Archiv
                     </select>
                     <?= $error('madurez') ?>
                 </div>
+                <?php endif; ?>
 
                 <div>
                     <label for="criterio-<?= e($suf) ?>" class="block text-xs font-medium text-texto-2">
@@ -332,6 +382,9 @@ $limiteArchivoMb = number_format(($limiteArchivo ?? \App\Models\Entidades\Archiv
              */
             ?>
             <div class="mt-4 flex flex-wrap items-end gap-4">
+                <?php /* En COBIT las dimensiones salen de la relación P/S del
+                         objetivo, no de marcas por práctica. */ ?>
+                <?php if (!$porObjetivo): ?>
                 <fieldset>
                     <legend class="text-xs font-medium text-texto-2"><?= e($vista->t('eval.dimensiones')) ?></legend>
                     <div class="mt-1.5 flex gap-1.5">
@@ -352,6 +405,7 @@ $limiteArchivoMb = number_format(($limiteArchivo ?? \App\Models\Entidades\Archiv
                         <?php endforeach; ?>
                     </div>
                 </fieldset>
+                <?php endif; ?>
 
                 <?php foreach ([
                     'impacto'      => $vista->t('eval.impacto'),

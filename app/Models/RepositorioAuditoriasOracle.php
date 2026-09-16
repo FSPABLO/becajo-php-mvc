@@ -8,7 +8,9 @@ use App\Core\BaseDatos;
 use App\Models\Contratos\RepositorioAuditorias;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvaluacionObjetivo;
 use App\Models\Entidades\FotoPerfil;
 use App\Models\Entidades\Remediacion;
 use App\Models\Entidades\ResultadoRiesgo;
@@ -47,6 +49,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                TO_CHAR(a.fecha, 'YYYY-MM-DD') AS fecha,
                a.estado,
                a.indice_general_riesgo,
+               a.codigo_estandar,
                TO_CHAR(a.fecha_finalizacion, 'YYYY-MM-DD HH24:MI') AS fecha_finalizacion,
                auditor.nombre AS nombre_auditor,
                entrevistado.nombre_administrador_bd,
@@ -302,15 +305,16 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
         string $fecha,
         ?string $administradorNombre = null,
         ?string $administradorOrganizacion = null,
+        string $codigoEstandar = Estandar::ISO,
     ): int {
         return $this->bd->insertar(
             "INSERT INTO auditoria
                     (id_auditor, id_administrador_bd,
                      administrador_nombre, administrador_organizacion,
-                     area_evaluada, fecha, estado)
+                     area_evaluada, fecha, estado, codigo_estandar)
              VALUES (:id_auditor, :id_administrador_bd,
                      :administrador_nombre, :administrador_organizacion,
-                     :area_evaluada, TO_DATE(:fecha, 'YYYY-MM-DD'), :estado)
+                     :area_evaluada, TO_DATE(:fecha, 'YYYY-MM-DD'), :estado, :codigo_estandar)
              RETURNING id_auditoria INTO :id",
             [
                 'id_auditor'          => $idAuditor,
@@ -326,6 +330,7 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                 'area_evaluada'       => $areaEvaluada,
                 'fecha'               => $fecha,
                 'estado'              => Auditoria::EN_PROGRESO,
+                'codigo_estandar'     => $codigoEstandar,
             ],
         );
     }
@@ -448,18 +453,19 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                            destino.hallazgo = :hallazgo,
                            destino.recomendacion = :recomendacion,
                            destino.evidencia_verificada = :evidencia_verificada,
-                           destino.calidad_evidencia = :calidad_evidencia
+                           destino.calidad_evidencia = :calidad_evidencia,
+                           destino.grado_logro = :grado_logro
              WHEN NOT MATCHED THEN
                 INSERT (id_auditoria, codigo_control, pregunta_personalizada,
                         estado, madurez, criterio,
                         afecta_confidencialidad, afecta_integridad, afecta_disponibilidad,
                         impacto, probabilidad, nivel_riesgo, hallazgo, recomendacion,
-                        evidencia_verificada, calidad_evidencia)
+                        evidencia_verificada, calidad_evidencia, grado_logro)
                 VALUES (:id_auditoria, :codigo_control, :pregunta_personalizada,
                         :estado, :madurez, :criterio,
                         :afecta_confidencialidad, :afecta_integridad, :afecta_disponibilidad,
                         :impacto, :probabilidad, :nivel_riesgo, :hallazgo, :recomendacion,
-                        :evidencia_verificada, :calidad_evidencia)',
+                        :evidencia_verificada, :calidad_evidencia, :grado_logro)',
             [
                 'id_auditoria'            => $evaluacion->idAuditoria,
                 'codigo_control'          => $evaluacion->codigoControl,
@@ -473,12 +479,59 @@ final class RepositorioAuditoriasOracle implements RepositorioAuditorias
                 'probabilidad'            => $evaluacion->probabilidad,
                 'nivel_riesgo'            => $evaluacion->nivelRiesgo ?? $evaluacion->nivelRiesgoCalculado(),
                 'calidad_evidencia'       => $evaluacion->calidadEvidencia,
+                'grado_logro'             => $evaluacion->gradoLogro,
             ],
             [
                 'pregunta_personalizada' => $evaluacion->preguntaPersonalizada,
                 'hallazgo'               => $evaluacion->hallazgo,
                 'recomendacion'          => $evaluacion->recomendacion,
                 'evidencia_verificada'   => $evaluacion->evidenciaVerificada,
+            ],
+        );
+    }
+
+    /** @return array<int, EvaluacionObjetivo> */
+    public function evaluacionesObjetivo(int $idAuditoria): array
+    {
+        $filas = $this->bd->consultar(
+            "SELECT id_auditoria, numero_proceso, capacidad, justificacion,
+                    TO_CHAR(fecha_actualizacion, 'YYYY-MM-DD HH24:MI') AS fecha_actualizacion
+               FROM evaluacion_objetivo
+              WHERE id_auditoria = :id_auditoria",
+            ['id_auditoria' => $idAuditoria],
+        );
+
+        $indice = [];
+
+        foreach ($filas as $fila) {
+            $evaluacion = EvaluacionObjetivo::desdeFila($fila);
+            $indice[$evaluacion->numeroProceso] = $evaluacion;
+        }
+
+        return $indice;
+    }
+
+    public function guardarEvaluacionObjetivo(EvaluacionObjetivo $evaluacion): void
+    {
+        $this->bd->ejecutar(
+            'MERGE INTO evaluacion_objetivo destino
+             USING (SELECT :id_auditoria AS id_auditoria,
+                           :numero_proceso AS numero_proceso
+                      FROM dual) origen
+                ON (destino.id_auditoria = origen.id_auditoria
+                AND destino.numero_proceso = origen.numero_proceso)
+             WHEN MATCHED THEN
+                UPDATE SET destino.capacidad = :capacidad,
+                           destino.justificacion = :justificacion,
+                           destino.fecha_actualizacion = SYSTIMESTAMP
+             WHEN NOT MATCHED THEN
+                INSERT (id_auditoria, numero_proceso, capacidad, justificacion)
+                VALUES (:id_auditoria, :numero_proceso, :capacidad, :justificacion)',
+            [
+                'id_auditoria'   => $evaluacion->idAuditoria,
+                'numero_proceso' => $evaluacion->numeroProceso,
+                'capacidad'      => $evaluacion->capacidad,
+                'justificacion'  => $evaluacion->justificacion,
             ],
         );
     }

@@ -89,6 +89,23 @@ $caida   = $sel['muestra'] === 'FALLIDA';
 $indices = array_values(array_filter($sel['componentes'], static fn (array $c): bool => $c['en_isbd']));
 
 /*
+ * CONSULTAS aparte de $indices, no dentro: es la excepción del §3.1 que
+ * `monitor-indices` documenta —se recolecta y se evalúa, pero no es un
+ * sumando— y pintarla en la misma fila de fichas IP/IM/IA la haría leerse
+ * como un cuarto índice más. `array_filter` sobre un `componentes` vacío
+ * (instancia caída) da null aquí igual que en `$indices`.
+ */
+$consultas = null;
+
+foreach ($sel['componentes'] as $componente) {
+    if ($componente['clave'] === 'CONSULTAS') {
+        $consultas = $componente;
+
+        break;
+    }
+}
+
+/*
  * El motivo por el que no hay índice. Se resuelve UNA vez y viaja al medidor y
  * al selector: si cada pieza lo dedujera por su cuenta, una podría decir
  * «muestra incompleta» y la otra «sin respuesta» sobre la misma muestra.
@@ -166,6 +183,8 @@ $luzGeneral = semaforoGeneral(array_map(
     ?>
     <h1 class="sr-only"><?= e($vista->t('mon.titulo')) ?></h1>
 
+    <?= $vista->componente('monitor-aviso', ['vista' => $vista]) ?>
+
     <?= $vista->renderizar('partials/mensajes', compact('mensajes')) ?>
 
     <?php /* ── Qué base se está mirando ── */ ?>
@@ -230,6 +249,18 @@ $luzGeneral = semaforoGeneral(array_map(
                     <span class="rv-id text-oro-texto"><?= e((string) $sel['clave']) ?></span>
                     · <?= e((string) $sel['motor']) ?>
                     · <?= e((string) $sel['entorno']) ?>
+                    <?php
+                    /*
+                     * Antigüedad SIEMPRE visible (§9): «un tablero que muestra
+                     * un número de hace dos horas como si fuera de ahora es
+                     * peligroso». Va aquí y no solo en el bloque de instancia
+                     * caída porque `hace_min` describe la TOMA, no el ISBD —se
+                     * conoce incluso cuando la muestra no publicó índice. La
+                     * antesala ya la lleva por ficha; a la consola se le había
+                     * retirado del todo.
+                     */
+                    ?>
+                    · <?= e($vista->t('mon.ultima_muestra', $antiguedad((int) $sel['hace_min']))) ?>
                 </p>
 
                 <?php
@@ -321,6 +352,33 @@ $luzGeneral = semaforoGeneral(array_map(
                             )) ?>
                         </p>
                     </div>
+                <?php elseif ($sel['tope'] !== null): ?>
+                    <?php
+                    /*
+                     * INVARIANTE 5 — el ISBD nunca se muestra sin causa. Solo
+                     * aparece cuando el eslabón más débil realmente actuó
+                     * (`tope` viene poblado únicamente cuando el publicado no
+                     * es el promedio ponderado, `isbd_bruto`): si el ISBD ya
+                     * era el promedio, no hay nada que explicar y el bloque no
+                     * se pinta —esta ficha existe para la diferencia, no para
+                     * repetir la fórmula que ya cuenta `mon.formula` en la
+                     * ayuda de la consola.
+                     */
+                    ?>
+                    <div class="rv-hundido mt-5 rounded-rv border border-borde bg-superficie px-4 py-3">
+                        <p class="text-xs font-medium uppercase tracking-wider text-texto-2">
+                            <?= e($vista->t('mon.causa')) ?>
+                        </p>
+                        <p class="mt-1.5 text-sm leading-relaxed text-texto-2">
+                            <?= e($vista->t(
+                                'mon.tope_explicacion',
+                                $cifra((float) $sel['isbd_bruto']),
+                                $vista->t('mon.comp_' . strtolower((string) $sel['tope']['por'])),
+                                $etiquetaBanda((string) $sel['tope']['estado']),
+                                $cifra((float) $sel['tope']['valor']),
+                            )) ?>
+                        </p>
+                    </div>
                 <?php endif; ?>
 
             </div>
@@ -355,6 +413,50 @@ $luzGeneral = semaforoGeneral(array_map(
                             'etiquetaBanda' => $etiquetaBanda,
                         ]) ?>
 
+                    <?php endif; ?>
+
+                    <?php if ($consultas !== null): ?>
+                        <?php
+                        /*
+                         * §12: «el componente CONSULTAS se recolecta, se
+                         * muestra y alerta, y no aparece en la fórmula del
+                         * ISBD». Esta ficha cubre la mitad que la pantalla
+                         * había dejado de demostrar —se recolecta y sigue
+                         * viajando en la muestra— con un texto y no solo con
+                         * la ausencia: no es un botón (no hay tabla de
+                         * procesos que desplegar, `catalogo_procesos` no
+                         * tiene grupo CONSULTAS) ni entra en la rejilla de
+                         * IP/IM/IA, para no leerse como un cuarto índice.
+                         */
+                        $tieneConsultas = $consultas['publicado'] !== null;
+                        ?>
+                        <div class="rv-hundido mt-3 flex flex-wrap items-center justify-between gap-3
+                                    rounded-rv border border-borde bg-superficie px-4 py-3">
+                            <div>
+                                <p class="text-sm font-semibold text-texto">
+                                    <?= e($vista->t('mon.comp_consultas')) ?>
+                                </p>
+                                <p class="mt-0.5 max-w-[38ch] text-xs leading-relaxed text-texto-2">
+                                    <?= e($vista->t('mon.consultas_fuera_isbd')) ?>
+                                </p>
+                            </div>
+
+                            <div class="flex shrink-0 items-center gap-2">
+                                <?php if ($tieneConsultas): ?>
+                                    <span class="tabular text-lg font-semibold text-texto">
+                                        <?= e($cifra((float) $consultas['publicado'])) ?>
+                                        <span class="text-sm font-normal text-texto-2">%</span>
+                                    </span>
+                                    <?= pill(
+                                        tonoBanda((string) $consultas['banda']),
+                                        $etiquetaBanda((string) $consultas['banda']),
+                                    ) ?>
+                                <?php else: ?>
+                                    <span class="tabular text-lg font-semibold text-na">—</span>
+                                    <?= pill('na', $vista->t('mon.banda_sin_dato')) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
 

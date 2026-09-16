@@ -41,10 +41,36 @@ docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evid
 # USUARIO_FOTO. Re-ejecutable, no toca ninguna fila y no exige recargar 03.
 docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql
 
+# Multinorma (ISO/IEC 27002 + COBIT 2019). Obligatorio: la aplicación filtra el
+# catálogo por auditoria.codigo_estandar. Re-ejecutable; retira Essential Eight
+# si quedó de la versión anterior. EXIGE recargar 03 después, y 05 y 12
+# dependen de él.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql
+# Captura propia de COBIT (capacidad por objetivo, logro N/P/L/F). 03 la exige.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql
+
+# Monitor de salud (parte 2, frente 2): esquema, catálogo semilla y
+# procedimientos de pkg_monitor. instalar.sh ya los carga —detrás de un gate
+# que comprueba INSTANCIA, igual que hace con 01/02—, así que a mano solo
+# hacen falta en una base que ya tenía la parte 1 y le falta esto. NO son
+# re-ejecutables (CREATE TABLE sin guarda): correrlos dos veces falla.
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/06_esquema_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/07_datos_semilla_monitor.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/09_procedimientos_monitor.sql
+
+# Cuenta de solo lectura del agente de monitoreo (C##RIVENDEL_MONITOR). Es el
+# ÚNICO script que instalar.sh NO ejecuta: corre como SYS contra el servicio
+# FREE (no FREEPDB1, no becajo) porque crea un usuario común de nivel CDB, y
+# NO es re-ejecutable (CREATE USER sin guarda). Sin este paso el contenedor
+# "monitor" de docker-compose.yml no tiene con qué conectarse y bin/monitor.php
+# falla en cada ciclo — ver la nota en la sección "Monitor de salud" abajo.
+docker exec -i becajo-oracle sqlplus -s sys/oracle@FREE as sysdba < Scripts/00_usuario_monitor.sql
+
 # Base que YA existe: registro de consultas a Lembas (límites diarios y
 # trazabilidad). Crea ASISTENTE_CONSULTA. Re-ejecutable, no toca ninguna fila
 # y no exige recargar 03. Sin esta tabla, la primera pregunta a Lembas falla.
-docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_asistente_consulta.sql
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/16_asistente_consulta.sql
 
 # Opcional: cartera de varios meses para un auditor, para que el panel tenga
 # una evolución que dibujar. Re-ejecutable y solo inserta; no pisa respuestas.
@@ -153,28 +179,52 @@ no usa `RepositorioMonitorOracle` ni `RepositorioMonitorArreglo` (frente 2) y no
 invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el frente
 4 pudiera avanzar sin esperar a que los otros dos se fusionaran.
 
-- **La pantalla ya NO avisa de que es una maqueta.** Había un banner arriba que
-  lo decía; se retiró por decisión de diseño del frente 4. Queda una sola
-  advertencia, la nota al pie del gráfico de memoria, que dice que la lectura la
-  genera el navegador.
+- **La pantalla vuelve a avisar de que es una maqueta.** Había un banner arriba
+  que lo decía; se retiró por decisión de diseño del frente 4 y se repuso
+  después (`components/monitor-aviso`, clave `mon.aviso_maqueta`), porque el
+  §12 del plan pide que ninguna cifra de salud se muestre sin poder saber si
+  viene de una toma real, y esa casilla no se podía marcar mirando la pantalla.
+  Va arriba de TODO, antes de los destellos, en la antesala y en la consola —
+  las dos pantallas comparten la misma pieza para no arriesgarse a que digan
+  cosas distintas. Sigue quedando además la advertencia de la nota al pie del
+  gráfico de memoria, que dice que esa lectura la genera el navegador.
 
-  Conviene tenerlo presente porque el §12 del plan pide que ninguna cifra de
-  salud se muestre sin venir de una muestra realmente tomada, y esa casilla ya
-  no se puede marcar mirando la pantalla. **Antes de enseñar esto como producto
-  —defensa, demo a un tercero— hay que reponer el aviso o conectar la fuente
-  real**: cuatro instancias con nombres verosímiles y cifras coherentes se leen
-  como datos de verdad, que es justo lo que el criterio quiere evitar.
-- **La antigüedad del dato tampoco está visible.** El §9 la pide siempre a la
-  vista («última muestra hace 4 min») y se retiró junto con el recuento de
-  instancias conectadas y la cobertura. Sigue existiendo en el bloque de «último
-  valor conocido» de una instancia caída, y solo ahí.
+  Repuesto el aviso, sigue siendo cierto que una conexión real es la otra
+  mitad de esa misma casilla: mientras esto sea una maqueta, cuatro instancias
+  con nombres verosímiles y cifras coherentes solo se leen como lo que son
+  gracias a este texto, no porque la pantalla lo demuestre por sí sola.
+- **La antigüedad del dato vuelve a estar visible en la consola.** El §9 la
+  pide SIEMPRE a la vista («última muestra hace 4 min»); la antesala ya la
+  llevaba por ficha, pero se había retirado de la consola junto con el
+  recuento de instancias conectadas y la cobertura (esos dos siguen fuera,
+  item 5 solo repuso la antigüedad). Va en la cabecera de la consola, junto a
+  clave · motor · entorno (`panel.php`, con el mismo `$antiguedad` que ya
+  usaba el bloque de «último valor conocido»): se pinta siempre, esté la
+  instancia caída, incompleta o publicando ISBD, porque `hace_min` describe
+  la TOMA y no el índice —se conoce incluso cuando no hay ISBD que mostrar.
+  El bloque de «último valor conocido» de una instancia caída sigue
+  mostrando la suya también, sobre el último dato bueno que tiene, que es
+  una antigüedad distinta de la de la cabecera.
 - **La costura está en `public/index.php`**, en el `require` de
   `config/monitor-mockup.php` que entra al `Contenedor` como arreglo —igual que
   `config/conexiones.php` y por la misma razón: hoy es configuración, no hay nada
-  que consultar. Cuando el monitoreo se conecte, se cambia ese `require` por el
-  repositorio y **ni `MonitorController` ni las vistas cambian**.
-  `Contenedor::hayMonitor()` es el interruptor: sin el archivo, la entrada del
-  menú no se pinta.
+  que consultar. `Contenedor::hayMonitor()` es el interruptor: sin el archivo, la
+  entrada del menú no se pinta.
+
+  **Corrección (verificado, no es un cambio de una línea):** cambiar solo este
+  `require` por `RepositorioMonitorOracle`/`RepositorioMonitorArreglo` ROMPE
+  `MonitorController` de inmediato. El controlador lee claves del arreglo del
+  mockup (`$instancia['muestra']`, `$instancia['hace_min']`,
+  `$instancia['catalogo_procesos']`, `$medicion['s']`, `$medicion['compuerta']`…)
+  que no existen en las entidades reales (`Muestra`, `Medicion`, `Instancia` de
+  `RepositorioMonitor` tienen otros campos: `isbd`, `isbdBruto`, `estado`,
+  `valorCrudo`, `valorNormalizado`…). Peor aún, `procesosPorIndice()` depende de
+  `catalogo_procesos` —qué procesos evalúa cada índice IP/IM/IA, con descripción y
+  recomendación—, una estructura que **no existe en ningún lado del repositorio
+  real**: es una invención exclusiva del mockup. `Contenedor::monitor()` además
+  está tipado a `array`, no al contrato. Conectar esto de verdad es un rediseño
+  de `MonitorController` y las vistas, no un cambio de una línea — decisión
+  tomada explícitamente en 2026-09: por ahora se sigue trabajando con el mockup.
 - **El archivo guarda muestras YA EVALUADAS**, no lecturas crudas. Es la frontera
   del contrato: el recolector no razona, el motor no consulta y **la vista no
   calcula**. Si alguna vista del monitor empieza a normalizar, promediar o decidir
@@ -184,6 +234,24 @@ invoca `MotorCalculoReal` (frente 3). Se hizo así a propósito, para que el fre
   demostrar un caso límite cada una (eslabón más débil, tope de SALUDABLE,
   cobertura bajo el piso, instancia caída). **Si toca esos números, recompruebe
   que siguen cuadrando** — es fácil dejar una maqueta que enseña aritmética falsa.
+- **El agente (`bin/monitor.php`, contenedor `becajo-monitor`) corre, pero no
+  produce nada.** Verificado contra un `docker compose up` real: lleva semanas en
+  pausa permanente, sin una sola muestra útil. Dos causas, ninguna relacionada con
+  la maqueta de arriba:
+  1. `Scripts/00_usuario_monitor.sql` (la cuenta `C##RIVENDEL_MONITOR` que
+     `docker-compose.yml` ya pide por variable de entorno) nunca se ejecuta en
+     ningún flujo automatizado — ver la sección Comandos.
+  2. El cortacircuitos de `enPausaPorFallosConsecutivos()` (§8.2 del plan) no
+     tiene reintento ni expiración: una vez que ve 3 muestras `FALLIDA`
+     seguidas en el historial, salta el ciclo para siempre, porque nunca vuelve
+     a intentar y por lo tanto nunca puede grabar el éxito que rompería la
+     racha. Las 3 fallidas que tiene hoy son de antes de que `MotorCalculoReal`
+     existiera («Motor de cálculo no disponible todavía»), así que quedó
+     bloqueado desde antes de que el frente 3 terminara su parte, sin que nada
+     lo haya notado.
+
+  Ninguno de los dos se corrigió: es trabajo de conectar el monitor de verdad,
+  que se decidió posponer.
 
 ### La antesala: `/monitoreo`
 
@@ -264,12 +332,18 @@ antesala.
    dorado (`bg-oro-tinte`). Los dos se retiraron por decisión de diseño del
    frente 4, y en ninguno de los dos cambios hubo que tocar nada de dentro —
    todo usa tokens, que era exactamente lo que el sistema prometía.
-**La ficha de CONSULTAS se retiró** de la pantalla. La muestra la sigue trayendo
-—`M-CON-01` se recolecta y el componente se evalúa—, pero ya no se pinta en
-ninguna parte, así que el criterio del §12 «el componente CONSULTAS se recolecta,
-se muestra y alerta, y no aparece en la fórmula del ISBD» solo se puede
-demostrar hoy por su primera mitad. Es la segunda casilla del §12 que la pantalla
-deja de cubrir, después del episodio de alerta.
+**La ficha de CONSULTAS está de vuelta**, aparte de la rejilla de IP/IM/IA y no
+dentro de ella —`MonitorController`/`panel.php` extraen el componente
+`CONSULTAS` de `$sel['componentes']` por separado de `$indices` (que sigue
+filtrando por `en_isbd`), y la vista la pinta como una ficha propia debajo de
+las tres, con su cifra, su `pill()` de banda y una frase fija explicando por
+qué no cuenta: «se recolecta y se muestra, pero no suma en la fórmula del
+ISBD». No es un botón ni una pestaña —no hay tabla de procesos que desplegar,
+`catalogo_procesos` no tiene grupo CONSULTAS— para no leerse como un cuarto
+índice. Con esto el criterio del §12 «el componente CONSULTAS se recolecta, se
+muestra y alerta, y no aparece en la fórmula del ISBD» ya demuestra sus dos
+primeras partes mirando la pantalla; la tercera (alerta) sigue pendiente, es
+el episodio de alerta que se retiró aparte y no se toca en esta ronda.
 
 Las dos series de tiempo van **LADO A LADO** dentro de la consola: tendencia del
 ISBD a la izquierda, memoria de la base a la derecha. Son la misma instancia
@@ -299,16 +373,20 @@ de datos del frente 2 y `MotorAlertas` del frente 3 siguen contemplándolo.
 planas; ahora esa información vive por PROCESO dentro de cada índice, que es la
 unidad sobre la que un DBA actúa —una métrica no se arregla, un proceso sí—.
 
-**La ficha «Por qué vale eso» se retiró** (la que iba bajo el medidor cuando el
-ISBD publicado no era el promedio: decía cuánto daba el promedio ponderado y qué
-componente lo topaba, con `mon.causa` / `mon.tope_explicacion`, hoy fuera de los
-dos archivos de idioma). Era lo único en pantalla que explicaba el eslabón más
-débil sobre la instancia mirada, así que **el invariante 5 —«el ISBD nunca se
-muestra sin causa»— ya no se puede comprobar mirando el panel**; el dato sigue
-viajando en la muestra (`isbd_bruto` y `tope`) y `monitor-indices` sigue marcando
-el tope de cada componente. Es la tercera casilla del §12 que la pantalla deja de
-cubrir. Bajo el medidor solo quedan las dos explicaciones de por qué NO hay
-cifra: instancia caída y cobertura bajo el piso.
+**La ficha «Por qué vale eso» está de vuelta** (la que iba bajo el medidor
+cuando el ISBD publicado no era el promedio: dice cuánto daba el promedio
+ponderado y qué componente lo topaba, con `mon.causa` / `mon.tope_explicacion`).
+Se había retirado y con ella se perdía la única explicación en pantalla del
+eslabón más débil sobre la instancia mirada —**el invariante 5, «el ISBD nunca
+se muestra sin causa»**—; se repuso como un tercer `elseif` junto a los de
+instancia caída y cobertura bajo el piso (mismo bloque, misma columna bajo el
+medidor), condicionado a `$sel['tope'] !== null`: la maqueta solo pobla ese
+campo cuando el tope realmente actuó, así que si el ISBD ya era el promedio la
+ficha no se pinta, en vez de repetir la fórmula que ya cuenta `mon.formula` en
+la ayuda de la consola. El dato viajaba siempre en la muestra (`isbd_bruto` y
+`tope`) y `monitor-indices` sigue marcando el tope de cada componente; lo que
+faltaba era pintarlo. Bajo el medidor quedan entonces TRES casos mutuamente
+excluyentes: instancia caída, cobertura bajo el piso, o ISBD topado con causa.
 
 Sobre los gráficos:
 
@@ -430,6 +508,33 @@ Sobre los gráficos:
   solo declara la estructura (qué procesos, con qué métricas, qué hace cada uno);
   duplicar los valores por instancia habría sido la vía rápida para que las dos
   tablas dejaran de coincidir.
+- **Cada proceso lleva su trazabilidad COBIT** (`ancla_cobit` en
+  `catalogo_procesos`, con el nombre del objetivo en `catalogo_cobit`, ambos en
+  `config/monitor-mockup.php`): un código en oro junto al nombre del proceso
+  (`PMON DSS01`, por ejemplo), con el mismo mecanismo de consulta que el
+  código de métrica de la cabecera —cursor de ayuda, subrayado punteado y
+  panel `role="tooltip"`, no un `title` nativo— para que las dos referencias
+  normativas de la misma tabla se anuncien igual. Es la misma idea que
+  `ancla_iso` ya tenía para el catálogo real de métricas
+  (`config/monitor-catalogo.php`) pero que no existía para COBIT en ningún
+  catálogo del monitor — sin ella, el §12 «el monitor demuestra alineación con
+  el marco elegido» no se podía comprobar mirando la tabla de procesos.
+  **Es criterio propio del equipo** (COBIT 2019 no publica una tabla que ligue
+  procesos internos de Oracle a sus objetivos de gestión), asignado por el
+  riesgo que cada proceso vigila: DSS01 operación, DSS04 continuidad/recuperación,
+  APO14 integridad o pérdida del dato. Mismo criterio que el peso P/S del punto
+  7 de `entrega-multinorma-cobit.md`, aplicado aquí al monitor.
+- **Todo el texto de la tabla de procesos se traduce, no solo la cabecera.**
+  `nombre`, `descripcion` y `recomendacion` de `catalogo_procesos`, `nombre` y
+  `descripcion` de `catalogo_metricas`, y el nombre de cada objetivo en
+  `catalogo_cobit` son CLAVES de `config/idiomas/{es,en}.php` (prefijos
+  `mon.proceso_*`, `mon.metrica_*` y `mon.cobit_*`), no el texto en español
+  incrustado — `MonitorController::procesosPorIndice()` los pasa a la vista
+  sin traducir y `monitor-procesos.php` llama a `$vista->t()` al pintarlos, el
+  mismo reparto de responsabilidad que el resto del producto («casi todo el
+  texto se traduce en la vista»). Antes solo los rótulos de columna cambiaban
+  de idioma y el contenido de la maqueta se quedaba fijo en español. `metricas`
+  y `ancla_cobit` siguen siendo códigos, no prosa, y no llevan clave.
 
 Dos piezas del sistema visual que este frente añadió y que ya son del producto,
 no de la maqueta:
@@ -648,9 +753,26 @@ sistema sin decir de dónde salen:
 | `RepositorioAuditorias` | solo `RepositorioAuditoriasOracle` |
 
 `RepositorioInstrumentoOracle` **decora** a `RepositorioInstrumentoArreglo`: lee
-dominios, procesos y controles de las tablas, pero delega `meta()`, `escala()`,
+dominios, procesos, controles y escala de las tablas, pero delega `meta()`,
 `marco()` y `referencias()` al arreglo, porque el esquema no tiene tablas para
-esas cuatro secciones. Al tocar ese archivo, respete la delegación.
+esas tres secciones. Al tocar ese archivo, respete la delegación.
+
+**Multinorma.** `dominios()`, `procesos()`, `controles()` y `escala()` reciben
+el código de norma (`Estandar::ISO` por omisión). Todo lo que ocurre dentro de
+una auditoría pasa `$auditoria->codigoEstandar`; el sitio público, la
+herramienta y el catálogo administrable usan el valor por omisión y solo ven
+ISO. Normas cargadas: `ISO27002` y `COBIT2019` (`Scripts/14_multinorma.sql`).
+La norma se fija al crear la auditoría y no se edita.
+
+`estandar.modo_evaluacion` decide la captura. `CONTROL` (ISO): Sí/No/No
+aplica, madurez y C/I/D por control. `OBJETIVO` (COBIT): el auditor declara la
+capacidad 0–5 de cada objetivo (`evaluacion_objetivo`, con justificación) y
+califica cada práctica con N/P/L/F (`evaluacion_control.grado_logro`); el
+estado se deriva (L/F → SI, N/P → NO) para que cumplimiento y remediaciones
+sigan funcionando. El riesgo C/I/D de COBIT pondera la capacidad por la
+relación P/S del objetivo (P=2, S=1) en `pkg_indicadores`. La página
+individual del control redirige al panel en COBIT: sus campos son de ISO. El catálogo
+administrable todavía no permite elegir norma: los dominios que crea son ISO.
 
 `RepositorioCatalogo` es la "otra cara" del mismo objeto que devuelve
 `instrumento()`: `Contenedor::catalogo()` comprueba el tipo con `instanceof` en
@@ -1135,7 +1257,7 @@ fácil al añadir una pantalla:
 | Puerta: sesión, token, límites, registro | `app/Controllers/AsistenteController.php` (`POST /asistente`, `POST /asistente/olvidar`) |
 | Panel, turno y fichas | `partials/panel/asistente` y `partials/panel/asistente/` |
 | Lanzador, panel y envío | `assets/js/asistente.js` + sección «Asistente» de `rivendel.css` |
-| Límites y trazabilidad | tabla `asistente_consulta` (`Scripts/14_asistente_consulta.sql`) |
+| Límites y trazabilidad | tabla `asistente_consulta` (`Scripts/16_asistente_consulta.sql`) |
 | Clave, modelo y topes | `.env` → `public/index.php` → `Contenedor::asistente()` |
 
 **REGLA QUE MANDA SOBRE TODO: ningún dato de auditoría sale hacia Anthropic.**

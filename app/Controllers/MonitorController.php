@@ -343,6 +343,7 @@ final class MonitorController extends Controlador
     {
         $catalogo = $datos['catalogo_procesos'] ?? [];
         $fichas   = $datos['catalogo_metricas'] ?? [];
+        $cobit    = $datos['catalogo_cobit'] ?? [];
 
         // Las mediciones, indexadas por código para no recorrerlas una vez por
         // cada métrica de cada proceso.
@@ -443,12 +444,22 @@ final class MonitorController extends Controlador
                         $bandas,
                     ), true);
 
+                /*
+                 * Trazabilidad COBIT (§12): a qué objetivo de gestión responde
+                 * este proceso, con su nombre para el título emergente. Un
+                 * proceso sin `ancla_cobit` en el catálogo se pinta sin
+                 * distintivo, no con uno vacío.
+                 */
+                $anclaCobit = $proceso['ancla_cobit'] ?? null;
+
                 $filas[] = [
-                    'nombre'        => $proceso['nombre'],
-                    'metricas'      => $metricas,
-                    'exitoso'       => $exitoso,
-                    'descripcion'   => $proceso['descripcion'],
-                    'recomendacion' => $proceso['recomendacion'],
+                    'nombre'           => $proceso['nombre'],
+                    'metricas'         => $metricas,
+                    'exitoso'          => $exitoso,
+                    'descripcion'      => $proceso['descripcion'],
+                    'recomendacion'    => $proceso['recomendacion'],
+                    'anclaCobit'       => $anclaCobit,
+                    'anclaCobitNombre' => $anclaCobit !== null ? ($cobit[$anclaCobit] ?? null) : null,
                 ];
             }
 

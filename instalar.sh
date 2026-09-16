@@ -91,9 +91,30 @@ else
     echo "Cargando esquema y datos de prueba..."
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/01_esquema.sql > /dev/null
     docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/02_datos_semilla.sql > /dev/null
-    docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql > /dev/null
     verde "Esquema y datos de prueba cargados."
 fi
+
+# Migraciones sobre el esquema base, fuera del gate: son re-ejecutables y una
+# base ya cargada de una instalación anterior también las necesita. Van antes
+# de multinorma porque 03 depende de la vista v_auditoria_entrevistado que
+# crea el 10 (sp_historico_dominio, sp_evolucion_auditor y
+# sp_remediaciones_vencidas la consultan); sin este paso, pkg_indicadores
+# queda con errores de compilación y ningún indicador funciona.
+echo "Cargando migraciones del esquema (entrevistado manual, evidencia, perfil, Lembas)..."
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/10_administrador_manual.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/11_evidencia_archivo.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/13_perfil_usuario.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/16_asistente_consulta.sql > /dev/null
+verde "Migraciones del esquema cargadas."
+
+# Multinorma va fuera del gate por la misma razón. 03 se carga después porque
+# sp_evolucion_auditor lee auditoria.codigo_estandar (y, como ya se dijo,
+# porque depende de la vista que crea el 10).
+echo "Cargando multinorma (ISO/IEC 27002 + COBIT 2019)..."
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/14_multinorma.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/15_cobit_capacidad.sql > /dev/null
+docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 < Scripts/03_procedimientos_indicadores.sql > /dev/null
+verde "Normas y procedimientos cargados."
 
 # ── 5. Esquema MONITOR (parte 2) ─────────────────────────────────────────
 # Gate aparte del anterior: alguien puede tener ya el esquema de la parte 1
@@ -122,3 +143,4 @@ verde "Listo. El sitio está en http://localhost:8080"
 echo "Cuentas de prueba:"
 echo "  Auditor:   ana.alfaro@consultora.example / auditor2026"
 echo "  Admin BD:  luis.rojas@empresa.example / adminbd2026"
+

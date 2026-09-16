@@ -25,7 +25,7 @@
 --
 -- Uso (DESDE BASH, no desde PowerShell — ver CLAUDE.md):
 --   docker exec -i becajo-oracle sqlplus -s becajo/becajo@FREEPDB1 \
---       < Scripts/14_asistente_consulta.sql
+--       < Scripts/16_asistente_consulta.sql
 -- ============================================================================
 
 SET SERVEROUTPUT ON

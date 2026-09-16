@@ -91,7 +91,11 @@ DECLARE
     BEGIN
         FOR c IN (
             SELECT codigo, rn, MOD(rn * 37, 100) AS rebote
-              FROM (SELECT codigo, ROW_NUMBER() OVER (ORDER BY codigo) AS rn FROM control)
+              FROM (SELECT ctl.codigo, ROW_NUMBER() OVER (ORDER BY ctl.codigo) AS rn
+                      FROM control ctl
+                      JOIN proceso pro ON pro.numero = ctl.numero_proceso
+                      JOIN dominio dom ON dom.clave = pro.clave_dominio
+                     WHERE dom.codigo_estandar = 'ISO27002')
              WHERE rn <= p_respondidos
         ) LOOP
             -- Solo los controles que esta auditoría todavía no tiene: nunca se
@@ -227,7 +231,11 @@ BEGIN
     v_planes(4).madurez_min := 3;
     v_planes(4).paso := 4;
 
-    SELECT COUNT(*) INTO v_controles FROM control;
+    SELECT COUNT(*) INTO v_controles
+      FROM control ctl
+      JOIN proceso pro ON pro.numero = ctl.numero_proceso
+      JOIN dominio dom ON dom.clave = pro.clave_dominio
+     WHERE dom.codigo_estandar = 'ISO27002';
 
     BEGIN
         SELECT id_usuario INTO v_id_auditor

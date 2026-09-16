@@ -33,3 +33,6 @@ desktop.ini
 # Respaldos de base de datos
 *.dmp
 *.sql.gz
+
+# Visual Studio (configuración local)
+.vs/

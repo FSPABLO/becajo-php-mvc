@@ -9,7 +9,9 @@ use App\Core\Facetas;
 use App\Models\Entidades\ArchivoEvidencia;
 use App\Models\Entidades\Auditoria;
 use App\Models\Entidades\Control;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\EvaluacionControl;
+use App\Models\Entidades\EvaluacionObjetivo;
 use App\Models\Entidades\Usuario;
 
 /**
@@ -309,6 +311,7 @@ final class AuditoriaController extends Controlador
             ...$this->contexto(),
             'meta'           => $this->meta('Nueva auditoría'),
             'administradores' => $this->auditorias()->usuariosPorRol(Usuario::ROL_ADMIN_BD),
+            'estandares'     => $this->instrumento()->estandares(),
             'errores'        => $this->erroresGuardados('encabezado.nuevo'),
             'valores'        => $this->valoresGuardados('encabezado.nuevo'),
         ]);
@@ -321,6 +324,18 @@ final class AuditoriaController extends Controlador
 
         $datos = $this->leerEncabezado();
         $errores = $this->validarEncabezado($datos);
+
+        // La norma solo se elige al crear: por eso no está en leerEncabezado(),
+        // que comparte actualizar().
+        $datos['estandar'] = (string) $this->peticion()->entrada('estandar', Estandar::ISO);
+        $codigos = array_map(
+            static fn (Estandar $estandar): string => $estandar->codigo,
+            $this->instrumento()->estandares(),
+        );
+
+        if (!in_array($datos['estandar'], $codigos, true)) {
+            $errores['estandar'] = 'Seleccione una norma de la lista.';
+        }
 
         if ($errores !== []) {
             $this->guardarIntento($errores, $datos, 'encabezado.nuevo');
@@ -336,6 +351,7 @@ final class AuditoriaController extends Controlador
             fecha:             $datos['fecha'],
             administradorNombre:       $nombre,
             administradorOrganizacion: $organizacion,
+            codigoEstandar:            $datos['estandar'],
         );
 
         $this->sesion()->destello('aviso', 'Auditoría creada. Ya puede evaluar controles.');
@@ -359,8 +375,9 @@ final class AuditoriaController extends Controlador
             $porCodigo[$evaluacion->codigoControl] = $evaluacion;
         }
 
-        $controles = $this->instrumento()->controles();
-        $procesos  = $this->indexarProcesos();
+        $norma     = $auditoria->codigoEstandar;
+        $controles = $this->instrumento()->controles($norma);
+        $procesos  = $this->indexarProcesos($norma);
 
         // Conteo por dominio para las pestañas: cuántos controles tiene cada
         // uno y cuántos de esos ya están respondidos en ESTA auditoría. Con
@@ -408,9 +425,14 @@ final class AuditoriaController extends Controlador
             'meta'         => $this->meta('Auditoría ' . $auditoria->id),
             'migaPagina'   => [['etiqueta' => $this->t('eval.auditoria_n', (string) $auditoria->id)]],
             'auditoria'    => $auditoria,
+            'estandar'     => $this->estandarDe($auditoria),
+            'porObjetivo'  => $this->evaluaPorObjetivo($auditoria),
+            'evaluacionesObjetivo' => $this->auditorias()->evaluacionesObjetivo($auditoria->id),
+            'erroresObjetivo' => $this->erroresGuardados('objetivo.' . $auditoria->id),
+            'valoresObjetivo' => $this->valoresGuardados('objetivo.' . $auditoria->id),
             'controles'    => $controles,
             'procesos'     => $procesos,
-            'dominios'     => $this->instrumento()->dominios(),
+            'dominios'     => $this->instrumento()->dominios($norma),
             'totalPorDominio'     => $totalPorDominio,
             'respondidoPorDominio' => $respondidoPorDominio,
             'evaluaciones' => $porCodigo,
@@ -424,7 +446,7 @@ final class AuditoriaController extends Controlador
             'limiteArchivo' => $this->limiteArchivoEvidencia(),
             // La escala de madurez la piden las 75 tarjetas: cada una tiene su
             // desplegable de 0 a 5 desde que la captura ocurre en esta pantalla.
-            'escala'       => $this->instrumento()->escala(),
+            'escala'       => $this->instrumento()->escala($norma),
             'controlConError' => $controlConError,
             'erroresControl'  => $erroresControl,
             'valoresControl'  => $valoresControl,
@@ -473,13 +495,80 @@ final class AuditoriaController extends Controlador
         $this->redirigir('/evaluacion/' . $auditoria->id);
     }
 
+    // ── Capacidad de un objetivo (normas por objetivo) ───────────────────────
+
+    public function guardarObjetivo(): void
+    {
+        $this->exigirUsuario();
+        $auditoria = $this->auditoriaPropia();
+        $numero = (int) $this->parametro('numero', '0');
+        $destino = '/evaluacion/' . $auditoria->id . '#objetivo-' . $numero;
+
+        $this->exigirToken($destino);
+        $this->exigirAbierta($auditoria);
+
+        if (!$this->evaluaPorObjetivo($auditoria)
+            || !isset($this->indexarProcesos($auditoria->codigoEstandar)[$numero])
+        ) {
+            $this->noEncontrado();
+        }
+
+        $nivelMaximo = count($this->instrumento()->escala($auditoria->codigoEstandar)) - 1;
+        $capacidad = $this->enteroEnRango($this->peticion()->entrada('capacidad'), 0, max(0, $nivelMaximo));
+        $justificacion = trim((string) $this->peticion()->entrada('justificacion', ''));
+        $errores = [];
+
+        if ($capacidad === null) {
+            $errores['capacidad'] = 'Seleccione el nivel de capacidad (0 a ' . $nivelMaximo . ').';
+        }
+
+        // Sin sustento, la capacidad es una cifra que nadie puede revisar.
+        if ($justificacion === '') {
+            $errores['justificacion'] = 'Explique en qué se basa el nivel asignado.';
+        } elseif (mb_strlen($justificacion) > EvaluacionObjetivo::JUSTIFICACION_MAXIMA) {
+            $errores['justificacion'] = 'La justificación no puede pasar de '
+                . EvaluacionObjetivo::JUSTIFICACION_MAXIMA . ' caracteres.';
+        }
+
+        if ($errores !== []) {
+            $this->guardarIntento(
+                $errores,
+                [
+                    'numero'        => $numero,
+                    'capacidad'     => $this->peticion()->entrada('capacidad'),
+                    'justificacion' => $justificacion,
+                ],
+                'objetivo.' . $auditoria->id,
+            );
+            $this->redirigir($destino);
+        }
+
+        $this->auditorias()->guardarEvaluacionObjetivo(new EvaluacionObjetivo(
+            idAuditoria:   $auditoria->id,
+            numeroProceso: $numero,
+            capacidad:     (int) $capacidad,
+            justificacion: $justificacion,
+        ));
+        $this->auditorias()->recalcularRiesgo($auditoria->id);
+
+        $this->sesion()->destello('aviso', 'Capacidad del objetivo guardada.');
+        $this->redirigir($destino);
+    }
+
     // ── Plantilla de un control ──────────────────────────────────────────────
 
     public function plantillaControl(): void
     {
         $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
-        $control = $this->controlDelCatalogo();
+        $norma = $auditoria->codigoEstandar;
+        $control = $this->controlDelCatalogo($norma);
+
+        // Esta página tiene los campos de ISO escritos a mano. En una norma
+        // por objetivo la práctica se captura en su ficha, dentro del panel.
+        if ($this->evaluaPorObjetivo($auditoria)) {
+            $this->redirigir('/evaluacion/' . $auditoria->id . '#control-' . $control->id);
+        }
 
         $this->verPanel('evaluacion/control', [
             ...$this->contexto(),
@@ -491,15 +580,15 @@ final class AuditoriaController extends Controlador
             ],
             'auditoria'  => $auditoria,
             'control'    => $control,
-            'proceso'    => $this->indexarProcesos()[$control->proceso] ?? null,
+            'proceso'    => $this->indexarProcesos($norma)[$control->proceso] ?? null,
             'evaluacion' => $this->auditorias()->evaluacion($auditoria->id, $control->id),
             'archivo'    => $this->auditorias()->archivoEvidencia($auditoria->id, $control->id),
             'limiteArchivo' => $this->limiteArchivoEvidencia(),
-            'escala'     => $this->instrumento()->escala(),
+            'escala'     => $this->instrumento()->escala($norma),
             'estados'    => self::ESTADOS,
             'criterios'  => self::CRITERIOS,
             'errores'    => $this->erroresGuardados('control.' . $auditoria->id . '.' . $control->id),
-            'vecinos'    => $this->vecinos($control),
+            'vecinos'    => $this->vecinos($control, $norma),
         ]);
     }
 
@@ -525,7 +614,7 @@ final class AuditoriaController extends Controlador
     {
         $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
-        $control = $this->controlDelCatalogo();
+        $control = $this->controlDelCatalogo($auditoria->codigoEstandar);
 
         $desdePanel = $this->peticion()->entrada('origen') === 'panel';
         $asincrona  = $this->peticion()->esAsincrona();
@@ -551,7 +640,7 @@ final class AuditoriaController extends Controlador
         $this->exigirAbierta($auditoria);
 
         $enviado = $this->leerRespuesta();
-        $resultado = $this->validarRespuesta($enviado);
+        $resultado = $this->validarRespuesta($enviado, $this->evaluaPorObjetivo($auditoria));
 
         if ($resultado['errores'] !== []) {
             if ($asincrona) {
@@ -605,6 +694,7 @@ final class AuditoriaController extends Controlador
             preguntaPersonalizada:  $datos['pregunta'],
             evidenciaVerificada:    $datos['evidencia'],
             calidadEvidencia:       $datos['calidad'],
+            gradoLogro:             $datos['grado'],
         ));
 
         $this->aplicarArchivoEvidencia(
@@ -630,7 +720,7 @@ final class AuditoriaController extends Controlador
             $this->json([
                 'ok'     => true,
                 'html'   => $this->tarjetaControl($auditoria, $control),
-                'avance' => $this->avanceDe($auditoria->id),
+                'avance' => $this->avanceDe($auditoria),
             ]);
         }
 
@@ -639,7 +729,7 @@ final class AuditoriaController extends Controlador
         // "Guardar y siguiente" encadena los 75 controles sin volver al índice.
         // Solo existe en la página de un control: desde el panel el siguiente
         // ya está debajo, sin navegar.
-        $siguiente = $this->vecinos($control)['siguiente'] ?? null;
+        $siguiente = $this->vecinos($control, $auditoria->codigoEstandar)['siguiente'] ?? null;
 
         if (!$desdePanel && $this->peticion()->entrada('siguiente') !== null && $siguiente !== null) {
             $this->redirigir('/evaluacion/' . $auditoria->id . '/controles/' . $siguiente->id);
@@ -672,7 +762,7 @@ final class AuditoriaController extends Controlador
     {
         $this->exigirUsuario();
         $auditoria = $this->auditoriaPropia();
-        $control = $this->controlDelCatalogo();
+        $control = $this->controlDelCatalogo($auditoria->codigoEstandar);
 
         $ficha = $this->auditorias()->archivoEvidencia($auditoria->id, $control->id);
         $contenido = $ficha === null
@@ -717,8 +807,9 @@ final class AuditoriaController extends Controlador
             'evaluacion'   => $this->auditorias()->evaluacion($auditoria->id, $control->id),
             'idAuditoria'  => $auditoria->id,
             'abierta'      => !$auditoria->estaFinalizada(),
-            'escala'       => $this->instrumento()->escala(),
-            'claveDominio' => $this->indexarProcesos()[$control->proceso]->dominio ?? null,
+            'escala'       => $this->instrumento()->escala($auditoria->codigoEstandar),
+            'claveDominio' => $this->indexarProcesos($auditoria->codigoEstandar)[$control->proceso]->dominio ?? null,
+            'porObjetivo'  => $this->evaluaPorObjetivo($auditoria),
             /*
              * Se relee de la base y no se arrastra desde el POST: cuando esta
              * tarjeta se redibuja el adjunto ya está guardado (o borrado), y
@@ -741,18 +832,18 @@ final class AuditoriaController extends Controlador
      * @return array{respondidos: int, total: int, porcentaje: int,
      *               porDominio: array<string, int>}
      */
-    private function avanceDe(int $idAuditoria): array
+    private function avanceDe(Auditoria $auditoria): array
     {
         $evaluaciones = [];
 
-        foreach ($this->auditorias()->evaluaciones($idAuditoria) as $evaluacion) {
+        foreach ($this->auditorias()->evaluaciones($auditoria->id) as $evaluacion) {
             if ($evaluacion->estado !== null) {
                 $evaluaciones[$evaluacion->codigoControl] = true;
             }
         }
 
-        $procesos = $this->indexarProcesos();
-        $controles = $this->instrumento()->controles();
+        $procesos = $this->indexarProcesos($auditoria->codigoEstandar);
+        $controles = $this->instrumento()->controles($auditoria->codigoEstandar);
         $porDominio = [];
 
         foreach ($controles as $control) {
@@ -873,8 +964,8 @@ final class AuditoriaController extends Controlador
             'usuario'               => $usuario,
             'auditoria'             => $auditoria,
             'remediaciones'         => $this->auditorias()->remediacionesAuditoria($auditoria->id),
-            'controlesElegibles'    => $this->controlesConHallazgo($auditoria->id),
-            'auditoriasSeguimiento' => $this->auditoriasSeguimientoDisponibles($usuario->id, $auditoria->id),
+            'controlesElegibles'    => $this->controlesConHallazgo($auditoria),
+            'auditoriasSeguimiento' => $this->auditoriasSeguimientoDisponibles($usuario->id, $auditoria),
         ]);
     }
 
@@ -901,7 +992,7 @@ final class AuditoriaController extends Controlador
         $codigo = (string) $this->parametro('codigo', '');
         $control = null;
 
-        foreach ($this->instrumento()->controles() as $candidato) {
+        foreach ($this->instrumento()->controles($auditoria->codigoEstandar) as $candidato) {
             if ($candidato->id === $codigo) {
                 $control = $candidato;
                 break;
@@ -1485,6 +1576,7 @@ final class AuditoriaController extends Controlador
 
         return [
             'estado'           => $peticion->entrada('estado'),
+            'grado'            => $peticion->entrada('grado'),
             'madurez'          => $peticion->entrada('madurez'),
             'criterio'         => $peticion->entrada('criterio'),
             'confidencialidad' => $peticion->marcada('confidencialidad'),
@@ -1582,12 +1674,36 @@ final class AuditoriaController extends Controlador
      * es un campo vacío, y solo tras comprobar el rango se sabe cuál es cuál.
      * Convertir antes de validar perdería esa diferencia.
      *
+     * En una norma por objetivo la práctica llega con 'grado' (N/P/L/F o
+     * NA) en vez de 'estado', y sin madurez: la nota vive en el objetivo. El
+     * estado se deriva del grado, así que el resto de reglas (evidencia con
+     * «Sí», remediaciones sobre «No») se aplican igual.
+     *
      * @param array<string, mixed> $datos
      * @return array{errores: array<string, string>, datos: array<string, mixed>}
      */
-    private function validarRespuesta(array $datos): array
+    private function validarRespuesta(array $datos, bool $porObjetivo = false): array
     {
         $errores = [];
+
+        if ($porObjetivo) {
+            $grado = $datos['grado'];
+            $datos['madurez'] = null;
+            $datos['estado'] = null;
+            $datos['grado'] = null;
+
+            if ($grado !== null && $grado !== EvaluacionControl::NO_APLICA
+                && !in_array($grado, EvaluacionControl::GRADOS_LOGRO, true)
+            ) {
+                $errores['grado'] = 'El grado de logro debe ser N, P, L, F o No aplica.';
+            } elseif ($grado !== null) {
+                $datos['estado'] = EvaluacionControl::estadoDeGrado($grado);
+                $datos['grado'] = $grado === EvaluacionControl::NO_APLICA ? null : $grado;
+            }
+        } else {
+            $datos['grado'] = null;
+        }
+
         $estado = $datos['estado'];
 
         if ($estado !== null && !in_array($estado, self::ESTADOS, true)) {
@@ -1626,7 +1742,9 @@ final class AuditoriaController extends Controlador
         // campo exacto, en vez de que el auditor reciba un ORA-02290.
         if ($estado === EvaluacionControl::SI) {
             if (trim((string) ($datos['evidencia'] ?? '')) === '') {
-                $errores['evidencia'] = 'Si la respuesta es "Sí", debe describir la evidencia revisada.';
+                $errores['evidencia'] = $porObjetivo
+                    ? 'Una práctica lograda (L o F) debe describir la evidencia revisada.'
+                    : 'Si la respuesta es "Sí", debe describir la evidencia revisada.';
             }
 
             if ($datos['calidad'] === null || !in_array($datos['calidad'], self::CALIDADES, true)) {
@@ -1828,11 +1946,12 @@ final class AuditoriaController extends Controlador
         return $auditoria;
     }
 
-    private function controlDelCatalogo(): Control
+    /** Un código de otra norma responde 404, igual que uno inexistente. */
+    private function controlDelCatalogo(string $norma): Control
     {
         $codigo = (string) $this->parametro('codigo', '');
 
-        foreach ($this->instrumento()->controles() as $control) {
+        foreach ($this->instrumento()->controles($norma) as $control) {
             if ($control->id === $codigo) {
                 return $control;
             }
@@ -1856,11 +1975,11 @@ final class AuditoriaController extends Controlador
     }
 
     /** @return array<int, \App\Models\Entidades\Proceso> */
-    private function indexarProcesos(): array
+    private function indexarProcesos(string $norma): array
     {
         $indice = [];
 
-        foreach ($this->instrumento()->procesos() as $proceso) {
+        foreach ($this->instrumento()->procesos($norma) as $proceso) {
             $indice[$proceso->numero] = $proceso;
         }
 
@@ -1876,18 +1995,18 @@ final class AuditoriaController extends Controlador
      *
      * @return list<Control>
      */
-    private function controlesConHallazgo(int $idAuditoria): array
+    private function controlesConHallazgo(Auditoria $auditoria): array
     {
         $codigosConHallazgo = [];
 
-        foreach ($this->auditorias()->evaluaciones($idAuditoria) as $evaluacion) {
+        foreach ($this->auditorias()->evaluaciones($auditoria->id) as $evaluacion) {
             if ($evaluacion->estado === EvaluacionControl::NO) {
                 $codigosConHallazgo[$evaluacion->codigoControl] = true;
             }
         }
 
         return array_values(array_filter(
-            $this->instrumento()->controles(),
+            $this->instrumento()->controles($auditoria->codigoEstandar),
             static fn (Control $control): bool => isset($codigosConHallazgo[$control->id]),
         ));
     }
@@ -1896,21 +2015,40 @@ final class AuditoriaController extends Controlador
      * Las demás auditorías propias del auditor, candidatas a servir de
      * seguimiento de una remediación. Alimenta el desplegable de "auditoría
      * de seguimiento", para no depender de que el auditor copie un id a mano.
+     * Solo las de la misma norma: re-auditar contra otro catálogo no verifica
+     * la remediación.
      *
      * @return list<Auditoria>
      */
-    private function auditoriasSeguimientoDisponibles(int $idAuditor, int $idAuditoriaActual): array
+    private function auditoriasSeguimientoDisponibles(int $idAuditor, Auditoria $actual): array
     {
         return array_values(array_filter(
             $this->auditorias()->auditoriasDe($idAuditor),
-            static fn (Auditoria $candidata): bool => $candidata->id !== $idAuditoriaActual,
+            static fn (Auditoria $candidata): bool => $candidata->id !== $actual->id
+                && $candidata->codigoEstandar === $actual->codigoEstandar,
         ));
     }
 
-    /** @return array{anterior: Control|null, siguiente: Control|null} */
-    private function vecinos(Control $control): array
+    private function evaluaPorObjetivo(Auditoria $auditoria): bool
     {
-        $controles = $this->instrumento()->controles();
+        return $this->estandarDe($auditoria)?->evaluaPorObjetivo() ?? false;
+    }
+
+    private function estandarDe(Auditoria $auditoria): ?Estandar
+    {
+        foreach ($this->instrumento()->estandares() as $estandar) {
+            if ($estandar->codigo === $auditoria->codigoEstandar) {
+                return $estandar;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array{anterior: Control|null, siguiente: Control|null} */
+    private function vecinos(Control $control, string $norma): array
+    {
+        $controles = $this->instrumento()->controles($norma);
         $posicion = null;
 
         foreach ($controles as $i => $candidato) {

@@ -49,9 +49,9 @@ final class CatalogoController extends Controlador
     }
 
     /**
-     * Mapa de procesos vs C-I-D — la misma idea del Apéndice II
-     * de COBIT 4.1: cada proceso, con su relación Primaria/Secundaria/ninguna
-     * declarada frente a Confidencialidad, Integridad y Disponibilidad.
+     * Mapa de procesos vs C-I-D, según el criterio de valoración de riesgo
+     * de ISO/IEC 27005: cada proceso, con su relación Primaria/Secundaria/
+     * ninguna declarada frente a Confidencialidad, Integridad y Disponibilidad.
      */
     public function matriz(): void
     {
@@ -73,7 +73,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $clave = $this->parametro('clave');
-        $dominio = $clave === null ? null : $this->catalogo()->dominio($clave);
+        $dominio = $clave === null ? null : $this->dominioIso($clave);
 
         if ($clave !== null && $dominio === null) {
             $this->noEncontrado();
@@ -94,7 +94,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $clave = $this->parametro('clave');
-        $existente = $clave === null ? null : $this->catalogo()->dominio($clave);
+        $existente = $clave === null ? null : $this->dominioIso($clave);
         $destino = '/catalogo/dominios/' . ($clave ?? 'nuevo');
 
         $this->exigirToken($destino);
@@ -145,7 +145,7 @@ final class CatalogoController extends Controlador
         $this->exigirToken('/catalogo');
 
         $clave = (string) $this->parametro('clave', '');
-        $dominio = $this->catalogo()->dominio($clave);
+        $dominio = $this->dominioIso($clave);
 
         if ($dominio === null) {
             $this->noEncontrado();
@@ -174,7 +174,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $numero = $this->parametro('numero');
-        $proceso = $numero === null ? null : $this->catalogo()->proceso((int) $numero);
+        $proceso = $numero === null ? null : $this->procesoIso((int) $numero);
 
         if ($numero !== null && $proceso === null) {
             $this->noEncontrado();
@@ -196,7 +196,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $numero = $this->parametro('numero');
-        $existente = $numero === null ? null : $this->catalogo()->proceso((int) $numero);
+        $existente = $numero === null ? null : $this->procesoIso((int) $numero);
         $destino = '/catalogo/procesos/' . ($numero ?? 'nuevo');
 
         $this->exigirToken($destino);
@@ -251,7 +251,7 @@ final class CatalogoController extends Controlador
         $this->exigirToken('/catalogo');
 
         $numero = (int) $this->parametro('numero', '0');
-        $proceso = $this->catalogo()->proceso($numero);
+        $proceso = $this->procesoIso($numero);
 
         if ($proceso === null) {
             $this->noEncontrado();
@@ -280,7 +280,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $codigo = $this->parametro('codigo');
-        $control = $codigo === null ? null : $this->catalogo()->control($codigo);
+        $control = $codigo === null ? null : $this->controlIso($codigo);
 
         if ($codigo !== null && $control === null) {
             $this->noEncontrado();
@@ -303,7 +303,7 @@ final class CatalogoController extends Controlador
         $this->exigirAdministrador();
 
         $codigo = $this->parametro('codigo');
-        $existente = $codigo === null ? null : $this->catalogo()->control($codigo);
+        $existente = $codigo === null ? null : $this->controlIso($codigo);
         $destino = '/catalogo/controles/' . ($codigo ?? 'nuevo');
 
         $this->exigirToken($destino);
@@ -365,7 +365,7 @@ final class CatalogoController extends Controlador
         $this->exigirToken('/catalogo');
 
         $codigo = (string) $this->parametro('codigo', '');
-        $control = $this->catalogo()->control($codigo);
+        $control = $this->controlIso($codigo);
 
         if ($control === null) {
             $this->noEncontrado();
@@ -437,7 +437,7 @@ final class CatalogoController extends Controlador
             }
         }
 
-        if ($datos['dominio'] === '' || $this->catalogo()->dominio($datos['dominio']) === null) {
+        if ($datos['dominio'] === '' || $this->dominioIso($datos['dominio']) === null) {
             $errores['dominio'] = 'Seleccione un dominio existente.';
         }
 
@@ -448,8 +448,8 @@ final class CatalogoController extends Controlador
 
         $errores += $this->validarOrden($datos['orden']);
 
-        // Notación de COBIT 4.1 (Apéndice II): 'P' relación primaria,
-        // 'S' relación secundaria, vacío = sin relación relevante.
+        // Criterio de valoración de riesgo de ISO/IEC 27005: 'P' relación
+        // primaria, 'S' relación secundaria, vacío = sin relación relevante.
         foreach ([
             'relacion_confidencialidad' => 'La relación con Confidencialidad',
             'relacion_integridad'       => 'La relación con Integridad',
@@ -483,7 +483,7 @@ final class CatalogoController extends Controlador
         }
 
         if ($datos['proceso'] === '' || !ctype_digit($datos['proceso'])
-            || $this->catalogo()->proceso((int) $datos['proceso']) === null
+            || $this->procesoIso((int) $datos['proceso']) === null
         ) {
             $errores['proceso'] = 'Seleccione un proceso existente.';
         }
@@ -500,7 +500,7 @@ final class CatalogoController extends Controlador
             }
         }
 
-        // Importancia relativa (COBIT 4.1, Apéndice II): Alta, Media o Baja.
+        // Importancia relativa (criterio de valoración de riesgo de ISO/IEC 27005): Alta, Media o Baja.
         if (!in_array($datos['peso'], [Control::PESO_ALTA, Control::PESO_MEDIA, Control::PESO_BAJA], true)) {
             $errores['peso'] = 'La importancia debe ser Alta, Media o Baja.';
         }
@@ -568,6 +568,47 @@ final class CatalogoController extends Controlador
     private const FORMULARIO = 'catalogo';
 
     /** @param array<string, string> $errores @param array<string, mixed> $valores */
+    /*
+     * El catálogo administrable solo edita ISO: sus listas y desplegables son
+     * de ISO, así que abrir por URL un dominio, proceso o control de otra norma
+     * permitiría moverlo a ISO al guardar. Se busca en las listas de ISO (ya
+     * en caché) y lo que no esté ahí responde como inexistente. Las
+     * comprobaciones de clave repetida siguen usando dominio(), proceso() y
+     * control(), que miran todas las normas porque la llave primaria es global.
+     */
+    private function dominioIso(string $clave): ?Dominio
+    {
+        foreach ($this->catalogo()->dominios() as $dominio) {
+            if ($dominio->clave === $clave) {
+                return $dominio;
+            }
+        }
+
+        return null;
+    }
+
+    private function procesoIso(int $numero): ?Proceso
+    {
+        foreach ($this->catalogo()->procesos() as $proceso) {
+            if ($proceso->numero === $numero) {
+                return $proceso;
+            }
+        }
+
+        return null;
+    }
+
+    private function controlIso(string $codigo): ?Control
+    {
+        foreach ($this->catalogo()->controles() as $control) {
+            if ($control->id === $codigo) {
+                return $control;
+            }
+        }
+
+        return null;
+    }
+
     private function guardarIntentoCatalogo(array $errores, array $valores): void
     {
         $this->guardarIntento($errores, $valores, self::FORMULARIO);

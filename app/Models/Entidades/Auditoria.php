@@ -40,6 +40,7 @@ final class Auditoria
         public readonly string $nombreAdministradorBd = '',
         public readonly string $organizacion = '',
         public readonly ?string $fechaFinalizacion = null,
+        public readonly string $codigoEstandar = Estandar::ISO,
     ) {
     }
 
@@ -68,6 +69,7 @@ final class Auditoria
             fechaFinalizacion:     isset($fila['fecha_finalizacion'])
                 ? (string) $fila['fecha_finalizacion']
                 : null,
+            codigoEstandar:        (string) ($fila['codigo_estandar'] ?? Estandar::ISO),
         );
     }
 
@@ -82,3 +84,4 @@ final class Auditoria
         return $this->idAdministradorBd === null;
     }
 }
+

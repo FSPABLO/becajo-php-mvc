@@ -337,7 +337,7 @@ return [
                     'etiqueta' => 'Frameworks',
                     'lista'    => [
                         'ISO/IEC 27002 · 27007',
-                        'COBIT 4.1',
+                        'COBIT 2019',
                         'NIST SP 800-53',
                     ],
                 ],

@@ -19,29 +19,20 @@ declare(strict_types=1);
  *
  * @var \App\Core\Vista $vista
  * @var list<\App\Models\Entidades\Usuario> $administradores
+ * @var list<\App\Models\Entidades\Estandar> $estandares
  * @var array<string, string> $errores
  * @var array<string, mixed>  $valores
  * @var array{aviso: string|null, error: string|null} $mensajes
  */
 
 /*
- * Los tipos de auditoría son el MODELO DE MEDICIÓN contra el que se recorre el
- * instrumento. Son nombres propios de norma: no se traducen y no salen del
- * archivo de idiomas. Espejan la lista del plan Deluxe en config/contenido.php
- * —el disponible es contra lo que mide el instrumento hoy; los otros dos llegan
- * con el plan—, así que si allá se añade uno, aquí también.
- *
- * Hoy el esquema no guarda el tipo (los 75 controles son ISO y no hay columna
- * donde escribirlo), y por eso las opciones futuras van 'disabled': un campo
- * deshabilitado no se envía, así que el formulario no puede mandar un valor que
- * el sistema no sabría medir. El controlador lee solo los tres datos del
- * encabezado e ignora este campo mientras tanto.
+ * La norma es el catálogo contra el que se recorre la auditoría y no cambia
+ * después de creada. Las opciones salen de la tabla estandar; NIST sigue como
+ * «próximamente» porque el plan Deluxe lo anuncia y todavía no tiene catálogo.
+ * Una opción deshabilitada no se envía, así que no puede llegar al servidor.
  */
-$tipos = [
-    ['valor' => 'iso-27000',   'etiqueta' => 'ISO/IEC 27002 · 27007', 'disponible' => true],
-    ['valor' => 'cobit-4.1',   'etiqueta' => 'COBIT 4.1',             'disponible' => false],
-    ['valor' => 'nist-800-53', 'etiqueta' => 'NIST SP 800-53',        'disponible' => false],
-];
+$elegida = (string) ($valores['estandar'] ?? \App\Models\Entidades\Estandar::ISO);
+$proximas = ['NIST SP 800-53'];
 
 // Mismo aspecto que los campos del parcial del encabezado: hundido, porque el
 // inset es lo que significa «aquí se recibe algo».
@@ -73,19 +64,25 @@ $clasesCampo = 'rv-hundido mt-1.5 w-full rounded-rv border border-borde bg-super
             <?= $vista->campoToken() ?>
 
             <div>
-                <label for="tipo" class="block text-sm font-semibold text-texto">
+                <label for="estandar" class="block text-sm font-semibold text-texto">
                     <?= e($vista->t('eval.tipo_auditoria')) ?>
                 </label>
-                <select id="tipo" name="tipo" class="<?= e($clasesCampo) ?>">
-                    <?php foreach ($tipos as $tipo): ?>
-                        <option value="<?= e($tipo['valor']) ?>"
-                                <?= $tipo['disponible'] ? 'selected' : 'disabled' ?>>
-                            <?= e($tipo['etiqueta']) ?><?= $tipo['disponible']
-                                ? ''
-                                : ' — ' . e($vista->t('eval.tipo_proximamente')) ?>
+                <select id="estandar" name="estandar" class="<?= e($clasesCampo) ?>">
+                    <?php foreach ($estandares as $estandar): ?>
+                        <option value="<?= e($estandar->codigo) ?>"
+                                <?= $estandar->codigo === $elegida ? 'selected' : '' ?>>
+                            <?= e($estandar->etiqueta()) ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <?php foreach ($proximas as $proxima): ?>
+                        <option disabled>
+                            <?= e($proxima) ?> — <?= e($vista->t('eval.tipo_proximamente')) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <?php if (isset($errores['estandar'])): ?>
+                    <p class="mt-1 text-[13px] text-bad"><?= e($errores['estandar']) ?></p>
+                <?php endif; ?>
                 <p class="mt-1.5 text-sm text-texto-2"><?= e($vista->t('eval.tipo_ayuda')) ?></p>
             </div>
 

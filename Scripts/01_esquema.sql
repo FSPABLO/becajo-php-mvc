@@ -20,9 +20,9 @@
 --   - Un control puede tener varias dimensiones de riesgo (C/I/D) marcadas a
 --     la vez, y pueden variar de una evaluación a otra del mismo control.
 --   - control.peso (ALTA/MEDIA/BAJA) y proceso.relacion_confidencialidad /
---     relacion_integridad / relacion_disponibilidad (P/S) usan la misma
---     notación que COBIT 4.1 (Apéndice II): importancia relativa y relación
---     primaria/secundaria con cada criterio de información.
+--     relacion_integridad / relacion_disponibilidad (P/S) siguen el criterio
+--     de valoración de riesgo de ISO/IEC 27005: importancia relativa y
+--     relación primaria/secundaria con cada criterio de información.
 --   - evaluacion_control.evidencia_verificada y calidad_evidencia son
 --     obligatorias cuando estado='SI': la conformidad se prueba con
 --     evidencia, no con la afirmación del auditado (ISO/IEC 27007).
@@ -114,10 +114,10 @@ CREATE TABLE dominio (
 -- de presentación, para trazabilidad con el marco de referencia de Persona 1.
 -- relacion_confidencialidad/integridad/disponibilidad: 'P' (relación
 -- primaria) / 'S' (relación secundaria) / NULL (sin relación relevante) —
--- notación de COBIT 4.1, Apéndice II. Es la relación DECLARADA del proceso
--- en el catálogo; no reemplaza lo que el auditor marca en cada evaluación
--- puntual (evaluacion_control.afecta_*), que sigue siendo lo que se usa
--- para calcular el riesgo.
+-- criterio de valoración de riesgo de ISO/IEC 27005. Es la relación
+-- DECLARADA del proceso en el catálogo; no reemplaza lo que el auditor
+-- marca en cada evaluación puntual (evaluacion_control.afecta_*), que
+-- sigue siendo lo que se usa para calcular el riesgo.
 CREATE TABLE proceso (
     numero                      NUMBER(3)      PRIMARY KEY,
     clave_dominio                VARCHAR2(20)   NOT NULL,
@@ -141,8 +141,8 @@ CREATE TABLE proceso (
 -- codigo: identificador natural del catálogo (C-001 ... C-075). Una sola
 -- pregunta por control por defecto; el auditor puede sobrescribirla por
 -- evaluación (ver EVALUACION_CONTROL.pregunta_personalizada).
--- peso: importancia relativa (COBIT 4.1) usada en el promedio ponderado del
--- cálculo de riesgo — un control ALTA pesa más que uno BAJA.
+-- peso: importancia relativa (criterio de ISO/IEC 27005) usada en el promedio
+-- ponderado del cálculo de riesgo — un control ALTA pesa más que uno BAJA.
 CREATE TABLE control (
     codigo              VARCHAR2(6)    PRIMARY KEY,
     numero_proceso      NUMBER(3)      NOT NULL,
@@ -353,7 +353,7 @@ CREATE TABLE remediacion (
 --
 -- NO guarda la pregunta ni la respuesta: en el chat se puede escribir un
 -- hallazgo aunque el panel pida que no, y esta tabla no debe ser una copia de
--- datos de auditoría fuera de su sitio. Ver Scripts/14_asistente_consulta.sql.
+-- datos de auditoría fuera de su sitio. Ver Scripts/16_asistente_consulta.sql.
 CREATE TABLE asistente_consulta (
     id_asistente_consulta  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_usuario             NUMBER         NOT NULL,

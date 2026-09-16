@@ -9,6 +9,7 @@ use App\Models\Contratos\RepositorioCatalogo;
 use App\Models\Contratos\RepositorioInstrumento;
 use App\Models\Entidades\Control;
 use App\Models\Entidades\Dominio;
+use App\Models\Entidades\Estandar;
 use App\Models\Entidades\Proceso;
 
 /**
@@ -20,13 +21,10 @@ use App\Models\Entidades\Proceso;
  *
  * DOS COSAS QUE CONVIENE SABER
  *
- * 1. Cuatro de los siete métodos del contrato se delegan al repositorio de
- *    arreglo (el "complemento"): meta(), escala(), marco() y referencias(). El
- *    esquema de Persona 2 modela el catálogo evaluable —lo que el auditor
- *    responde— pero no la escala de madurez, el marco normativo ni la
- *    bibliografía, que son texto fijo de la herramienta y no datos de
- *    auditoría. Mientras no existan esas tablas, siguen viniendo del archivo
- *    PHP. Es una decisión pendiente de acordar con Persona 2, no un descuido.
+ * 1. meta(), marco() y referencias() se delegan al repositorio de arreglo
+ *    (el "complemento"): son texto fijo de la herramienta, sin tabla. La
+ *    escala sí vive en la base desde multinorma (nivel_madurez), porque cada
+ *    norma tiene la suya.
  *
  * 2. El ORDEN DE PRESENTACIÓN sale de la columna 'orden' de dominio y proceso.
  *    Sus claves naturales no sirven para ordenar: por 'clave' los dominios
@@ -41,14 +39,17 @@ use App\Models\Entidades\Proceso;
  */
 final class RepositorioInstrumentoOracle implements RepositorioCatalogo
 {
-    /** @var list<Dominio>|null */
-    private ?array $dominios = null;
+    /** @var array<string, list<Dominio>> Por norma. */
+    private array $dominios = [];
 
-    /** @var list<Proceso>|null */
-    private ?array $procesos = null;
+    /** @var array<string, list<Proceso>> */
+    private array $procesos = [];
 
-    /** @var list<Control>|null */
-    private ?array $controles = null;
+    /** @var array<string, list<Control>> */
+    private array $controles = [];
+
+    /** @var list<Estandar>|null */
+    private ?array $estandares = null;
 
     public function __construct(
         private readonly BaseDatos $bd,
@@ -67,73 +68,116 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
         return $this->complemento->meta();
     }
 
+    /** @return list<Estandar> */
+    public function estandares(): array
+    {
+        if ($this->estandares !== null) {
+            return $this->estandares;
+        }
+
+        $filas = $this->bd->consultar(
+            'SELECT codigo, nombre, version, organismo, escala_niveles, orden, modo_evaluacion
+               FROM estandar
+              ORDER BY orden, codigo'
+        );
+
+        return $this->estandares = array_map(
+            static fn (array $fila): Estandar => Estandar::desdeArreglo($fila),
+            $filas,
+        );
+    }
+
     /** @return list<Dominio> */
-    public function dominios(): array
+    public function dominios(string $estandar = Estandar::ISO): array
     {
         // Las vistas piden los dominios varias veces por petición (los tabs,
         // el tablero, el filtro). Se consulta una sola vez y se recuerda.
-        if ($this->dominios !== null) {
-            return $this->dominios;
+        if (isset($this->dominios[$estandar])) {
+            return $this->dominios[$estandar];
         }
 
         $filas = $this->bd->consultar(
             'SELECT clave, nombre, nombre_corto, descripcion, orden
                FROM dominio
-              ORDER BY orden, clave'
+              WHERE codigo_estandar = :estandar
+              ORDER BY orden, clave',
+            ['estandar' => $estandar],
         );
 
-        return $this->dominios = array_map(
+        return $this->dominios[$estandar] = array_map(
             static fn (array $fila): Dominio => self::aDominio($fila),
             $filas,
         );
     }
 
     /** @return list<Proceso> */
-    public function procesos(): array
+    public function procesos(string $estandar = Estandar::ISO): array
     {
-        if ($this->procesos !== null) {
-            return $this->procesos;
+        if (isset($this->procesos[$estandar])) {
+            return $this->procesos[$estandar];
         }
 
         $filas = $this->bd->consultar(
-            'SELECT numero, clave_dominio, nombre, ancla, orden,
-                    relacion_confidencialidad, relacion_integridad, relacion_disponibilidad
-               FROM proceso
-              ORDER BY orden, numero'
+            'SELECT p.numero, p.clave_dominio, p.nombre, p.ancla, p.orden,
+                    p.relacion_confidencialidad, p.relacion_integridad, p.relacion_disponibilidad
+               FROM proceso p
+               JOIN dominio d ON d.clave = p.clave_dominio
+              WHERE d.codigo_estandar = :estandar
+              ORDER BY p.orden, p.numero',
+            ['estandar' => $estandar],
         );
 
-        return $this->procesos = array_map(
+        return $this->procesos[$estandar] = array_map(
             static fn (array $fila): Proceso => self::aProceso($fila),
             $filas,
         );
     }
 
     /** @return list<Control> */
-    public function controles(): array
+    public function controles(string $estandar = Estandar::ISO): array
     {
-        if ($this->controles !== null) {
-            return $this->controles;
+        if (isset($this->controles[$estandar])) {
+            return $this->controles[$estandar];
         }
 
         // enunciado, evidencia_esperada y pregunta son CLOB; BaseDatos los
         // devuelve ya convertidos a texto (OCI_RETURN_LOBS).
         $filas = $this->bd->consultar(
-            'SELECT codigo, numero_proceso, referencia_iso,
-                    enunciado, evidencia_esperada, pregunta, peso
-               FROM control
-              ORDER BY codigo'
+            'SELECT c.codigo, c.numero_proceso, c.referencia_iso,
+                    c.enunciado, c.evidencia_esperada, c.pregunta, c.peso
+               FROM control c
+               JOIN proceso p ON p.numero = c.numero_proceso
+               JOIN dominio d ON d.clave = p.clave_dominio
+              WHERE d.codigo_estandar = :estandar
+              ORDER BY c.codigo',
+            ['estandar' => $estandar],
         );
 
-        return $this->controles = array_map(
+        return $this->controles[$estandar] = array_map(
             static fn (array $fila): Control => self::aControl($fila),
             $filas,
         );
     }
 
     /** @return list<array{nivel: int, nombre: string, descripcion: string}> */
-    public function escala(): array
+    public function escala(string $estandar = Estandar::ISO): array
     {
-        return $this->complemento->escala();
+        $filas = $this->bd->consultar(
+            'SELECT nivel, nombre, descripcion
+               FROM nivel_madurez
+              WHERE codigo_estandar = :estandar
+              ORDER BY nivel',
+            ['estandar' => $estandar],
+        );
+
+        return array_map(
+            static fn (array $fila): array => [
+                'nivel'       => (int) $fila['nivel'],
+                'nombre'      => (string) $fila['nombre'],
+                'descripcion' => (string) $fila['descripcion'],
+            ],
+            $filas,
+        );
     }
 
     /** @return list<array{norma: string, titulo: string, aporte: string}> */
@@ -410,9 +454,9 @@ final class RepositorioInstrumentoOracle implements RepositorioCatalogo
      */
     private function olvidarCache(): void
     {
-        $this->dominios = null;
-        $this->procesos = null;
-        $this->controles = null;
+        $this->dominios = [];
+        $this->procesos = [];
+        $this->controles = [];
     }
 
     /** @param array<string, mixed> $fila */
