@@ -488,6 +488,11 @@ return [
     'mon.comp_topado'        => 'Average %s, capped at %s by the component\'s worst state.',
     'mon.comp_sin_metricas'  => 'None of its metrics could be collected in this sample.',
 
+    // CONSULTAS card: it is collected and shown, but is not a summand of the ISBD (§3.1).
+    'mon.comp_consultas'       => 'Queries',
+    'mon.consultas_fuera_isbd' => 'It is collected and shown, but does not count toward the ISBD formula: it '
+                                . "measures the work asked of the database, not its health.",
+
     // Monitored database selector
     'mon.base_vigilada'      => 'Monitored database',
     'mon.conectada'          => 'Connected',

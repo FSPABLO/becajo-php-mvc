@@ -89,6 +89,23 @@ $caida   = $sel['muestra'] === 'FALLIDA';
 $indices = array_values(array_filter($sel['componentes'], static fn (array $c): bool => $c['en_isbd']));
 
 /*
+ * CONSULTAS aparte de $indices, no dentro: es la excepción del §3.1 que
+ * `monitor-indices` documenta —se recolecta y se evalúa, pero no es un
+ * sumando— y pintarla en la misma fila de fichas IP/IM/IA la haría leerse
+ * como un cuarto índice más. `array_filter` sobre un `componentes` vacío
+ * (instancia caída) da null aquí igual que en `$indices`.
+ */
+$consultas = null;
+
+foreach ($sel['componentes'] as $componente) {
+    if ($componente['clave'] === 'CONSULTAS') {
+        $consultas = $componente;
+
+        break;
+    }
+}
+
+/*
  * El motivo por el que no hay índice. Se resuelve UNA vez y viaja al medidor y
  * al selector: si cada pieza lo dedujera por su cuenta, una podría decir
  * «muestra incompleta» y la otra «sin respuesta» sobre la misma muestra.
@@ -384,6 +401,50 @@ $luzGeneral = semaforoGeneral(array_map(
                             'etiquetaBanda' => $etiquetaBanda,
                         ]) ?>
 
+                    <?php endif; ?>
+
+                    <?php if ($consultas !== null): ?>
+                        <?php
+                        /*
+                         * §12: «el componente CONSULTAS se recolecta, se
+                         * muestra y alerta, y no aparece en la fórmula del
+                         * ISBD». Esta ficha cubre la mitad que la pantalla
+                         * había dejado de demostrar —se recolecta y sigue
+                         * viajando en la muestra— con un texto y no solo con
+                         * la ausencia: no es un botón (no hay tabla de
+                         * procesos que desplegar, `catalogo_procesos` no
+                         * tiene grupo CONSULTAS) ni entra en la rejilla de
+                         * IP/IM/IA, para no leerse como un cuarto índice.
+                         */
+                        $tieneConsultas = $consultas['publicado'] !== null;
+                        ?>
+                        <div class="rv-hundido mt-3 flex flex-wrap items-center justify-between gap-3
+                                    rounded-rv border border-borde bg-superficie px-4 py-3">
+                            <div>
+                                <p class="text-sm font-semibold text-texto">
+                                    <?= e($vista->t('mon.comp_consultas')) ?>
+                                </p>
+                                <p class="mt-0.5 max-w-[38ch] text-xs leading-relaxed text-texto-2">
+                                    <?= e($vista->t('mon.consultas_fuera_isbd')) ?>
+                                </p>
+                            </div>
+
+                            <div class="flex shrink-0 items-center gap-2">
+                                <?php if ($tieneConsultas): ?>
+                                    <span class="tabular text-lg font-semibold text-texto">
+                                        <?= e($cifra((float) $consultas['publicado'])) ?>
+                                        <span class="text-sm font-normal text-texto-2">%</span>
+                                    </span>
+                                    <?= pill(
+                                        tonoBanda((string) $consultas['banda']),
+                                        $etiquetaBanda((string) $consultas['banda']),
+                                    ) ?>
+                                <?php else: ?>
+                                    <span class="tabular text-lg font-semibold text-na">—</span>
+                                    <?= pill('na', $vista->t('mon.banda_sin_dato')) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
 

@@ -505,6 +505,11 @@ return [
     'mon.comp_topado'        => 'Promedio %s, topado en %s por el peor estado del componente.',
     'mon.comp_sin_metricas'  => 'Ninguna de sus métricas se pudo recolectar en esta muestra.',
 
+    // Ficha de CONSULTAS: se recolecta y se muestra, pero no es un sumando del ISBD (§3.1).
+    'mon.comp_consultas'       => 'Consultas',
+    'mon.consultas_fuera_isbd' => 'Se recolecta y se muestra, pero no suma en la fórmula del ISBD: mide el '
+                                . 'trabajo que se le pide a la base, no su salud.',
+
     // Selector de base de datos vigilada
     'mon.base_vigilada'      => 'Base de datos vigilada',
     'mon.conectada'          => 'Conectada',
