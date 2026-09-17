@@ -8,6 +8,39 @@
 #
 # El servicio "oracle" agrega la base de datos del proyecto integrador.
 # Nadie tiene que instalar Oracle en su máquina: el contenedor la trae.
+#
+# MIGRACIÓN A POSTGRESQL (2026-09) — CONVIVEN LOS DOS MOTORES
+# -----------------------------------------------------------
+# El Dockerfile ahora instala pdo_pgsql/pgsql ADEMÁS de oci8 (ver su
+# cabecera), así que la misma imagen sirve para los dos caminos:
+#
+#   - "web" y "oracle" siguen siendo el camino de siempre: la app entera
+#     (auditorías, catálogo, Lembas, y lo que persiste el monitor) corre
+#     contra Oracle, exactamente como antes de esta nota.
+#
+#   - "monitor" (bin/monitor.php) NO CAMBIÓ: sigue leyendo la instancia
+#     vigilada por oci8 (vistas v$*, exclusivas de Oracle) y escribiendo el
+#     resultado con la cuenta "becajo" de este mismo Oracle — es
+#     precisamente la función que se presenta mañana, y sigue intacta.
+#
+#   - "postgres" es NUEVO y OPCIONAL: una base Postgres para probar la
+#     migración de la parte 1 (auditorías/catálogo/Lembas) rumbo a Azure
+#     Database for PostgreSQL. Ni "web" ni "monitor" la usan por defecto —
+#     "docker compose up" de siempre levanta exactamente lo mismo que
+#     siempre. Para probar el camino Postgres, se cambia BD_MOTOR/BD_CADENA
+#     del servicio "web" a los valores comentados más abajo, o se apunta
+#     config/base_datos.php a Postgres localmente (BD_MOTOR=postgres,
+#     BD_CADENA="host=postgres port=5432 dbname=rivendel sslmode=disable").
+#     El código PHP para ese camino (app/Core/BaseDatosPostgres.php,
+#     RepositorioAuditoriasPostgres.php, RepositorioInstrumentoPostgres.php,
+#     RepositorioMonitorPostgres.php, Scripts/postgres/*.sql) ya está escrito
+#     y probado; lo único pendiente es decidir cuándo cambiar el valor por
+#     defecto de "web".
+#
+#   - bin/monitor.php seguirá escribiendo contra Oracle mientras siga usando
+#     App\Core\BaseDatos directamente (no es "motor"-aware, a diferencia de
+#     public/index.php): eso es trabajo aparte si algún día se quiere que el
+#     monitor persista en Postgres en vez de Oracle.
 
 services:
   web:
@@ -29,9 +62,18 @@ services:
       #
       # "oracle" es el nombre del servicio de abajo: dentro de la red de
       # Docker funciona como nombre de host, no hace falta ninguna IP.
+      BD_MOTOR: oracle
       BD_CADENA: oracle:1521/FREEPDB1
       BD_USUARIO: becajo
       BD_CLAVE: becajo
+      # Para probar el camino Postgres en vez del de arriba (ver la nota de
+      # cabecera): comentar las 4 líneas de BD_* de Oracle y descomentar
+      # estas, y cambiar el depends_on de abajo a "postgres".
+      #   BD_MOTOR: postgres
+      #   BD_CADENA: "host=postgres port=5432 dbname=rivendel sslmode=disable"
+      #   BD_USUARIO: becajo
+      #   BD_CLAVE: becajo
+      #
       # Lembas. Los valores salen del archivo .env de la raíz, que compose lee
       # solo al levantar (ver .env.ejemplo), y se pasan UNO A UNO: el contenedor
       # recibe estas variables y no el archivo entero. Sin .env todo queda con
@@ -117,5 +159,44 @@ services:
       # el contenedor por fallido antes de que termine de arrancar.
       start_period: 300s
 
+  postgres:
+    # NUEVO, OPCIONAL: para probar la migración a PostgreSQL (rumbo a Azure
+    # Database for PostgreSQL) sin tocar el camino Oracle de arriba. "web" y
+    # "monitor" no dependen de este servicio por defecto — ver la nota de
+    # cabecera para activarlo.
+    image: postgres:16-alpine
+    container_name: becajo-postgres
+    ports:
+      # Por si se quiere conectar psql, DBeaver o pgAdmin desde el anfitrión.
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: becajo
+      POSTGRES_PASSWORD: becajo
+      POSTGRES_DB: rivendel
+    volumes:
+      # Los datos sobreviven a "docker compose down": sin este volumen, cada
+      # reinicio obligaría a volver a cargar el esquema.
+      - postgres-datos:/var/lib/postgresql/data
+      # La imagen oficial de Postgres ejecuta, en orden alfabético y SOLO la
+      # primera vez que el volumen de datos está vacío, todo .sql que
+      # encuentre en /docker-entrypoint-initdb.d/. De ahí los prefijos
+      # numéricos de Scripts/postgres/*.sql: en Postgres no hace falta un
+      # `docker exec ... < script.sql` manual como en Oracle, el contenedor
+      # se siembra solo al primer arranque.
+      - ./Scripts/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U becajo -d rivendel"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    profiles:
+      # Con "profiles", este servicio NO se levanta con un "docker compose
+      # up" normal — solo con "docker compose --profile postgres up". Así la
+      # demo de mañana (oracle + web + monitor) no arrastra un contenedor
+      # extra que no necesita.
+      - postgres
+
 volumes:
   oracle-datos:
+  postgres-datos:

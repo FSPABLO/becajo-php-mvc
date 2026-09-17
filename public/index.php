@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 use App\Core\Autoloader;
 use App\Core\BaseDatos;
+use App\Core\BaseDatosPostgres;
 use App\Core\Contenedor;
 use App\Core\Enrutador;
 use App\Core\Idioma;
@@ -25,8 +26,10 @@ use App\Core\Sesion;
 use App\Core\Vista;
 use App\Models\RepositorioArreglo;
 use App\Models\RepositorioAuditoriasOracle;
+use App\Models\RepositorioAuditoriasPostgres;
 use App\Models\RepositorioInstrumentoArreglo;
 use App\Models\RepositorioInstrumentoOracle;
+use App\Models\RepositorioInstrumentoPostgres;
 
 const RAIZ = __DIR__ . '/..';
 
@@ -76,16 +79,37 @@ if (is_file($archivoBaseDatos)) {
     /** @var array<string, mixed> $configuracionBd */
     $configuracionBd = require $archivoBaseDatos;
 
-    // La conexión es perezosa: construir estos objetos no abre ningún socket.
-    // Oracle solo se contacta cuando alguien pide datos de verdad.
-    $bd = new BaseDatos($configuracionBd);
-    $auditorias = new RepositorioAuditoriasOracle($bd);
+    // 'motor' decide qué mitad de la capa de datos se construye: 'oracle'
+    // (valor por omisión, para no romper una config/base_datos.php vieja sin
+    // esa clave) u 'postgres'. Es la ÚNICA rama de todo el arranque que sabe
+    // que existen dos motores — Contenedor, los controladores y las vistas
+    // reciben la interfaz (RepositorioAuditorias / RepositorioCatalogo) y no
+    // se enteran de cuál es.
+    $motor = (string) ($configuracionBd['motor'] ?? 'oracle');
 
-    if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
-        // El repositorio de arreglo pasa como complemento: sigue sirviendo la
-        // escala de madurez, el marco normativo y las referencias, que no
-        // tienen tabla en el esquema.
-        $instrumento = new RepositorioInstrumentoOracle($bd, $instrumento);
+    if ($motor === 'postgres') {
+        // La conexión es perezosa: construir estos objetos no abre ningún
+        // socket. Postgres solo se contacta cuando alguien pide datos de verdad.
+        $bd = new BaseDatosPostgres($configuracionBd);
+        $auditorias = new RepositorioAuditoriasPostgres($bd);
+
+        if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
+            // Mismo nombre de clave que en Oracle a propósito: significa "el
+            // catálogo vive en la base", sin importar cuál. El repositorio de
+            // arreglo sigue sirviendo la escala de madurez, el marco normativo
+            // y las referencias, que no tienen tabla en el esquema.
+            $instrumento = new RepositorioInstrumentoPostgres($bd, $instrumento);
+        }
+    } else {
+        $bd = new BaseDatos($configuracionBd);
+        $auditorias = new RepositorioAuditoriasOracle($bd);
+
+        if (($configuracionBd['instrumento_en_oracle'] ?? true) === true) {
+            // El repositorio de arreglo pasa como complemento: sigue sirviendo la
+            // escala de madurez, el marco normativo y las referencias, que no
+            // tienen tabla en el esquema.
+            $instrumento = new RepositorioInstrumentoOracle($bd, $instrumento);
+        }
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────
