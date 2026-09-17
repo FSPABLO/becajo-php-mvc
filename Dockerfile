@@ -25,20 +25,46 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' \
 #    Por defecto Apache lo ignora salvo que se le autorice explícitamente.
 RUN sed -ri -e 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf
 
-# 4. Extensión oci8: el puente entre PHP y Oracle.
+# 4. Extensiones pdo_pgsql / pgsql: el puente entre PHP y PostgreSQL.
 #
-#    php:8.3-apache no trae ningún driver de Oracle, y a diferencia de MySQL
-#    no se instala con docker-php-ext-install: oci8 se compila contra las
-#    bibliotecas del Oracle Instant Client, que hay que descargar aparte.
+#    A diferencia de oci8, estas dos SÍ se instalan con docker-php-ext-install
+#    — el helper oficial de la imagen php:*-apache — porque PostgreSQL no
+#    exige un cliente propietario descargado aparte como el Oracle Instant
+#    Client: solo hace falta libpq (el cliente de bajo nivel de PostgreSQL) en
+#    tiempo de compilación.
+#
+#    Este paso va ANTES del COPY del proyecto a propósito: Docker cachea por
+#    capas, y así cambiar una vista no obliga a recompilar la extensión.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install pdo_pgsql pgsql \
+    && apt-get purge -y --auto-remove \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4a. Extensión oci8: el puente entre PHP y Oracle.
+#
+#    La aplicación web (servicio "web") ya no usa Oracle — corre sobre
+#    Postgres (paso 4). Pero el agente de monitoreo (bin/monitor.php,
+#    servicio "monitor" de docker-compose.yml) sigue necesitando oci8: su
+#    trabajo es vigilar la SALUD de una instancia Oracle real, leyendo
+#    vistas dinámicas exclusivas de ese motor (v$resource_limit, v$sqlstats,
+#    v$bgprocess...) que no tienen equivalente en Postgres. Esa instancia
+#    vigilada es un concepto aparte de "dónde vive la app" — hoy es el mismo
+#    contenedor "oracle" de docker-compose.yml, pero podría ser cualquier
+#    Oracle real. Por eso esta imagen instala LOS DOS drivers: "web" y
+#    "monitor" comparten la misma imagen (ver paso 7), y cada servicio usa
+#    el que le corresponde.
+#
+#    php:8.3-apache no trae ningún driver de Oracle, y a diferencia de
+#    Postgres no se instala con docker-php-ext-install: oci8 se compila
+#    contra las bibliotecas del Oracle Instant Client, que hay que
+#    descargar aparte.
 #
 #    Son dos paquetes: "basiclite" (las bibliotecas en tiempo de ejecución;
 #    la variante lite pesa la mitad que basic porque omite los archivos de
 #    idioma que no usamos) y "sdk" (las cabeceras .h que necesita el
 #    compilador). El enlace simbólico sin número de versión evita tener que
 #    tocar LD_LIBRARY_PATH si mañana se sube el Instant Client.
-#
-#    Este paso va ANTES del COPY del proyecto a propósito: Docker cachea por
-#    capas, y así cambiar una vista no obliga a recompilar la extensión.
 ENV ORACLE_HOME=/opt/oracle/instantclient
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 
@@ -106,7 +132,7 @@ RUN chmod +x /usr/local/bin/iniciar.sh
 
 # 7. Programador del agente de monitoreo (parte 2, §4.1 del plan).
 #
-#    Reutiliza esta misma imagen -ya trae PHP y oci8 compilado- para el
+#    Reutiliza esta misma imagen -ya trae PHP, pdo_pgsql y oci8 compilados- para el
 #    servicio "monitor" de docker-compose.yml, que sobreescribe el CMD de
 #    abajo con este script en vez de arrancar Apache.
 COPY docker/monitor.sh /usr/local/bin/monitor.sh
